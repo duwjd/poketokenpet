@@ -1,0 +1,1491 @@
+/*
+ * Neutral chrome, so eighteen type colours can live on top of it.
+ *
+ * This used to be a warm cream paper palette with a #d9773d accent. Two
+ * problems once type badges arrived: the warm cast tinted every type swatch
+ * towards orange, and that accent is within a few degrees of the Fire type's
+ * #EE8130 — an accented button next to a Fire badge read as the same thing.
+ *
+ * So the neutrals lost their warmth (they are very slightly cool now, which
+ * also stops the green grass looking pasted on) and the accent moved to a teal
+ * no type owns. Teal reads as interface rather than as an element.
+ */
+/*
+ * Two grounds, not one.
+ *
+ * `--bg` used to mean both "the page" and "what a type tint is mixed toward",
+ * which was fine while those were the same colour. They are not any more: the
+ * panel now works the way a DS screen does — a COLOURED field with cream
+ * windows on it — so the two meanings had to come apart.
+ *
+ *   --ground   the field the panel is laid on. Coloured, and per tab.
+ *   --surface  the inside of a window. What content actually sits on.
+ *
+ * Every `color-mix` below targets `--surface`, because a type badge lives
+ * inside a window. That is what preserves the eighteen type tints and the four
+ * rarity edges exactly as they were tuned — only the field behind them moved.
+ */
+:root {
+  --ground: #dfe7e1;
+  --surface: #f8f8f4;
+  --fg: #1f2220;
+  --muted: #737a77;
+  --line: #cdd6d0;
+  --accent: #2c7a6f;
+  --track: #e8ebe7;
+
+  /*
+   * Colours that used to be typed out where they were needed.
+   *
+   * `--ink` and `--paper` are the two the 9-slice frames are drawn in, so a
+   * box's text has to match them exactly — writing #20232a in three places was
+   * three chances to drift. `--gold` is the warm figure colour in a message
+   * box, which is the only place this palette has a warm hue at all.
+   */
+  --ink: #20232a;
+  /*
+   * The same ink, under a name dark mode does not move.
+   *
+   * `--ink` flips light at night because the panel's frames flip with it. The
+   * scene and the shop counter do NOT flip — they are lit pictures at every
+   * hour and keep the bright frame — so the text on them needs the dark ink
+   * regardless of theme, and it cannot ask `--ink` for it.
+   */
+  --ink-lit: #20232a;
+  --paper: #f8f8f4;
+  --gold: #b4531d;
+  --warn: #a97a12;
+  --err: #c0392b;
+  /* Text on an accent fill. Constant in both themes — the accent is dark
+     enough in light and light enough in dark for white to hold either way. */
+  --on-accent: #fff;
+
+  /*
+   * One spacing scale, replacing nineteen ad-hoc values.
+   *
+   * 4px is the unit: the body face is 12px, the frames are 3px, and pixel art
+   * has to land on whole pixels. Everything below is a multiple except --s1,
+   * which is the half-step for the inside of a control.
+   */
+  --s1: 2px;
+  --s2: 4px;
+  --s3: 8px;
+  --s4: 12px;
+  --s5: 20px;
+  --s6: 32px;
+
+  /*
+   * Two paddings, so every framed box starts its text on the same line.
+   *
+   * A frame is 3px, so `--pad-box` puts content 11px from the box edge — in every
+   * box, which is the thing that was not true before (rows at 15, bars at 13,
+   * the message window at 14). Two pixels of disagreement is what made a stack
+   * of boxes look untidy.
+   */
+  --pad-box: 8px;
+  --pad-tight: 4px;
+  /*
+   * Named `--pad-box`, not `--pad`.
+   *
+   * Scene.css declares `--pad` on :root too — it is the battle platform's
+   * GREEN — and it loads after this file, so a plain `--pad` here silently
+   * became #87a163. Every padding using it was then invalid, which is a thing
+   * that shows up as "the chips look cramped" rather than as an error.
+   * test/panel-css.test.ts now checks the two sheets share no token name.
+   */
+
+  /*
+   * Two control heights, set rather than derived.
+   *
+   * 24 is the floor: take 3px of frame off each side and 18px is left, which
+   * fits the 12px face with 3px above and below. Smaller and the glyphs touch
+   * the frame.
+   */
+  --ctl: 24px;
+  --ctl-lg: 32px;
+
+
+  /*
+   * Two reserved columns that are NOT spacing, and are named so nobody tunes
+   * them as if they were.
+   *
+   * --rail is the scrollbar's width, and the panel's horizontal padding is
+   * sized against it: --s2 + --rail = --s4, the tab bar's inset. That equation
+   * is what puts the content's left and right edges on the tab bar's, and
+   * test/panel-css.test.ts checks the arithmetic still adds up.
+   *
+   * --gutter-cursor is the column the menu cursor lives in. It used to be
+   * spelled --s5, which reads as "section spacing" and invited exactly the
+   * wrong edit.
+   */
+  --rail: 8px;
+  --gutter-cursor: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #14181a;
+    --surface: #252a2d;
+    --fg: #e8ebe6;
+    --muted: #8b918c;
+    --line: #39434a;
+    --accent: #4fb3a3;
+    --track: #1b2023;
+
+    --ink: #e8ebe6;
+    --paper: #252a2d;
+    --gold: #e0a06a;
+    --warn: #e0a52a;
+    --err: #e0685c;
+  }
+}
+
+/*
+ * One field, not six.
+ *
+ * Each tab used to have its own ground, the way the games colour each bag
+ * pocket. In a 420px popover flipped between dozens of times a day that read
+ * as the screen changing colour under you — and worse, the same type badge
+ * looked different on every tab, which is the exact problem the palette note
+ * further up was written to avoid.
+ *
+ * The sense of place is carried by the shop counter and the battle diorama,
+ * which are pictures rather than a wash of colour.
+ */
+
+
+/*
+ * One visible focus ring for the whole app.
+ *
+ * Until now the ONLY focus-related rule in any of the four stylesheets was
+ * `.rename input:focus { outline: none }` — it removed an indicator and nothing
+ * added one, which on a vibrancy-backed popover means keyboard users lose their
+ * place completely.
+ *
+ * :focus-visible only, so clicking the scroll panel or a chip does not paint a
+ * ring. There are no rounded corners left to follow — the whole panel is drawn
+ * on a pixel grid now — so the ring is a hard rectangle, which is what a game
+ * cursor looks like anyway. --accent is the teal no Pokemon type owns.
+ */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The tab bar has only a bottom border and butts against the panel, so an
+   outset ring collides with both. */
+.tabs button:focus-visible { outline-offset: -2px; }
+
+/* .linky is underlined inline text; 2px lands on the underline. */
+.linky:focus-visible { outline-offset: 1px; }
+
+/*
+ * The eighteen official type colours.
+ *
+ * Used as a tint rather than a fill: `color-mix` pulls each hue most of the way
+ * back toward the panel background, so a badge is recognisable without shouting.
+ * Eighteen saturated blocks in a 420px panel is a ransom note.
+ */
+:root {
+  --t-normal: #a8a77a;
+  --t-fire: #ee8130;
+  --t-water: #6390f0;
+  --t-electric: #d9b400;
+  --t-grass: #7ac74c;
+  --t-ice: #77c4c1;
+  --t-fighting: #c22e28;
+  --t-poison: #a33ea1;
+  --t-ground: #c99b45;
+  --t-flying: #a98ff3;
+  --t-psychic: #f95587;
+  --t-bug: #a6b91a;
+  --t-rock: #b6a136;
+  --t-ghost: #735797;
+  --t-dragon: #6f35fc;
+  --t-dark: #705746;
+  --t-steel: #9a9ab5;
+  --t-fairy: #d685ad;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--fg);
+  /*
+   * Galmuri11 first, the system stack behind it.
+   *
+   * The fallback is not decoration: Galmuri covers Hangul, Latin-1 and kana,
+   * but the panel also prints emoji (the egg glyph, ✨, ▶) and the occasional
+   * rare character, and those have to come from somewhere.
+   */
+  font-family: 'Galmuri11', system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  /*
+   * Tightened 2%.
+   *
+   * The monospace cut gives every Hangul syllable a full cell, which is what
+   * makes the numbers line up but also makes a sentence noticeably airy. -2%
+   * pulls it back without touching the cell itself.
+   */
+  letter-spacing: -0.02em;
+  /* The panel scrolls itself; letting the document scroll too produces a
+     rubber-band fight where the content will not come back up. */
+  overflow: hidden;
+}
+
+/* The tab bar stays put; only the panel below it scrolls. */
+.app {
+  /*
+   * The field, painted HERE rather than on body.
+   *
+   * `--ground` is set per tab on this element, and a custom property set on a
+   * child never reaches its parent — so body was quietly painting the :root
+   * default while every tab thought it had its own colour.
+   */
+  background: var(--ground);
+  max-width: 420px;
+  height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  /*
+   * One left edge for the whole panel.
+   *
+   * This used to be `center`, with six rules further down setting `left` back
+   * again — so a heading sat centred, the list under it sat left, and the next
+   * heading jumped back to the middle. Nothing in the panel shared an edge, and
+   * that, more than any spacing value, is what made it feel untidy.
+   *
+   * Centring is now opt-IN, and only for the two things that are pictures
+   * rather than text: the companion portrait and the dex grid. See `.portrait`.
+   */
+  text-align: left;
+  overflow: hidden;
+}
+/*
+ * The two screens that render without the tab bar or the panel — the connection
+ * error and the first-run scan — hang their text straight off .app, which has
+ * no padding of its own, so it sat flush against the window edge. Same inset as
+ * everything else.
+ */
+.app > p { padding: var(--s4); }
+
+/*
+ * The exceptions. A portrait is centred because it is a picture with a caption,
+ * not a line of information.
+ */
+.portrait { text-align: center; }
+
+.tabs {
+  display: flex;
+  gap: var(--s1);
+  padding: var(--s3) var(--s4) 0;
+  flex: none;
+  border-bottom: 1px solid var(--line);
+}
+.tabs button {
+  position: relative;
+  flex: 1;
+  font: inherit;
+  font-size: 12px;
+  height: var(--ctl-lg);
+  padding: 0 var(--pad-tight);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.tabs button:hover { color: var(--fg); background: var(--track); }
+.tabs button.on {
+  color: var(--fg);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+.tabs .dot {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: var(--s2);
+  height: var(--s2);
+  background: var(--accent);
+}
+
+/*
+ * Old data, said quietly.
+ *
+ * `--muted` on `--track`, not the `.err` red: a failed poll means the numbers
+ * are stale, not that the app is broken, and red is reserved for the
+ * first-load failure screen where there is nothing to show at all. flex:none so
+ * it sits between the fixed tab bar and the scrolling panel without stealing
+ * scroll.
+ */
+.stale {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  padding: var(--pad-tight) var(--s4);
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--track);
+  border-bottom: 1px solid var(--line);
+}
+
+.tabpanel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /*
+   * Both edges, so the two margins are actually equal.
+   *
+   * Styling ::-webkit-scrollbar opts this panel out of macOS overlay
+   * scrollbars and into a classic one, which is subtracted from the CONTENT
+   * box. So the content sat 12px from the left and 12+10=22px from the right,
+   * while the tab bar above it — which does not scroll — kept 12px on both.
+   * The panel looked shoved left because it was, by 10px on a 420px window.
+   *
+   * Worse, `auto` only draws the bar when it overflows, so a short tab was
+   * 12/12 and a long one 12/22: the whole screen jumped sideways on every tab
+   * switch. `stable` reserves the column whether or not the bar is showing;
+   * `both-edges` mirrors it. The gutter sits between the border edge and the
+   * padding, so the content inset is --rail + --s2 on each side.
+   */
+  scrollbar-gutter: stable both-edges;
+  padding: var(--s4) var(--s2) var(--s6);
+}
+
+/* First heading in a panel should not push everything down. */
+.tabpanel > h2:first-child { margin-top: var(--s2); }
+
+.bars.info li { grid-template-columns: 1fr auto; }
+.bars.info .num { color: var(--fg); }
+/* A form that could happen but has not got everything it needs yet. */
+.bars.info .num.pending { color: var(--muted); font-size: 12px; }
+
+/*
+ * A slim scrollbar so the panel does not look like a web page.
+ *
+ * The width has to be --rail and nothing else: the panel's padding is the
+ * complement that makes the two insets add to --s4. A raw px here would put
+ * the content off-centre again without touching anything that looks related.
+ */
+.tabpanel::-webkit-scrollbar { width: var(--rail); }
+.tabpanel::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border: var(--s1) solid transparent;
+  background-clip: content-box;
+}
+.tabpanel::-webkit-scrollbar-thumb:hover { background: var(--muted); background-clip: content-box; }
+
+/* Kept for the egg in Scene.css, and mirrored in PetApp.css for the floating pet. */
+@keyframes wobble {
+  0%, 70%, 100% { transform: rotate(0deg); }
+  78% { transform: rotate(-7deg); }
+  86% { transform: rotate(7deg); }
+  94% { transform: rotate(-3deg); }
+}
+
+h1 { font-size: 24px; margin: var(--s2) 0 var(--s1); }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: var(--s5) 0 var(--s3); }
+.shiny { margin-left: var(--s3); }
+.muted { color: var(--muted); }
+/*
+ * A stalled number, not an error.
+ *
+ * The hunt cap is a designed limit rather than a failure, so this is a warm
+ * amber rather than the red the HP bar uses for danger — it says "this stopped
+ * on purpose", which is the whole reason the class exists.
+ */
+.warn { color: var(--gold); }
+@media (prefers-color-scheme: dark) { .warn { color: var(--warn); } }
+p.muted.warn { color: var(--gold); }
+@media (prefers-color-scheme: dark) { p.muted.warn { color: var(--warn); } }
+.sub { font-size: 12px; margin: var(--s2) 0 var(--s4); }
+/* A trailing clarification inside .sub, on its own line but sharing the
+   paragraph so the block keeps one margin instead of two. */
+.sub .note { display: block; font-size: 12px; margin-top: var(--s2); }
+.err { color: var(--err); }
+
+/*
+ * A gauge, drawn the way the battle plate draws its HP bar.
+ *
+ * Two hard pixels of outline, a sunk track, a flat fill. No radius and no
+ * gradient — `.scene-hp` in Scene.css has looked like this since the battle
+ * screen existed, and there is no reason the panel's bars should look like
+ * something else.
+ */
+.bar {
+  height: 12px;
+  background: var(--track);
+  overflow: hidden;
+  border: 2px solid var(--fg);
+}
+.fill {
+  /*
+   * `display: block` is load-bearing, not tidiness.
+   *
+   * Two of the three gauges write the fill as an `<i>`, and an inline element
+   * ignores `height`, so the dex counter and the achievement counter both drew
+   * an empty trough at every percentage. The pet tab's gauge uses a `<div>` and
+   * was the only one that ever worked.
+   */
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width .6s ease;
+}
+
+.bars .track {
+  background: var(--track);
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid var(--fg);
+}
+.bars .track i { display: block; height: 100%; background: var(--accent); }
+
+.chain { font-size: 12px; color: var(--muted); margin: var(--s3) 0; line-height: 1.7; }
+.chain .now { color: var(--fg); font-weight: 600; }
+.chain .done { text-decoration: line-through; opacity: .6; }
+.chain em { font-style: normal; opacity: .5; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s3);
+  margin-top: var(--s5);
+}
+.stat {
+  border: 1px solid var(--line);
+  padding: var(--pad-box) var(--pad-tight);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+.stat .k { font-size: 10px; font-family: 'Galmuri9'; color: var(--muted); }
+.stat .v { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/*
+ * A list is one window, not a stack of them.
+ *
+ * `.items` rows are cards you point at and press, so each gets its own frame.
+ * These are readouts — a hunt log, a token breakdown — and the games put that
+ * kind of thing inside a single panel with the rows ruled off inside it.
+ * Without a frame they sat directly on the coloured field, which read as
+ * unfinished rather than as a list.
+ */
+.bars,
+.hunts {
+  border: 3px solid transparent;
+  border-image-source: var(--ui-panel);
+  border-image-slice: var(--ui-slice-small) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+  padding: var(--pad-box);
+}
+/* The frame is pixelated; the text inside it must not inherit that. */
+.bars > li,
+.hunts > li { image-rendering: auto; }
+
+.bars { list-style: none; padding: var(--pad-box); margin: 0; }
+.bars li {
+  display: grid;
+  grid-template-columns: 74px 1fr 56px;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+  font-size: 12px;
+}
+.bars .lbl { color: var(--muted); }
+.bars .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/*
+ * The 9-slice game window, as a frame and nothing else.
+ *
+ * Everything that makes it a message box — where it sits, how tall it is, what
+ * the type looks like — belongs to whoever wears it. This class is the four
+ * declarations that ARE the look, plus the colour of the text on it.
+ *
+ * `border-image-slice` takes an UNITLESS number for a raster source. A px value
+ * there is silently ignored and the whole frame collapses to nothing.
+ *
+ * Lives in App.css rather than Scene.css because the panel needs it too and
+ * both stylesheets load into the same document. There is precedent both ways:
+ * `@keyframes wobble` is defined here and read by Scene.css.
+ */
+.uiwin,
+.uiplate {
+  border-style: solid;
+  border-color: transparent;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+  color: var(--ink);
+}
+.uiwin {
+  border-width: 6px;
+  border-image-source: var(--ui-window);
+  border-image-slice: var(--ui-slice-window) fill;
+}
+.uiplate {
+  border-width: 4px;
+  border-image-source: var(--ui-plate);
+  border-image-slice: var(--ui-slice-plate) fill;
+}
+/*
+ * The travelling scene's location plaque.
+ *
+ * Beside the other two rather than in Scene.css for the same reason they are
+ * here: `border-image` on a raster wants an unitless slice, and keeping all
+ * three frames in one place is what stops the next one being written with `px`.
+ *
+ * No dark rule below — the sign lives inside `.scene`, which the dark block
+ * already pins to the light frames at every hour.
+ */
+.uisign {
+  border-style: solid;
+  border-color: transparent;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+  color: var(--ink);
+  border-width: 5px;
+  border-image-source: var(--ui-sign);
+  border-image-slice: var(--ui-slice-sign) fill;
+}
+
+/*
+ * The same window at night.
+ *
+ * A bitmap cannot follow the colour scheme, so gen-ui.ts draws a second pair
+ * and this picks. It reaches the panel only: `.scene` sets `--ui-window`
+ * inline, and an inline custom property beats a stylesheet one, so the battle
+ * diorama keeps the bright frame at every hour — which is right, because the
+ * diorama itself is bright.
+ */
+@media (prefers-color-scheme: dark) {
+  .uiwin,
+  .uiplate { color: var(--ink); }
+  .uiwin { border-image-source: var(--ui-window-dark); }
+  .uiplate { border-image-source: var(--ui-plate-dark); }
+
+  /*
+   * ...except inside the battle diorama, which is bright at every hour.
+   *
+   * The scene is sky and grass and a lit platform; only the time-of-day filter
+   * touches its colour, and that is deliberately kept off `.scene` itself
+   * (see the note in Scene.css). A dark message box would be the one dark thing
+   * on a bright picture. Two class names beat one, so this wins.
+   *
+   * The shop counter is the same case: it is a lit room at every hour, and the
+   * money plate sits on it.
+   */
+  /*
+   * `--ink-lit`, not `--ink`: this used to say `var(--ink)`, which resolves to
+   * the LIGHT ink at night — so the message box and the HP plates were drawing
+   * near-white text on their near-white frame. The frame override two lines
+   * down was right all along; the colour beside it quietly was not.
+   */
+  .scene .uiwin,
+  .scene .uiplate,
+  .scene .uisign,
+  .mart .uiplate { color: var(--ink-lit); }
+  .scene .uiwin { border-image-source: var(--ui-window); }
+  .scene .uiplate,
+  .mart .uiplate { border-image-source: var(--ui-plate); }
+}
+
+.items { list-style: none; padding: 0; margin: 0; }
+/*
+ * A row is a window on the field, not a transparent strip.
+ *
+ * It used to have no background at all, which read fine while the page behind
+ * it was near-white. On a coloured ground a transparent row is just the ground
+ * with a border drawn round it.
+ */
+.items li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--pad-box);
+  margin-bottom: var(--s2);
+  min-height: var(--ctl-lg);
+  /* The drawn frame does the border AND the fill, so neither is set here. */
+  border: 3px solid transparent;
+  border-image-source: var(--ui-panel);
+  border-image-slice: var(--ui-slice-small) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+}
+.items li.poor { opacity: .5; }
+.items .icon {
+  /* Sized to --ctl so a row lands on the grid: 8 + 24 + 8 = 40px. A 28px icon
+     made every row 44px, the one box in the panel off the 4px unit. */
+  width: var(--ctl); height: var(--ctl);
+  flex: none;
+  image-rendering: pixelated;
+  display: grid; place-items: center;
+  font-size: 20px;
+}
+.items .lbl { flex: 1; min-width: 0; font-size: 12px; display: flex; flex-direction: column; gap: var(--s1); }
+.items .lbl em { font-style: normal; font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+/*
+ * A selectable row is one line — name on the left, number on the right.
+ *
+ * The games list items that way and a 420px panel needs them to: stacking the
+ * price under the name made every row 60px, so ten products were most of a
+ * screen of scrolling before the first shelf ended.
+ *
+ * Only `.rowbtn`, deliberately. The move slots on 파트너 and the setting rows
+ * on 설정 genuinely have a second line to say, and flattening those put a
+ * move's whole summary beside its name in a 300px gap.
+ */
+.items .rowbtn.lbl {
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--s3);
+}
+.items .rowbtn > span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/*
+ * The pill buttons — 배우기, 사용, 잊기.
+ *
+ * `:not(.rowbtn)` because a row is a button too now, and filling a pill with
+ * the accent reads as a pressable control while filling a whole ROW with it
+ * reads as a bar someone dyed. That is the shape this exclusion exists to stop.
+ */
+.items button:not(.rowbtn) {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  height: var(--ctl);
+  padding: 0 var(--pad-box);
+  color: var(--accent);
+  cursor: pointer;
+  /* A raised pixel button: outline, fill, and a highlight on the lit edge. */
+  border: 3px solid transparent;
+  border-image-source: var(--ui-btn);
+  border-image-slice: var(--ui-slice-small) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+  background: none;
+}
+/* Pressing it swaps the highlight to the other edge — it sinks without moving. */
+.items button:not(.rowbtn):hover:not(:disabled),
+.items button:not(.rowbtn):active:not(:disabled) {
+  border-image-source: var(--ui-btn-down);
+}
+.items button:not(.rowbtn):disabled { cursor: not-allowed; opacity: .45; }
+
+.flash {
+  position: fixed;
+  top: 16px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: var(--on-accent);
+  padding: var(--pad-box) var(--s5);
+  font-weight: 600;
+  font-size: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.18);
+  animation: pop .3s ease;
+}
+@keyframes pop {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+
+.foot { font-size: 12px; margin-top: var(--s5); }
+.sizes { display: flex; gap: var(--s2); flex-wrap: wrap; justify-content: flex-end; }
+.sizes button { height: var(--ctl); padding: 0 var(--pad-box); font-size: 12px; }
+.sizes button.on { background: var(--accent); color: var(--on-accent); }
+
+/*
+ * Dex cards.
+ *
+ * The old chip row said only the name; a collection wants to show what you
+ * collected. Four columns fits a 420px panel with room for a 56px sprite.
+ */
+.dex {
+  list-style: none;
+  padding: 0;
+  margin: var(--s4) 0 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--s3);
+}
+
+/*
+ * A grid of tiles, so each card centres its own picture and name.
+ *
+ * The CELL is now only a cell: the box moved onto `.card` below, because the
+ * card is what you press and a target you press has to BE the box rather than
+ * sit inside one. That is the argument `.items .rowbtn` already settled for the
+ * lists — the games let you pick a LINE, not a control at the end of one.
+ */
+.dex li {
+  text-align: center;
+  display: flex;
+  font-size: 10px; font-family: 'Galmuri9';
+}
+
+/*
+ * The card. A <button> when there is an entry behind it, a <span> when there is
+ * not — one class, so the two cannot drift apart by a pixel.
+ *
+ * Deliberately still a 1px border rather than the drawn `--ui-panel` frame that
+ * `.items li` wears, even though this is pressable now: the shiny card's accent
+ * edge and the unseen card's dashed edge are both carried BY the border, and
+ * `border-image` has no colour axis. Swapping to the frame would cost the two
+ * states that make the grid readable at a glance.
+ */
+.dex .card {
+  flex: 1;
+  /* So `.nm`'s ellipsis has something to clip against inside a flex item. */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* center, not baseline — baseline fights an <img>. */
+  align-items: center;
+  gap: var(--s1);
+  padding: var(--pad-tight) var(--s1);
+  border: 1px solid var(--line);
+  /* A <button> otherwise brings its own face, colour and background. */
+  font: inherit;
+  color: inherit;
+  background: none;
+  overflow: hidden;
+}
+/* Only the pressable one says so — an unseen slot must not look clickable. */
+button.card { cursor: pointer; }
+/* A surface tint plus the accent edge, never an accent FILL: the same answer
+   `.items li.row:hover` gives, and the shiny card already owns the edge. */
+button.card:hover { border-color: var(--accent); background: var(--track); }
+
+.dex .art {
+  height: 48px;
+  display: grid;
+  place-items: center;
+}
+
+.dex .art img { image-rendering: pixelated; max-width: none; display: block; }
+/* Art that failed to load, as opposed to an entry never collected — the card
+   keeps its solid border and real name, so the two do not read alike. */
+.dex .art .miss { font-size: 24px; color: var(--muted); }
+.dex .nm { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dex .no { font-size: 10px; font-family: 'Galmuri9'; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.dex li.shinydex { color: var(--accent); }
+.dex li.shinydex .card { border-color: var(--accent); }
+.dex li.shinydex .no { color: inherit; opacity: .7; }
+
+/* An unseen slot: the number, and nothing to look at yet. */
+.dex li.unseen { opacity: .45; }
+.dex li.unseen .card { border-style: dashed; }
+.dex li.unseen .art { font-size: 24px; color: var(--muted); }
+
+/*
+ * Filters, folded away by default.
+ *
+ * Rarity is four chips and generation nine, but type is eighteen — always-on
+ * that is most of a screenful before a single Pokemon shows.
+ */
+.dexbar { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
+
+/*
+ * ── The 도감 entry screen ────────────────────────────────────────────────────
+ *
+ * Pressing a card REPLACES the grid rather than opening a dialog. That is what
+ * the games do — a shelf, then a screen you back out of with B — and it is the
+ * only thing that fits here: the panel IS a 420px popover, so a modal would be
+ * a window inside a window with no "outside" for a scrim to cover. Nothing
+ * below is `position: fixed`; `.flash` is still the only one in the app.
+ */
+
+/* The number, in the bar where 필터 sits on the grid — so the header does not
+   move under the cursor when the screen changes. Same face as the card's. */
+.dexbar .no {
+  font-size: 10px; font-family: 'Galmuri9';
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The entry's portrait: exactly twice the card's 48px box.
+ *
+ * A whole-number relationship on purpose — the same sprite on the same zoom
+ * ladder, one step up. DexSprite still picks an integer factor, so nothing
+ * resamples.
+ */
+.dexart {
+  height: 96px;
+  display: grid;
+  place-items: center;
+  margin-bottom: var(--s3);
+}
+.dexart img { image-rendering: pixelated; max-width: none; display: block; }
+.dexart .miss { font-size: 24px; color: var(--muted); }
+
+/*
+ * 도감 설명, in the game's message box — wearing `.uiwin`, but NOT `.saywin`.
+ *
+ * `.saywin` is a fixed 92px because the shop's list sits directly under it and
+ * a taller question would shove the row you were about to click. Neither half
+ * is true here: nothing under this box is pressable, and it is written once
+ * when the screen opens and never swaps state. The cost, meanwhile, is real —
+ * 92px is about 3.6 lines, and a four-line Korean entry would lose its last
+ * sentence, which is the one nobody can tell is missing.
+ *
+ * So it takes the same number as a FLOOR instead of a ceiling: at rest the two
+ * boxes read as the same object, and neither one is cut.
+ */
+.dexflavor {
+  min-height: 92px;
+  padding: var(--pad-box);
+  font-size: 12px;
+  line-height: 1.45;
+  margin-bottom: var(--s3);
+}
+
+/*
+ * 방어 상성, one row per multiplier.
+ *
+ * Eighteen types do not fit a 420px column as a table and do not have to: the
+ * 1x bucket is the default and holds most of them, so it is never sent. What is
+ * left is three to five rows of one to five badges.
+ *
+ * One window with rows in it rather than five framed cards — this is a readout,
+ * and `.bars` is what the panel already uses for those.
+ */
+.bars.matchups > li {
+  /* The widest label is 0.25배 — four half-width glyphs plus one Hangul cell of
+     the 10px face. 32px is the step on the 4px unit that clears it, so every
+     badge row starts on the same left edge whatever the multiplier is. */
+  grid-template-columns: 32px 1fr;
+  /* The badges wrap to a second line; the label stays on the first. */
+  align-items: start;
+}
+/*
+ * The badges are `li` too, and `.bars li` reaches them.
+ *
+ * Without this each badge becomes a three-column 74px grid with a bottom
+ * margin — `.types li` sets colour and padding but no `display`, so it wins
+ * nothing back. The child combinator above keeps the ROW rules off them; these
+ * two put back what the shared `.bars li` rule takes.
+ */
+.bars.matchups .types li { display: block; margin-bottom: 0; }
+/* A number being compared, not prose — so not muted like a `.bars` label. */
+.bars.matchups > li > .lbl {
+  color: var(--fg);
+  font-size: 10px; font-family: 'Galmuri9';
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The portrait's type badges, wrapped and left-aligned.
+ *
+ * A modifier rather than a second badge class: the eighteen `--t` colour-mixes
+ * under `.types li` are the expensive part of that rule and there is no other
+ * copy of them anywhere.
+ */
+.types.wrap {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin: 0;
+}
+
+/* A member of the line you have registered. `.now` is the entry you are looking
+   at; the class's own muted default is "not yet". Deliberately NOT `.done`,
+   whose line-through means "already passed" on 파트너 — an uncollected Pokemon
+   is not a retired one. */
+.chain .got { color: var(--fg); }
+.filters { margin: var(--s3) 0 0; padding: var(--pad-box); border: 1px solid var(--line); }
+.filters h3 {
+  margin: 0 0 var(--s3);
+  font-size: 10px; font-family: 'Galmuri9';
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.filters section + section { margin-top: var(--s3); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--s2); list-style: none; padding: 0; margin: 0; }
+.chips button {
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px; font-family: 'Galmuri9';
+  height: var(--ctl);
+  padding: 0 var(--pad-box);
+  color: var(--muted);
+  cursor: pointer;
+  border: 3px solid transparent;
+  border-image-source: var(--ui-btn);
+  border-image-slice: var(--ui-slice-small) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+  background: none;
+}
+/*
+ * The chosen one is FILLED, not merely pressed in.
+ *
+ * It used to be the pressed frame plus accent text, and the difference between
+ * a raised 3px frame and a pressed one at 10px is a couple of pixels of shading
+ * — on a row of seven chips you had to hunt for the selected one. A solid block
+ * answers "which one am I looking at" from across the room.
+ *
+ * `border-image-source: none` is required, not tidiness: `border-image-slice`
+ * carries `fill`, which paints the middle slice OVER the background, so a
+ * `background` on top of the frame is simply invisible.
+ *
+ * `.sizes button.on` already selects this way (see the pet size picker), so the
+ * flat accent block is the app's existing word for "this is the one", not a new
+ * one invented here.
+ */
+.chips button.on {
+  border-image-source: none;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+
+/*
+ * ── The Poké Mart counter ───────────────────────────────────────────────────
+ *
+ * Drawn rather than fetched. Showdown carries battle backdrops but no interiors
+ * — bg-indoor, bg-pokecenter and bg-building are all 404 — so a wall, a shelf
+ * and a counter top are three gradients here instead of an asset that could
+ * fail to arrive.
+ *
+ * It also earns its keep in dark mode: the message box below is a bright game
+ * window, and this gives it something bright to sit on rather than dropping it
+ * onto #181a19. The battle scene solves the same problem the same way.
+ */
+.mart {
+  position: relative;
+  /* Tall enough to clear an 80px sprite drawn at 2x with headroom above it.
+     Shorter and the clerk loses her head to the top edge. */
+  height: 140px;
+  margin: var(--s3) 0 var(--s3);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  /* Wall, then the shelf band, then the counter face. The games' mart is a
+     light blue counter in a cream room; this is that, quietly. */
+  background:
+    linear-gradient(#eef4f6 0 52%, #cfe0e6 52% 60%, #a9c8d4 60% 100%);
+}
+
+/* Three shelf slots behind the clerk. Repeating gradient, not an image. */
+.mart::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 14px;
+  height: 44px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 18px,
+    rgba(120, 150, 165, .18) 18px 46px,
+    transparent 46px 64px
+  );
+}
+
+/* The counter top, a lighter lip along the front edge. */
+.mart::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 60%;
+  height: 4px;
+  background: #dcecf1;
+}
+
+/*
+ * The clerk stands behind the counter, so the counter overlaps her feet.
+ * `bottom` is inside the counter face on purpose — a sprite sitting ON the
+ * counter reads as merchandise.
+ */
+.mart-clerk {
+  position: absolute;
+  left: 50%;
+  /*
+   * Negative, so the counter crops her at the thigh.
+   *
+   * The sprite is a whole standing person; a whole standing person inside a
+   * counter reads as a customer. Cropping her at the counter line is what puts
+   * her BEHIND it.
+   */
+  bottom: -32px;
+  transform: translateX(-50%);
+  image-rendering: pixelated;
+  max-width: none;
+  display: block;
+}
+
+/*
+ * What the clerk is saying — which is also where an item's description lives.
+ *
+ * One window, four states: the greeting, the thing you are pointing at, the
+ * question, and the parting line. The games put the description on the screen
+ * that does NOT scroll and the list on the one that does; this is that, in one
+ * column. It replaced a box stuck to the bottom of the panel, which read as
+ * floating over the list rather than framing it.
+ *
+ * FIXED height, not min-height. The states are different lengths — a greeting
+ * is two lines, an egg's question is two lines plus buttons — and if the window
+ * grew, choosing a different row would shove the entire list up or down under
+ * the cursor. A game text box never grows; that is the whole idea.
+ */
+.saywin {
+  position: relative;
+  /*
+   * Sized to the TALLEST state — name+price, a two-line question, and the
+   * buttons under it. Anything shorter clips 예/아니오 off the bottom, which is
+   * exactly what 74px did. The greeting leaves some air at the bottom, which is
+   * what a fixed game text box looks like when it has little to say.
+   */
+  height: 92px;
+  overflow: hidden;
+  padding: var(--pad-box);
+  font-size: 12px;
+  line-height: 1.45;
+  margin-bottom: var(--s3);
+}
+
+/* The name and the price share the first line, as they do in the list. */
+.saywin-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  font-weight: 600;
+}
+.saywin-line span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The description under it, clipped rather than allowed to push the buttons out. */
+.saywin-desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-weight: 400;
+}
+.saywin b { color: var(--gold); font-variant-numeric: tabular-nums; }
+@media (prefers-color-scheme: dark) {
+  .saywin b { color: var(--gold); }
+}
+
+/* 예 / 아니오. Inside the frame, as the games put them. */
+.saywin-ask {
+  display: flex;
+  gap: var(--s3);
+  margin-top: var(--s3);
+}
+.saywin-ask button {
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  height: var(--ctl);
+  padding: 0 var(--s4);
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.saywin-ask button:hover:not(:disabled) { background: rgba(127, 127, 127, .18); }
+.saywin-ask button:disabled { opacity: .5; cursor: not-allowed; }
+
+/*
+ * 소지금, pinned inside the counter.
+ *
+ * The games overlay the money box on the shop screen rather than giving it a
+ * row of its own, and a 420px column cannot spare a band for six characters.
+ */
+.mart-money {
+  position: absolute;
+  top: var(--pad-box);
+  right: var(--pad-box);
+  z-index: 2;
+  margin: 0;
+  height: var(--ctl);
+  padding: 0 var(--pad-box);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+}
+/* No bold: the only bold face is the proportional cut, and this is a figure. */
+.mart-money b { font-weight: 700; }
+
+/*
+ * A row that is itself the button.
+ *
+ * The games let you pick a LINE, not a control at the end of one, and a 420px
+ * panel has no room for a separate target anyway. `.lbl` lays it out; this only
+ * undoes the browser's button chrome, which is otherwise a grey box drawn
+ * around every row.
+ */
+.items .rowbtn {
+  font: inherit;
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  cursor: pointer;
+  /*
+   * Explicit, because a <button> does NOT inherit the page's text-align — the
+   * UA sets `center` on it. Flipping `.app` to left-aligned made every row
+   * label jump to the middle until this went back.
+   */
+  text-align: left;
+}
+.items .rowbtn:disabled { cursor: not-allowed; }
+/* The price, which is the thing being decided — not muted like a description. */
+.items .rowbtn em { color: var(--fg); font-variant-numeric: tabular-nums; }
+.items li.poor .rowbtn em { color: var(--muted); }
+
+/* A selectable row. The whole row is the target, as it is in the games. */
+.items li.row {
+  position: relative;
+  cursor: pointer;
+  /*
+   * A gutter for the cursor, kept whether or not this row has it.
+   *
+   * The games reserve that column permanently, and so must this: putting the
+   * marker in the flow instead made it a flex item of the two-line label, so it
+   * stacked ABOVE the name, and reserving the space only when selected made
+   * every row twitch sideways as the selection moved.
+   */
+  padding-left: var(--gutter-cursor);
+}
+/* Moving the cursor over a line costs nothing in the games, and looks like
+   nothing much either. A surface tint, never the accent. */
+.items li.row:hover { background: var(--track); }
+.items li.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+/* The cursor follows the pointer too, which is what the reserved gutter is for
+   — otherwise that column is empty on every row but the chosen one. */
+.items li.row:hover::before,
+.items li.on::before {
+  content: '▶';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px; font-family: 'Galmuri9';
+  color: var(--accent);
+}
+.items li.row:hover:not(.on)::before { color: var(--muted); }
+
+/* The shop's category row. Unlike the dex filters it is never collapsed, so it
+   needs the breathing room a <section> would otherwise have given it. */
+.shopchips { margin: var(--s3) 0 var(--s2); }
+
+/* A shelf heading inside the shop. Quieter than <h2>, which names the tab. */
+h3.shelf {
+  font-size: 10px; font-family: 'Galmuri9';
+  font-weight: 600;
+  color: var(--muted);
+  margin: var(--s4) 0 var(--s2);
+  letter-spacing: .04em;
+}
+h3.shelf:first-of-type { margin-top: var(--s3); }
+
+/* Type chips borrow the badge tints from .types, so they read the same. */
+.chips button[data-type] {
+  --t: var(--line);
+  border-color: color-mix(in srgb, var(--t) 45%, var(--surface));
+  color: color-mix(in srgb, var(--t) 70%, var(--fg));
+}
+.chips button[data-type].on {
+  border-color: color-mix(in srgb, var(--t) 75%, var(--surface));
+  background: color-mix(in srgb, var(--t) 20%, var(--surface));
+  font-weight: 700;
+}
+
+/* Type badges, tinted with the official colour of each type. */
+.types { display: flex; justify-content: center; gap: var(--s2); margin: 0 0 var(--s4); padding: 0; list-style: none; }
+.types li {
+  --t: var(--line);
+  border: 1px solid color-mix(in srgb, var(--t) 55%, var(--surface));
+  background: color-mix(in srgb, var(--t) 16%, var(--surface));
+  color: color-mix(in srgb, var(--t) 70%, var(--fg));
+  padding: var(--s1) var(--pad-box);
+  font-size: 10px; font-family: 'Galmuri9';
+  font-weight: 600;
+}
+
+.types li[data-type='normal'] { --t: var(--t-normal); }
+.types li[data-type='fire'] { --t: var(--t-fire); }
+.types li[data-type='water'] { --t: var(--t-water); }
+.types li[data-type='electric'] { --t: var(--t-electric); }
+.types li[data-type='grass'] { --t: var(--t-grass); }
+.types li[data-type='ice'] { --t: var(--t-ice); }
+.types li[data-type='fighting'] { --t: var(--t-fighting); }
+.types li[data-type='poison'] { --t: var(--t-poison); }
+.types li[data-type='ground'] { --t: var(--t-ground); }
+.types li[data-type='flying'] { --t: var(--t-flying); }
+.types li[data-type='psychic'] { --t: var(--t-psychic); }
+.types li[data-type='bug'] { --t: var(--t-bug); }
+.types li[data-type='rock'] { --t: var(--t-rock); }
+.types li[data-type='ghost'] { --t: var(--t-ghost); }
+.types li[data-type='dragon'] { --t: var(--t-dragon); }
+.types li[data-type='dark'] { --t: var(--t-dark); }
+.types li[data-type='steel'] { --t: var(--t-steel); }
+.types li[data-type='fairy'] { --t: var(--t-fairy); }
+
+.chips button[data-type='normal'] { --t: var(--t-normal); }
+.chips button[data-type='fire'] { --t: var(--t-fire); }
+.chips button[data-type='water'] { --t: var(--t-water); }
+.chips button[data-type='electric'] { --t: var(--t-electric); }
+.chips button[data-type='grass'] { --t: var(--t-grass); }
+.chips button[data-type='ice'] { --t: var(--t-ice); }
+.chips button[data-type='fighting'] { --t: var(--t-fighting); }
+.chips button[data-type='poison'] { --t: var(--t-poison); }
+.chips button[data-type='ground'] { --t: var(--t-ground); }
+.chips button[data-type='flying'] { --t: var(--t-flying); }
+.chips button[data-type='psychic'] { --t: var(--t-psychic); }
+.chips button[data-type='bug'] { --t: var(--t-bug); }
+.chips button[data-type='rock'] { --t: var(--t-rock); }
+.chips button[data-type='ghost'] { --t: var(--t-ghost); }
+.chips button[data-type='dragon'] { --t: var(--t-dragon); }
+.chips button[data-type='dark'] { --t: var(--t-dark); }
+.chips button[data-type='steel'] { --t: var(--t-steel); }
+.chips button[data-type='fairy'] { --t: var(--t-fairy); }
+
+/* A move row carries its own type colour as a left edge, which is enough to
+   tell four moves apart at a glance without turning the list into a rainbow. */
+/*
+ * The type and rarity edges, as a strip inside the frame.
+ *
+ * They used to be `border-left`, which the drawn frame now owns outright —
+ * `border-image` paints the whole border box, so a coloured left border simply
+ * stopped existing. An absolutely positioned strip sits just inside it instead
+ * and reads the same.
+ */
+.items li[data-type]::after,
+.items li[data-rarity]::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  bottom: 3px;
+  width: 3px;
+}
+.items li[data-type]::after { background: color-mix(in srgb, var(--t) 60%, var(--surface)); }
+
+/*
+ * Egg tiers, same left-edge idiom as the TM types above.
+ *
+ * The shop sells four eggs that differ only in wording and price, and a row of
+ * four identical grey boxes is exactly the thing a price ladder must not look
+ * like. Mixed toward --bg so the edge ranks them without shouting.
+ */
+.items li[data-rarity]::after { background: color-mix(in srgb, var(--r) 65%, var(--surface)); }
+.items li[data-rarity='common'] { --r: #8d9691; }
+.items li[data-rarity='uncommon'] { --r: #5aa06b; }
+.items li[data-rarity='rare'] { --r: #4a80c4; }
+.items li[data-rarity='legendary'] { --r: #c9a227; }
+
+/* Inline rename, opened from the pencil next to the name. */
+.rename { display: flex; justify-content: center; gap: var(--s3); margin: 0 0 var(--s3); }
+.rename input {
+  width: 140px; height: var(--ctl); padding: 0 var(--pad-box); font: inherit; font-size: 12px;
+  color: var(--fg); background: var(--surface);
+  border: 1px solid var(--accent); }
+/* The box already carries a 1px accent border while open, so the ring sits on
+   it rather than outside. Deliberately not `outline: none` — that was the rule
+   that left the app with no focus indicator at all. */
+.rename input:focus-visible { outline-offset: 0; }
+.namebtn {
+  border: 0; background: none; padding: 0 0 0 var(--pad-box); cursor: pointer;
+  font-size: 12px; color: var(--muted); line-height: 1;
+}
+.namebtn:hover { color: var(--accent); }
+
+/* Hunt log. One quiet line per encounter — this scrolls past, it is not a feed
+   anyone reads closely, so it stays lighter than .items. */
+.hunts { list-style: none; margin: 0; font-size: 12px; }
+.hunts li {
+  display: flex; align-items: baseline; gap: var(--s3);
+  padding: var(--pad-tight) 0; border-bottom: 1px solid var(--line);
+}
+.hunts li:last-child { border-bottom: 0; }
+/*
+ * The row's thumbnail.
+ *
+ * `align-self` rather than switching the row to `align-items: center`: a
+ * replaced element's baseline is its bottom edge, so an image in a
+ * `baseline` row shoves every text sibling down — but centring the whole row
+ * would also move where the `.tm` pills sit.
+ *
+ * `image-rendering` has to be re-declared. `.hunts` is pixelated for the sake
+ * of its 9-slice frame and `.hunts > li` turns that back off so the text is
+ * not crunchy; the sprite inside needs it on again.
+ */
+.hunts .icon {
+  width: var(--ctl); height: var(--ctl);
+  flex: none;
+  align-self: center;
+  display: grid; place-items: center;
+  color: var(--muted);
+}
+.hunts .icon img { width: var(--ctl); height: var(--ctl); image-rendering: pixelated; }
+.hunts .who { flex: 1; }
+.hunts .num { color: var(--muted); font-variant-numeric: tabular-nums; }
+.hunts .how { font-style: normal; color: var(--muted); font-size: 12px; }
+.hunts .how.win { color: var(--accent); font-weight: 700; }
+.hunts .how.loss { color: var(--err); font-weight: 700; }
+.hunts .tm {
+  font-size: 10px; font-family: 'Galmuri9'; color: var(--accent);
+  border: 1px solid var(--accent); padding: var(--s1) var(--pad-tight);
+}
+
+/* A move slot that is empty rather than absent, so four slots always read as four. */
+.items li.empty { border-style: dashed; opacity: .55; }
+.items li.empty .lbl { color: var(--muted); }
+/* The inline "which one do I forget" step, shown in place of the TM row. */
+.items li.picking { border-color: var(--accent); }
+
+/* A stone this companion could actually use. Same accent edge as .picking —
+   both mean "this row is the one you want", which is the whole job. */
+.items li.usable { border-color: var(--accent); }
+/* Same pill as .hunts .tm, hoisted out because the bag needs one too. */
+.badge {
+  font-size: 10px; font-family: 'Galmuri9'; color: var(--accent); white-space: nowrap;
+  border: 1px solid var(--accent); padding: var(--s1) var(--pad-tight);
+}
+
+/*
+ * The machine pocket's pager.
+ *
+ * The one list in the bag that genuinely runs long — a save with 47 machines
+ * held shows every one this companion can still learn, and that column is
+ * taller than the window at its tallest. Pockets already exist so the bag is
+ * not "화면 여섯 장"; this is the same argument inside one pocket.
+ *
+ * Pages, not a scroll, because the row you want is found by reading rather than
+ * by dragging — and a fixed page keeps the description window and the pocket
+ * chips above it on screen the whole time, which a long scroll does not.
+ *
+ * Same raised pixel button as 배우기 and 사용. Written out rather than shared
+ * with `.items button:not(.rowbtn)` because that rule is scoped inside a row
+ * and this sits under the list; widening its selector would let the pill reach
+ * places the `:not(.rowbtn)` exclusion exists to keep it out of.
+ */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  margin: var(--s3) 0;
+}
+.pager button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 12px;
+  height: var(--ctl);
+  min-width: var(--ctl);
+  padding: 0 var(--pad-box);
+  color: var(--accent);
+  cursor: pointer;
+  border: 3px solid transparent;
+  border-image-source: var(--ui-btn);
+  border-image-slice: var(--ui-slice-small) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+  background: none;
+}
+.pager button:hover:not(:disabled),
+.pager button:active:not(:disabled) { border-image-source: var(--ui-btn-down); }
+.pager button:disabled { cursor: not-allowed; opacity: .45; }
+.pager .num { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Two fusion partners side by side. Anything more would want the TM picker's
+   full list, and there has never been a Pokemon with three. */
+.picker { display: flex; gap: var(--s2); }
+.pickhint { font-size: 12px; color: var(--accent); margin: var(--s3) 0; }
+.linky {
+  border: 0; background: none; padding: 0; color: var(--accent);
+  font: inherit; text-decoration: underline; cursor: pointer;
+}
+.pickhint .linky { color: inherit; }
+
+/* Six tabs in a 420px panel: let the labels breathe a little tighter. */
+.tabs button { padding-left: var(--s1); padding-right: var(--s1); }
+
+/*
+ * The achievement board.
+ *
+ * Rows rather than dex-style cards: every achievement carries a sentence and a
+ * 4-up grid has nowhere to put one. It borrows `.items` for the frame and then
+ * only adds what a read-only row needs — no cursor gutter, no hover fill.
+ */
+/* Two links in the dex header bar, since the legend board joined the filters. */
+.dexlinks { display: flex; gap: var(--s3); }
+
+/* The gauge above sits directly on the chips without this. */
+.chips.awardcats { margin-top: var(--s4); }
+/* The per-category count on a shelf heading. Tabular so the headings line up. */
+.awardshelf span { font-variant-numeric: tabular-nums; font-weight: 400; }
+.awards .awardtop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+/* The figure on the right holds its width; the name is what may ellipsis. */
+.awards .awardtop > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.awards .awardtop em { flex: none; font-size: 10px; font-family: 'Galmuri9'; }
+.awards .awardtop .num { font-variant-numeric: tabular-nums; }
+.awards .awardtop .got,
+.sub .got { color: var(--accent); }
+.awards .icon img { width: var(--ctl); height: var(--ctl); image-rendering: pixelated; }
+/* The same 8px inline gauge the readout rows use, which is why it keeps the name. */
+.awards .track {
+  display: block;
+  background: var(--track);
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid var(--fg);
+}
+.awards .track i { display: block; height: 100%; background: var(--accent); }
+
+/*
+ * The dark chrome, last on purpose.
+ *
+ * A media query adds no specificity, so `.items li` inside one loses to
+ * `.items li` written later in the file — which is exactly what happened: the
+ * rows kept the light frame in dark mode and printed light text on a white
+ * fill. These live at the bottom so nothing can come after them.
+ */
+@media (prefers-color-scheme: dark) {
+  .items li,
+  .bars,
+  .hunts { border-image-source: var(--ui-panel-dark); }
+  .chips button { border-image-source: var(--ui-btn-dark); }
+  /* No `.on` line here any more: a filled chip has no frame image to swap, and
+     --accent already has its own dark value. */
+  .items button:not(.rowbtn) { border-image-source: var(--ui-btn-dark); }
+  .items button:not(.rowbtn):hover:not(:disabled),
+  .items button:not(.rowbtn):active:not(:disabled) {
+    border-image-source: var(--ui-btn-down-dark);
+  }
+}

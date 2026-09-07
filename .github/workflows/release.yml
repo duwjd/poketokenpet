@@ -1,0 +1,95 @@
+# Builds the four artifacts a public release needs and attaches them to a
+# GitHub Release.
+#
+# Why a matrix and not one machine: electron-builder can cross-build the
+# Windows *zip* from macOS (it is a zip, no wine needed), but it cannot build a
+# macOS dmg anywhere except macOS. Splitting the job is simpler than explaining
+# which halves are cross-buildable, and it also means the Windows zip is packed
+# by Windows, which is the only way to be sure about file modes and the
+# resources/ folder that docs/WINDOWS.md warns about.
+#
+# Nothing here is signed. See docs/MACOS.md and docs/WINDOWS.md for what the
+# person downloading has to click.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  # Lets you rehearse the whole build without cutting a tag. Artifacts land on
+  # the run page instead of a Release.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            name: mac
+          - os: windows-latest
+            name: win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Cheap gates. A tag that fails its own tests should not become a
+      # download other people trust.
+      - run: npm run lint
+      - run: npm test
+
+      - name: Build ${{ matrix.name }}
+        run: npm run app:dist
+        env:
+          # electron-builder tries to notarize/publish when these look set.
+          # Neither is wanted: unsigned by design, and the upload is the
+          # release step below, not electron-builder's own publisher.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ''
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          # blockmaps are for electron-updater's delta downloads, which this app
+          # does not use. latest*.yml likewise. Neither belongs on a Release page
+          # where every file is something a human is meant to click.
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.AppImage
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          cd artifacts
+          shasum -a 256 * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          draft: true
+          generate_release_notes: true
+          body_path: .github/RELEASE_TEMPLATE.md

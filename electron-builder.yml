@@ -1,0 +1,82 @@
+appId: io.github.poketokenpet
+productName: PokeTokenPet
+copyright: >-
+  (c) 2026 calia. MIT-licensed code. Unofficial fan project, not affiliated with
+  Nintendo / Creatures / GAME FREAK / The Pokemon Company. Pokemon is their
+  trademark. Ships no Pokemon assets - see NOTICE.md.
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**
+  - dist-electron/**
+  - package.json
+
+# Tray icons are read from resourcesPath at runtime, so they must ship outside asar.
+extraResources:
+  - from: build/trayTemplate.png
+    to: trayTemplate.png
+  - from: build/trayTemplate@2x.png
+    to: trayTemplate@2x.png
+  - from: build/tray-win-light.ico
+    to: tray-win-light.ico
+  - from: build/tray-win-dark.ico
+    to: tray-win-dark.ico
+  # The attribution and disclaimer travel WITH the binary, not just with the
+  # repository. Someone handed a zip should be able to read them without
+  # finding their way back to GitHub.
+  - from: NOTICE.md
+    to: NOTICE.md
+  - from: LICENSE
+    to: LICENSE
+
+mac:
+  category: public.app-category.developer-tools
+  icon: build/icon.png
+  # Same trap as win below: without an explicit arch list electron-builder only
+  # builds the HOST architecture, so releasing from an Apple Silicon machine
+  # silently ships nothing an Intel Mac can run. Both are named in the filename
+  # for the same reason the Windows artifacts are.
+  artifactName: ${productName}-${version}-${arch}-mac.${ext}
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  # LSUIElement: menu-bar app, no Dock icon.
+  extendInfo:
+    LSUIElement: 1
+  # Unsigned by default — a Developer ID is $99/yr and this is a personal build.
+  # Gatekeeper only quarantines downloads, so a locally built app runs fine.
+  identity: null
+
+win:
+  icon: build/icon.png
+  # Without this, electron-builder names the default arch with NO suffix
+  # (PokeTokenPet-0.2.0-win.zip) and only the second one gets -arm64. Handing
+  # someone the wrong file is the likeliest way this goes wrong, so both are
+  # labelled.
+  artifactName: ${productName}-${version}-${arch}-win.${ext}
+  target:
+    # Portable zip over NSIS: SmartScreen is far less aggressive about it, which
+    # matters a lot when the binary is unsigned.
+    #
+    # arch MUST be listed. electron-builder otherwise defaults to the host
+    # architecture, so building on an Apple Silicon Mac silently produces a
+    # win-arm64 zip that will not start on an ordinary x64 Windows PC.
+    - target: zip
+      arch:
+        - x64
+        - arm64
+
+linux:
+  icon: build/icon.png
+  target:
+    - AppImage
+  category: Utility

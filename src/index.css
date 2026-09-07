@@ -1,0 +1,74 @@
+/*
+ * Galmuri — a bitmap font, which is the whole point.
+ *
+ * SIL OFL 1.1, by Lee Minseo (quiple). Its own npm description says "Bitmap
+ * fonts based on the font design from Nintendo DS", which is the same era as
+ * every sprite this app draws. OFL sits in the same tier as the CC0 grass
+ * tileset (see scripts/gen-grass.ts): committed, because it is original work
+ * its author licensed for redistribution — unlike the Pokemon sprites, which
+ * are fetched at runtime and never bundled.
+ *
+ * Declared by hand rather than importing the package's own galmuri.css: that
+ * file declares all nine faces and would pull three megabytes of woff2 for the
+ * six we do not use.
+ *
+ * ## Sizes are not negotiable
+ *
+ * The MONOSPACE cut of the family. Every glyph is one cell wide, so a column of
+ * token counts, prices and percentages lines up on its own without a single
+ * `tabular-nums` — which is most of what this panel prints.
+ *
+ * The family names below stay 'Galmuri11' / 'Galmuri9' / 'Galmuri7' while the
+ * files behind them are the Mono cut. That is deliberate: forty-odd rules name
+ * those families, and the size each one belongs to has not changed. Swapping
+ * the file is the whole edit.
+ *
+ * A bitmap face is drawn at ONE size and is only crisp at integer multiples of
+ * it. So this app has exactly four type sizes, one face each:
+ *
+ *   8px   GalmuriMono7   the battle plate's HP label and status badge
+ *   10px  GalmuriMono9   descriptions, captions, secondary numbers
+ *   12px  GalmuriMono11  body, lists, buttons — the default
+ *   24px  GalmuriMono11  headings and big figures, at an exact 2x
+ *
+ * Anything else resamples the bitmap and the Hangul turns to mush.
+ * test/panel-css.test.ts holds that line.
+ *
+ * 8px exists only because the battle name plate is 152px wide with a 6px gauge
+ * in it — its two micro-labels do not fit at 10px, and re-laying out a screen
+ * nobody complained about is a worse trade than one more 309KB face.
+ */
+@font-face {
+  font-family: 'Galmuri11';
+  src: url('galmuri/dist/GalmuriMono11.woff2') format('woff2');
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Galmuri9';
+  src: url('galmuri/dist/GalmuriMono9.woff2') format('woff2');
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Galmuri7';
+  src: url('galmuri/dist/GalmuriMono7.woff2') format('woff2');
+  font-weight: 400;
+  font-display: block;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+
+/*
+ * No antialiasing, anywhere.
+ *
+ * The browser's default smoothing is what makes a pixel font look like a badly
+ * printed one: it feathers every stem to a grey edge. `none` is what keeps the
+ * glyph exactly the grid it was drawn on — the typographic half of the
+ * `image-rendering: pixelated` the sprites already use.
+ */
+body {
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}

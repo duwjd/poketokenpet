@@ -1,0 +1,131 @@
+/*
+ * The window is transparent; nothing here may paint a background.
+ *
+ * Scoped to the pet window by the attribute main.tsx puts on <html>. Both
+ * windows load the same bundle, so unscoped this also blanked the popover —
+ * see the note there.
+ */
+html[data-window='pet'],
+html[data-window='pet'] body,
+html[data-window='pet'] #root {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+/* Dragging the pet. Scoped for the same reason as the rule above — the popover
+   is not draggable and must not say it is. */
+html[data-window='pet'] body:active {
+  cursor: grabbing;
+}
+
+.pet-root {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+/* Wraps only the sprite, so hover, drag and the HUD anchor to the art rather
+   than to a window that may be much larger than it. */
+.pet-anchor {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+/* Sized in JS to the sprite's opaque box. The window is then sized to match,
+   so the art is never squeezed into a square it does not fit. overflow:hidden
+   is what crops the transparent padding the negative offsets pull out of view. */
+.pet-stage {
+  position: relative;
+  overflow: hidden;
+}
+
+.pet-sprite {
+  position: absolute;
+  image-rendering: pixelated;
+  max-width: none;
+  /* A soft drop shadow keeps the sprite readable over light and dark desktops. */
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+
+.wobble {
+  animation: wobble 2.4s ease-in-out infinite;
+  transform-origin: 50% 80%;
+}
+
+@keyframes wobble {
+  0%, 70%, 100% { transform: rotate(0deg); }
+  78% { transform: rotate(-7deg); }
+  86% { transform: rotate(7deg); }
+  94% { transform: rotate(-3deg); }
+}
+
+/* Something is in the grass. Drawn art (scripts/gen-ui.ts) rather than a CSS
+   box — the tail is what makes it read as the games' emote rather than a badge. */
+.pet-bang {
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  z-index: 2;
+  width: 32px;
+  height: 40px;
+  transform: translateX(-50%);
+  background-image: var(--ui-bang);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+  pointer-events: none;
+  animation: pet-bang 0.6s ease-out;
+}
+
+@keyframes pet-bang {
+  0% { opacity: 0; transform: translate(-50%, 5px) scale(0.7); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+.pet-anchor.startled { animation: startle 0.42s ease-in-out 2; }
+@keyframes startle {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-bang,
+  .pet-anchor.startled {
+    animation: none;
+  }
+}
+
+.pet-hud {
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  z-index: 1;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 9px;
+  background: rgba(20, 19, 17, 0.82);
+  color: #f2eee5;
+  font: 600 11px/1.3 system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.pet-hud span {
+  font-weight: 400;
+  font-size: 10px;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}

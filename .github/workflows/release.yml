@@ -35,9 +35,9 @@ jobs:
             name: win
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -50,15 +50,19 @@ jobs:
       - run: npm test
 
       - name: Build ${{ matrix.name }}
+        # `--publish never` lives in the app:dist script itself, not here.
+        # electron-builder AUTO-DETECTS CI and starts publishing to GitHub
+        # Releases on its own — an empty GH_TOKEN does not opt out of that, it
+        # just makes the upload fail after every artifact has already been
+        # built. Uploading is this workflow's release job's business, via the
+        # artifacts below; electron-builder must never do it.
         run: npm run app:dist
         env:
-          # electron-builder tries to notarize/publish when these look set.
-          # Neither is wanted: unsigned by design, and the upload is the
-          # release step below, not electron-builder's own publisher.
+          # Unsigned by design. Without this electron-builder hunts the
+          # keychain for a Developer ID and warns when it finds none.
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          GH_TOKEN: ''
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}
           # blockmaps are for electron-updater's delta downloads, which this app
@@ -75,8 +79,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
         with:
           path: artifacts
           merge-multiple: true
@@ -87,7 +91,7 @@ jobs:
           shasum -a 256 * > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: artifacts/*
           draft: true

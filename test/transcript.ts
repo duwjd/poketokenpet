@@ -75,7 +75,7 @@ export async function append(file: string, lines: string[]): Promise<void> {
 /**
  * Append raw bytes with no trailing newline.
  *
- * This is how a half-written line is simulated — the case the README calls the
+ * This is how a half-written line is simulated — the case docs/INTERNALS.md calls the
  * number-one bug of this class of parser.
  */
 export async function appendRaw(file: string, raw: string): Promise<void> {

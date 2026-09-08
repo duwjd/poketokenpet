@@ -1,7 +1,7 @@
 {
   "name": "poketokenpet",
   "version": "0.2.1",
-  "description": "AI 코딩 토큰으로 자라는 포켓몬 — Windows/macOS 트레이 앱",
+  "description": "AI \ucf54\ub529 \ud1a0\ud070\uc73c\ub85c \uc790\ub77c\ub294 \ud3ec\ucf13\ubaac \u2014 Windows/macOS \ud2b8\ub808\uc774 \uc571",
   "author": "calia",
   "license": "MIT",
   "private": true,
@@ -21,6 +21,7 @@
     "gen:journey": "node --experimental-strip-types --no-warnings scripts/gen-journey.ts",
     "gen:legends": "node --experimental-strip-types --no-warnings scripts/gen-legends.ts",
     "gen:ui": "node --experimental-strip-types --no-warnings scripts/gen-ui.ts",
+    "gen:shots": "node --experimental-strip-types --no-warnings scripts/gen-shots.ts",
     "test": "vitest run",
     "build:electron": "node scripts/build-electron.mjs",
     "electron:dev": "node scripts/dev-electron.mjs",

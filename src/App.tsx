@@ -2600,7 +2600,7 @@ export default function App() {
         </li>
       </ul>
       {/* Said once, under the list, rather than as a description on each row:
-          natures are decoration here for the same reason and the README says
+          natures are decoration here for the same reason and docs/DESIGN.md says
           so in a sentence rather than in the UI. */}
       <p className="muted sub">특성은 이 앱의 배틀에 영향을 주지 않습니다.</p>
 
@@ -2676,7 +2676,7 @@ export default function App() {
               <span className="num">{dexDetail.statTotal}</span>
             </li>
           </ul>
-          {/* The screen says out loud what the README refuses to fake: these are
+          {/* The screen says out loud what docs/DESIGN.md refuses to fake: these are
               the originals' numbers and no fight here reads them. The one thing
               they ever did in this app is upstairs — server/forms.ts's mega
               multiplier was measured from exactly these totals. */}
@@ -3091,7 +3091,7 @@ export default function App() {
       {/*
         * The one thing on screen that is not about the game.
         *
-        * The 라이선스 절 in README says there is no credits screen, and that
+        * The attribution table in NOTICE.md says there is no credits screen, and that
         * stays true — every committed asset is CC0 or OFL and owes no
         * attribution. This is a different obligation: the app is a fan work
         * being handed to strangers, and a non-affiliation notice is the thing

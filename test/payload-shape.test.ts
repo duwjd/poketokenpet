@@ -272,7 +272,7 @@ describe('dex entry', () => {
    *
    * Baking 종족값 for a screen is one keystroke away from "and the battle could
    * use them too", and that keystroke moves every number in test/hunt.ts's
-   * GOLDEN tables. README `### 전투 보정을 지어내지 않았습니다` is the promise;
+   * GOLDEN tables. docs/DESIGN.md `### 전투 보정을 지어내지 않았습니다` is the promise;
    * this is the lock on it.
    */
   it('never lets a base stat into a fight', () => {
@@ -347,7 +347,7 @@ describe('scene art', () => {
   });
 
   it('keeps the no-attribution property it is relying on', () => {
-    // README's 라이선스 절 says there is no credits screen because nothing here
+    // NOTICE.md's attribution table says there is no credits screen because nothing here
     // requires one. Two of the four packs declare CC0 on OpenGameArt but ship a
     // license.txt that never says the word, so the generator quotes it instead —
     // and the clause that matters is the one granting that no credit is owed.

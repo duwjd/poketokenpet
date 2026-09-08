@@ -115,7 +115,7 @@ import zlib from 'node:zlib';
  * Written down verbatim because the two properties this repository actually
  * leans on are the ones to check, and both statements grant both: it may be
  * REDISTRIBUTED (so it can be committed rather than fetched) and it needs NO
- * CREDIT (so there is still no attribution owed on screen — see README's
+ * CREDIT (so there is still no attribution owed on screen — see NOTICE.md's
  * 라이선스 절, which is why that section can say what it says).
  *
  * ## Packs looked at and turned down
@@ -123,7 +123,7 @@ import zlib from 'node:zlib';
  * Kenney's "Roguelike/RPG pack" is CC0 in as many words and is the only pack
  * looked at that has SNOW. It is flat, thickly outlined and saturated, and
  * beside Beast and ansimuz it reads as a different medium — the same objection
- * README already records against Kenney's Pixel UI Pack. So there is no 설원
+ * docs/INTERNALS.md already records against Kenney's Pixel UI Pack. So there is no 설원
  * sheet and no 설원 terrain: 얼음길 and 프로스트케이브 walk on cave rock, which
  * they are, and the skyline layer is what makes them read as ICE caves. 사막
  * nearly went the same way and was saved by the shore pack's sand.
@@ -714,7 +714,7 @@ function compose(id: string, region: (typeof REGIONS)[string], sheets: Partial<R
  * Render every finished sheet side by side, scaled up and repeated.
  *
  * The other half of how a crop gets accepted. --survey scores a candidate; this
- * is the look that decides it, and it is the step README records for the town
+ * is the look that decides it, and it is the step docs/INTERNALS.md records for the town
  * pack ("채택 전에 여섯 시트를 나란히 렌더해 눈으로 확인했고"). Written down so
  * the next person adding a region does not have to rebuild it.
  *

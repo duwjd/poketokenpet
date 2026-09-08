@@ -179,7 +179,7 @@ export type ReadStop = {
  *
  * `offset` means "consumed AND newline-terminated". A truncated tail is simply
  * re-read from its own start next time, so `parseLine` never sees an incomplete
- * line at all. The README calls that the number-one bug of this class of parser;
+ * line at all. docs/INTERNALS.md calls that the number-one bug of this class of parser;
  * this removes it structurally rather than defending against it. The cost is
  * re-reading one in-flight line per tick, bounded by the longest line.
  */
@@ -291,7 +291,7 @@ export async function scanAll(root = projectsDir()): Promise<Map<string, UsageRe
  * `ids` is what makes deletion and rotation correct. The record map is keyed by
  * `message.id` and has no idea which file a record came from, so without a
  * per-file id set a deleted transcript's records linger for ever, the total
- * stops matching a full scan, and "누적 토큰은 줄어들 수 있다" (README trap 4)
+ * stops matching a full scan, and "누적 토큰은 줄어들 수 있다" (INTERNALS trap 4)
  * quietly stops being true.
  */
 type Cursor = {

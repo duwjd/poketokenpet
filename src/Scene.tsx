@@ -393,7 +393,7 @@ function SceneSprite({
         setM({ name, size: { w: Math.round(w * k), h: Math.round(h * k) }, failed: false });
       }}
       onError={(e) => {
-        // Same prefix PetApp.tsx uses; the README documents it as the way to
+        // Same prefix PetApp.tsx uses; docs/INTERNALS.md documents it as the way to
         // debug a broken petsprite:// in a packaged app, where there is no
         // console to watch.
         console.error('[poketokenpet] sprite failed to load:', e.currentTarget.src);

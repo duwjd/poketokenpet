@@ -20,7 +20,7 @@
  *
  *   알 그룹 · 성비 · 부화 걸음수 — this app has no breeding, no second parent and
  *   no steps, and Companion has no gender. Baking a statistic the app can never
- *   act on is the same mistake the README declines for 성격.
+ *   act on is the same mistake docs/DESIGN.md declines for 성격.
  */
 import fs from 'node:fs/promises';
 import path from 'node:path';

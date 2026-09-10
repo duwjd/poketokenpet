@@ -100,6 +100,43 @@ export const legendsInDex = (s: GameState) =>
   s.dex.filter((d) => LEGENDS.some((l) => l.id === d.speciesId)).length;
 const caught = (need: number) => (s: GameState) => ({ have: legendsInDex(s), need });
 
+/**
+ * Either bar. The gentler sibling of `both`, and the only safe way to add a
+ * road to a gate that is already open for somebody.
+ *
+ * `openLegends` recomputes every row from scratch on every tick — there is no
+ * stored "opened" flag the way `state.achievements` stores an unlock — so
+ * tightening a gate does not merely slow someone down, it takes a legendary
+ * back off them within twenty seconds. `achievements.ts` refuses exactly that
+ * for thresholds, and a gate has no id to skip on. So a new condition goes in
+ * beside the old one, never on top of it.
+ */
+const either =
+  (a: (s: GameState) => { have: number; need: number }, b: (s: GameState) => { have: number; need: number }) =>
+  (s: GameState) => {
+    const x = a(s);
+    const y = b(s);
+    // The nearer of the two, so the gauge shows the road actually being walked.
+    return x.have / x.need >= y.have / y.need ? x : y;
+  };
+
+/** Pokemon League runs cleared. */
+const champion = (need: number) => (s: GameState) => ({ have: s.leagueWins ?? 0, need });
+
+/**
+ * Kanto badges held.
+ *
+ * Exported unused on purpose. With only one region shipped this maxes at eight
+ * and can be met or not met, which is a step rather than the ladder every
+ * other metric here is. When 성도's eight exist it becomes 8/16/24 and the
+ * Johto gates — all of them new, so none of them able to re-lock anything —
+ * can lean on it properly.
+ */
+export const badgesHeld = (need: number) => (s: GameState) => ({
+  have: (s.badges ?? []).length,
+  need,
+});
+
 /** Both bars, so a gate can ask for two things without a new metric shape. */
 const both =
   (a: (s: GameState) => { have: number; need: number }, b: (s: GameState) => { have: number; need: number }) =>
@@ -128,7 +165,11 @@ export const LEGEND_GATES: LegendGate[] = [
   }),
   one(150, {
     tier: 'box', item: null, source: null,
-    metric: both(dex(300), wins(80)), how: '도감 300종 · 트레이너 80승',
+    // 무단침입굴 opens after the Hall of Fame in the games, so the league is
+    // the most faithful second road there is. Added with `either`, never
+    // folded into the `both` — the old condition still opens it on its own.
+    metric: either(both(dex(300), wins(80)), champion(1)),
+    how: '도감 300종 · 트레이너 80승 — 또는 명예의 전당 등록',
   }),
   one(151, {
     tier: 'myth', item: null, source: null,
@@ -311,7 +352,17 @@ export const LEGEND_GATES: LegendGate[] = [
   }),
   ...group([785, 786, 787, 788], {
     tier: 'sub', item: null, source: null,
-    metric: both(walked(4400), dex(300)), how: '알로라 도달(4,400조우) · 도감 300종',
+    /**
+     * The bar is 4,400 encounters and it stays there.
+     *
+     * It used to READ "알로라 도달(4,400조우)", which was true of a 240-stop
+     * route on a 25-encounter leg. The route is 665 stops on a 15-encounter leg
+     * now and 4,400 lands in 칼로스, so the claim went first. The NUMBER did
+     * not: `openLegends` recomputes every gate on every tick with no record of
+     * what was already open, so raising this would take these four back off
+     * anybody holding them, twenty seconds after the update.
+     */
+    metric: both(walked(4400), dex(300)), how: '4,400조우 · 도감 300종',
   }),
   ...group([789, 790], {
     tier: 'sub', item: null, source: null,

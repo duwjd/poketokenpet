@@ -625,7 +625,7 @@ export const LEGEND_ITEMS: LegendItem[] = [
   {
     "slug": "clear-amulet",
     "ko": "클리어참",
-    "sprite": null
+    "sprite": "clear-amulet"
   },
   {
     "slug": "clear-bell",
@@ -635,7 +635,7 @@ export const LEGEND_ITEMS: LegendItem[] = [
   {
     "slug": "cornerstone-mask",
     "ko": "주춧돌의가면",
-    "sprite": null
+    "sprite": "cornerstone-mask"
   },
   {
     "slug": "dark-stone",
@@ -660,7 +660,7 @@ export const LEGEND_ITEMS: LegendItem[] = [
   {
     "slug": "hearthflame-mask",
     "ko": "화덕의가면",
-    "sprite": null
+    "sprite": "hearthflame-mask"
   },
   {
     "slug": "light-stone",
@@ -740,7 +740,7 @@ export const LEGEND_ITEMS: LegendItem[] = [
   {
     "slug": "reins-of-unity",
     "ko": "유대의고삐",
-    "sprite": null
+    "sprite": "reins-of-unity"
   },
   {
     "slug": "reveal-glass",
@@ -750,12 +750,12 @@ export const LEGEND_ITEMS: LegendItem[] = [
   {
     "slug": "rusted-shield",
     "ko": "녹슨방패",
-    "sprite": null
+    "sprite": "rusted-shield"
   },
   {
     "slug": "rusted-sword",
     "ko": "녹슨검",
-    "sprite": null
+    "sprite": "rusted-sword"
   },
   {
     "slug": "scroll-of-darkness",
@@ -790,7 +790,7 @@ export const LEGEND_ITEMS: LegendItem[] = [
   {
     "slug": "wellspring-mask",
     "ko": "우물의가면",
-    "sprite": null
+    "sprite": "wellspring-mask"
   }
 ];
 

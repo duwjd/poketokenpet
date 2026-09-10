@@ -98,8 +98,23 @@ html[data-window='pet'] body:active {
   75% { transform: translateX(3px); }
 }
 
+/* A Pokemon whose art is a flat PNG rather than a GIF — the Legends Z-A megas
+   and a few Generation IX species — would otherwise sit perfectly frozen on the
+   desktop. Mirrored from App.css for the same reason `wobble` is: this window
+   loads neither that file nor Scene.css. */
+.pet-sprite.still {
+  animation: breathe 2.6s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.97); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pet-bang,
+  .pet-sprite.still,
   .pet-anchor.startled {
     animation: none;
   }

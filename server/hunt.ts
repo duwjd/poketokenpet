@@ -26,6 +26,18 @@ import {
 } from './moves.ts';
 import type { ShopResult } from './shop.ts';
 import { trainerAt, trainerBattleAt, trainerReward } from './trainer.ts';
+import {
+  GYMS,
+  LEAGUE,
+  LEAGUE_REWARD,
+  atLeague,
+  gymAt,
+  gymReward,
+  gymTrainer,
+  leagueRoundAt,
+  leagueStartAt,
+} from './gyms.ts';
+import { PARTY_SIZE } from './party.ts';
 import { LINES } from './species.ts';
 import { legendOf } from './legenddata.ts';
 import {
@@ -1336,6 +1348,40 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
    */
   let wins = 0;
   let tmsFound = 0;
+  /**
+   * Badges held, MUTATED as the loop settles.
+   *
+   * The opposite treatment `openLegends` gets, and deliberately: nothing the
+   * loop writes can change which legendaries are open, so that one is resolved
+   * once and frozen. Badges are the other case — winning one closes that gym
+   * for the rest of the batch, and freezing this would let the same leader be
+   * fought three times in one catch-up. Deterministic either way, so two
+   * writers settling the same range still compute identical bytes.
+   */
+  const badges = new Set(state.badges ?? []);
+  let gymWon = 0;
+  /**
+   * Legendaries met in this batch, added to whatever the save already knew.
+   *
+   * Mutated in the loop like `badges`, and for the same reason: meeting one
+   * opens its shrine, and a batch that met Palkia at its first encounter
+   * should not go on pretending otherwise for the next ninety-five.
+   */
+  const metLegends = new Set(state.metLegends ?? []);
+  /**
+   * The league challenge, also mutated as the loop settles.
+   *
+   * A run spans five encounters, so unlike everything else in this loop it is
+   * a thing the batch carries across iterations rather than a tally it adds
+   * to. The party itself is read once and never written — the builder is the
+   * only thing that changes it, and a catch-up that rewrote it would be
+   * editing a choice the player made.
+   */
+  const party = state.party ?? [];
+  let leagueRun = state.leagueRun ?? null;
+  const leagues = { ...state.leagues };
+  let leagueWins = state.leagueWins ?? 0;
+  let leagueBest = state.leagueBest ?? 0;
 
   for (let i = 0; i < n; i++) {
     const seq = state.huntCount + i;
@@ -1343,6 +1389,120 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
     // Past the cap the encounter still happens and TMs still drop; only the
     // tokens stop. TM farming keeps working while the currency saturates.
     const room = () => Math.max(0, cap - (state.huntTokens + gained));
+
+    /**
+     * The Pokemon League, at 석영고원 and nowhere else.
+     *
+     * Above the gym branch because the two cannot both apply — 석영고원 is not
+     * a gym city, so the only leader who could stand here is one still being
+     * pursued, and that pursuit is only possible below eight badges, which is
+     * exactly when the league is shut.
+     *
+     * A run is FIVE encounters. It begins only at the three offsets, and once
+     * begun every encounter of the leg is its next member — so a visit holds
+     * about three attempts, and a loss costs the run rather than the lap.
+     */
+    if (atLeague(seq) && badges.size === GYMS.length && party.length === PARTY_SIZE) {
+      if (!leagueRun && leagueStartAt(seq)) {
+        leagueRun = { at: 0, hp: party.map(() => BATTLE_MAX_HP) };
+      }
+      if (leagueRun) {
+        const member = LEAGUE[leagueRun.at];
+        /** Snapshotted before the fight, so the panel can replay from it. */
+        const startedFrom = [...leagueRun.hp];
+        // No `boosts`: a mega belongs to the companion, and the companion is
+        // not in this fight.
+        const round = leagueRoundAt(seq, member, party, startedFrom);
+        const at = leagueRun.at;
+        const cleared = round.won && at + 1 === LEAGUE.length;
+        // Per member, so a run that gets three deep is not worth nothing —
+        // and a bonus on the clear, which is what the whole thing is for.
+        const mult2 = (round.won ? 4 : 0) + (cleared ? LEAGUE_REWARD - 4 * LEAGUE.length : 0);
+        const tokens = mult2 > 0 ? Math.min(room(), Math.round(e.reward * mult * mult2)) : 0;
+        gained += tokens;
+        if (round.won) {
+          // An Elite Four member is a trainer, like a gym leader.
+          wins += 1;
+          leagueBest = Math.max(leagueBest, at + 1);
+        }
+        if (cleared) {
+          leagues.kanto ??= now;
+          leagueWins += 1;
+          // The one item the league hands over. Outside huntCap, like every
+          // other item, because an item is not progress.
+          inventory['shiny-charm'] = (inventory['shiny-charm'] ?? 0) + 1;
+        }
+        // A loss ends the challenge; so does clearing it. Either way the next
+        // start slot in this leg opens a fresh run at full HP.
+        leagueRun = cleared || !round.won ? null : { at: at + 1, hp: round.hp };
+        fresh.push({
+          seq,
+          wildId: member.team[0],
+          tokens,
+          moveId: null,
+          trainer: { name: member.ko, team: member.team, won: round.won },
+          league: {
+            id: member.id,
+            at,
+            won: round.won,
+            cleared,
+            party: round.outFor.map((i) => party[i].speciesId),
+            team: party.map((m) => m.speciesId),
+            hp: startedFrom,
+          },
+        });
+        continue;
+      }
+    }
+
+    /**
+     * A gym leader, if one is standing here.
+     *
+     * Above the trainer roll because the person in front of you is 관장 웅,
+     * not 짧은바지 꼬마 민수 — and because the two are mutually exclusive by
+     * construction, which is what lets a gym fight share `trainerBattleAt`'s
+     * seed base without ever colliding with a route trainer's.
+     *
+     * `gymAt` takes no draw, so this asks the encounter stream nothing and
+     * cannot shift it. See server/gyms.ts.
+     */
+    const gym = gymAt(seq, badges);
+    if (gym) {
+      const g = gymTrainer(gym);
+      const fight = trainerBattleAt(seq, g, active.moves, speciesId, boosts);
+      /** A rematch pays, but the badge and its TM are handed over only once. */
+      const first = !badges.has(gym.badge);
+      const tokens = fight.won ? Math.min(room(), Math.round(e.reward * mult * gymReward(gym))) : 0;
+      gained += tokens;
+      if (fight.won) {
+        // A gym win IS a trainer win. Leaving it out would make the awards
+        // board understate the biggest trainer battles in the game from the
+        // day they shipped, which is exactly the lie that file forbids.
+        wins += 1;
+        gymWon += 1;
+        if (first) {
+          badges.add(gym.badge);
+          // The badge comes with its leader's machine, and it counts as found:
+          // `tmsFound` measures the collection, not how it arrived.
+          tms[gym.prize] = (tms[gym.prize] ?? 0) + 1;
+          tmsFound += 1;
+        }
+      }
+      fresh.push({
+        seq,
+        wildId: g.team[0],
+        tokens,
+        moveId: null,
+        ...formTag,
+        trainer: { name: g.name, team: g.team, won: fight.won },
+        gym: {
+          id: gym.id,
+          badge: fight.won && first ? gym.badge : null,
+          prize: fight.won && first ? gym.prize : null,
+        },
+      });
+      continue;
+    }
 
     // A trainer rides on top of the wild roll rather than replacing it: the
     // encounter stream must keep producing exactly what it did before, or every
@@ -1412,6 +1572,10 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
       });
       const last = fight.turns.at(-1);
       const won = (last?.foeHpAfter ?? 1) === 0 && (last?.myHpAfter ?? 0) > 0;
+      // Met, whatever happened next. The shrine opens on the meeting rather
+      // than on the win — a Giratina that flattened you was still met, and
+      // `server/shrines.ts` is the only thing that reads this.
+      metLegends.add(wildId);
       // The prize is an egg, never a dex entry: the dex still means "raised and
       // graduated", and a legendary is not exempt from that.
       if (won) legendEggs[wildId] = (legendEggs[wildId] ?? 0) + 1;
@@ -1466,6 +1630,16 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
       huntTokens: state.huntTokens + gained,
       huntCount: state.huntCount + n,
       trainerWins: (state.trainerWins ?? 0) + wins,
+      gymWins: (state.gymWins ?? 0) + gymWon,
+      badges: [...badges].sort((a, b) => a - b),
+      metLegends: [...metLegends].sort((a, b) => a - b),
+      // A challenge does not survive leaving 석영고원: it is something you
+      // finish where you started it, and a run resumed a lap later against a
+      // party that has since been rebuilt is not the run that was begun.
+      leagueRun: atLeague(state.huntCount + n - 1) ? leagueRun : null,
+      leagues,
+      leagueWins,
+      leagueBest,
       tmsFound: (state.tmsFound ?? 0) + tmsFound,
       // Advance by the FULL backlog, not by n. Advancing by n instead would
       // hand the forfeited remainder straight back on the following tick,

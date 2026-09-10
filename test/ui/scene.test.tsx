@@ -388,6 +388,22 @@ describe('Scene — encounter', () => {
     expect(foe.src).toContain('19-a.gif');
   });
 
+  /**
+   * A Legends Z-A mega has no animated art anywhere, so it arrives as the flat
+   * PNG and would otherwise stand perfectly frozen beside a foe that breathes.
+   * The class comes off the cache NAME, so this also pins that the shop clerk
+   * and the ordinary GIFs never pick it up.
+   */
+  it('breathes only the sprites that cannot animate themselves', async () => {
+    const still = { ...COMPANION, sprite: '10287-s.png', backSprite: '10287-sb.png' };
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} companion={still} />);
+    rerender(<Scene {...props([enc({ seq: 2 })])} companion={still} />);
+    await advanceTo('enter');
+    expect(document.querySelector('.scene-mine img')!.className).toContain('still');
+    // 꼬렛 is #19 and has Gen-5 art, so it moves on its own already.
+    expect(document.querySelector('.scene-foe img')!.className).not.toContain('still');
+  });
+
   it('throws the impact art of the move being used', async () => {
     const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
     rerender(<Scene {...props([enc({ seq: 2 })])} />);
@@ -751,6 +767,21 @@ describe('Scene — trainer battles', () => {
     await step(HOLDS.wipe);
     expect(document.querySelector('.scene-text')!.textContent).toMatch(/승부를 걸어왔다/);
     expect(screen.queryByText(/나타났다/)).toBeNull();
+  });
+
+  /**
+   * The idle for a frozen sprite is keyed on the cache name, and a person's is
+   * `npc-*.png` — a PNG, but not a Pokemon. A breathing shopkeeper is worse than
+   * a still Pokemon, which is why the predicate insists on a leading id.
+   */
+  it('never breathes a person', async () => {
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([trainerEnc()])} />);
+    await step(HOLDS.alert);
+    await step(HOLDS.wipe);
+    const portrait = document.querySelector('.scene-trainer img') as HTMLImageElement;
+    expect(portrait.src).toContain('npc-fisherman.png');
+    expect(portrait.className).not.toContain('still');
   });
 
   it('shows the trainer, and only the trainer, before the first send-out', async () => {

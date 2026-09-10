@@ -3,6 +3,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { appDataDir } from './paths.ts';
 import { hasDamaging, initialState, starterMove, type GameState } from './game.ts';
+import { LEGENDS } from './legenddata.ts';
 import { MOVE_SLOTS } from './hunt.ts';
 import { backfillPreEvolutions, departedCount } from './dex.ts';
 
@@ -163,6 +164,84 @@ export function migrate(parsed: StoredState | null): GameState {
     forcedNext: parsed.forcedNext ?? null,
     awardTokens: parsed.awardTokens ?? 0,
     trainerWins: parsed.trainerWins ?? 0,
+    /**
+     * The badge fields. Same allow-list rule as the blocks above, and the
+     * loudest failure yet if forgotten: a badge case that empties every twenty
+     * seconds re-opens every gym, re-awards every badge achievement and its TM
+     * on every tick, and locks the league.
+     *
+     * Deduped, sorted and clamped rather than passed through. Nothing else in
+     * the save can re-derive a badge, so a corrupt array has no second source
+     * to heal from — which is the opposite of `retiredCount` below and exactly
+     * why this one has to defend itself here.
+     */
+    badges: [...new Set(parsed.badges ?? [])]
+      .filter((n) => Number.isInteger(n) && n >= 1 && n <= 8)
+      .sort((a, b) => a - b),
+    /**
+     * Floored at the number of badges held, the same self-healing trick
+     * `tmsFound` gets from the bag: a badge is proof of a gym win, so a save
+     * from before this counter existed starts from a true number rather than
+     * from zero. Rematches are lost, which under-reads rather than over-reads.
+     */
+    /**
+     * The party and the run in progress. Same allow-list rule, and the party
+     * is the one field with no second source at all — nothing else in the save
+     * knows which six were picked, so losing it costs the picking. The machines
+     * that armed it were spent and are not refunded by a lost write either,
+     * which is unfortunate and honest.
+     *
+     * `leagueRun` is normalised rather than trusted: a bar count that no longer
+     * matches the party would index off the end of `hp` on the next round, and
+     * a run that survived a party edit is not the run that was started.
+     */
+    party: Array.isArray(parsed.party)
+      ? parsed.party
+          .filter((m) => m && Number.isInteger(m.speciesId))
+          .slice(0, 6)
+          .map((m) => ({
+            speciesId: m.speciesId,
+            shiny: !!m.shiny,
+            ...(m.formId !== undefined ? { formId: m.formId } : {}),
+            moves: Array.isArray(m.moves) ? m.moves.filter(Number.isInteger).slice(0, 4) : [],
+          }))
+      : [],
+    leagueRun:
+      parsed.leagueRun &&
+      Number.isInteger(parsed.leagueRun.at) &&
+      Array.isArray(parsed.leagueRun.hp) &&
+      parsed.leagueRun.hp.length === (parsed.party?.length ?? 0)
+        ? { at: parsed.leagueRun.at, hp: parsed.leagueRun.hp.map((n) => Math.max(0, Number(n) || 0)) }
+        : null,
+    /**
+     * Floored at everything the save can already prove was met.
+     *
+     * The same self-healing `retiredCount` gets from `departedCount(dex)`: a
+     * save that predates this field still holds the evidence — a legendary in
+     * the dex was raised, an egg was won, the companion out right now may be
+     * one — and all three required meeting it. Under-reads rather than
+     * over-reads, because a legendary that beat you leaves nothing behind.
+     */
+    metLegends: [
+      ...new Set([
+        ...(Array.isArray(parsed.metLegends) ? parsed.metLegends.filter(Number.isInteger) : []),
+        ...(parsed.dex ?? []).map((d) => d.speciesId).filter((id) => LEGENDS.some((l) => l.id === id)),
+        ...Object.entries(parsed.legendEggs ?? {})
+          .filter(([, n]) => (n ?? 0) > 0)
+          .map(([id]) => Number(id)),
+        ...(parsed.active ? [parsed.active.pathIds[parsed.active.stageIndex]] : []).filter((id) =>
+          LEGENDS.some((l) => l.id === id),
+        ),
+      ]),
+    ].sort((a, b) => a - b),
+    leagues: { ...(parsed.leagues ?? {}) },
+    leagueWins: parsed.leagueWins ?? 0,
+    /** Floored at "cleared once" — a Hall of Fame entry proves the full run. */
+    leagueBest: Math.max(parsed.leagueBest ?? 0, (parsed.leagueWins ?? 0) > 0 ? 5 : 0),
+    gymWins: Math.max(
+      parsed.gymWins ?? 0,
+      new Set((parsed.badges ?? []).filter((n) => Number.isInteger(n) && n >= 1 && n <= 8)).size,
+    ),
     /**
      * Floored at what is currently held, the way `retiredCount` is floored at
      * `departedCount(dex)`: TMs in the bag are TMs that were certainly found,

@@ -11,14 +11,14 @@ import type { TerrainId } from './terrain.ts';
  * actually exists upstream. Declared here rather than imported because this
  * file is renderer-side and that one is not — a test keeps the two in step.
  */
-export type SkyId = 'beach' | 'beachshore' | 'city' | 'dampcave' | 'desert' | 'earthycave' | 'forest' | 'icecave' | 'meadow' | 'mountain' | 'river' | 'thunderplains' | 'volcanocave';
+export type SkyId = 'beach' | 'beachshore' | 'city' | 'dampcave' | 'deepsea' | 'desert' | 'earthycave' | 'forest' | 'icecave' | 'meadow' | 'mountain' | 'river' | 'thunderplains' | 'volcanocave';
 
 /**
  * One place on the journey, and the two independent things it looks like.
  *
  * `terrain` is which of the ten sheets gets painted underfoot. It is NOT what
  * the place is — a town and a stone road walk on the same cobble, and the
- * sheets have to cover 240 places between them.
+ * sheets have to cover 728 places between them.
  *
  * `sky` is the Gen-5 backdrop hung at the horizon, or null for nowhere in
  * particular. It is classified separately because the two layers have different
@@ -71,13 +71,13 @@ export const STOPS: Stop[] = [
   "sky": "city"
  },
  {
-  "ko": "디그다굴",
+  "ko": "디그다의 굴",
   "region": "관동",
   "terrain": "cave",
   "sky": "dampcave"
  },
  {
-  "ko": "바위굴",
+  "ko": "돌산터널",
   "region": "관동",
   "terrain": "cave",
   "sky": "dampcave"
@@ -149,6 +149,234 @@ export const STOPS: Stop[] = [
   "sky": "mountain"
  },
  {
+  "ko": "블루시티동굴",
+  "region": "관동",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "챔피언로드",
+  "region": "관동",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "이라님 석실",
+  "region": "관동",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "상트앙느호",
+  "region": "관동",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "등불산",
+  "region": "관동",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "열매 숲",
+  "region": "관동",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "얼음폭포의 동굴",
+  "region": "관동",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "증표의 숲",
+  "region": "관동",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "저녁노을길",
+  "region": "관동",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "호화리조트",
+  "region": "관동",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "추억의 탑",
+  "region": "관동",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "유적의 골짜기",
+  "region": "관동",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "트레이너 타워",
+  "region": "관동",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "옥포그리 유적",
+  "region": "관동",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "탄생의 섬",
+  "region": "관동",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "배꼽바위",
+  "region": "관동",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "움노브리 석실",
+  "region": "관동",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "돌아올 수 없는 동굴",
+  "region": "관동",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "보물만",
+  "region": "관동",
+  "terrain": "seaside",
+  "sky": "beachshore"
+ },
+ {
+  "ko": "곶 언저리",
+  "region": "관동",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "유대의 다리",
+  "region": "관동",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "3섬 항구",
+  "region": "관동",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "물의 미로",
+  "region": "관동",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "5섬 공터",
+  "region": "관동",
+  "terrain": "flowers",
+  "sky": "meadow"
+ },
+ {
+  "ko": "떨어진 섬",
+  "region": "관동",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "녹색 산책길",
+  "region": "관동",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "물의 산책길",
+  "region": "관동",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "계곡입구",
+  "region": "관동",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "칠보계곡",
+  "region": "관동",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "1섬",
+  "region": "관동",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "4섬",
+  "region": "관동",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "5섬",
+  "region": "관동",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "2섬",
+  "region": "관동",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "3섬",
+  "region": "관동",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "3섬 터널",
+  "region": "관동",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "6섬",
+  "region": "관동",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "7섬",
+  "region": "관동",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "지하통로",
+  "region": "관동",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
   "ko": "연두마을",
   "region": "성도",
   "terrain": "town",
@@ -167,19 +395,19 @@ export const STOPS: Stop[] = [
   "sky": "city"
  },
  {
-  "ko": "방울탑",
+  "ko": "모다피의 탑",
   "region": "성도",
   "terrain": "ruins",
   "sky": "earthycave"
  },
  {
-  "ko": "알프의유적",
+  "ko": "알프의 유적",
   "region": "성도",
   "terrain": "ruins",
   "sky": "earthycave"
  },
  {
-  "ko": "뭉게숲",
+  "ko": "너도밤나무숲",
   "region": "성도",
   "terrain": "forest",
   "sky": "forest"
@@ -191,7 +419,7 @@ export const STOPS: Stop[] = [
   "sky": "city"
  },
  {
-  "ko": "어둠의동굴",
+  "ko": "어둠의 동굴",
   "region": "성도",
   "terrain": "cave",
   "sky": "dampcave"
@@ -203,7 +431,7 @@ export const STOPS: Stop[] = [
   "sky": "city"
  },
  {
-  "ko": "국립공원",
+  "ko": "자연공원",
   "region": "성도",
   "terrain": "flowers",
   "sky": "meadow"
@@ -215,7 +443,7 @@ export const STOPS: Stop[] = [
   "sky": "city"
  },
  {
-  "ko": "타버린탑",
+  "ko": "불탄탑",
   "region": "성도",
   "terrain": "ruins",
   "sky": "earthycave"
@@ -227,7 +455,7 @@ export const STOPS: Stop[] = [
   "sky": "city"
  },
  {
-  "ko": "초옥시티",
+  "ko": "진청시티",
   "region": "성도",
   "terrain": "town",
   "sky": "city"
@@ -239,13 +467,13 @@ export const STOPS: Stop[] = [
   "sky": "city"
  },
  {
-  "ko": "분노의호수",
+  "ko": "분노의 호수",
   "region": "성도",
   "terrain": "lakeside",
   "sky": "river"
  },
  {
-  "ko": "얼음길",
+  "ko": "얼음샛길",
   "region": "성도",
   "terrain": "cave",
   "sky": "icecave"
@@ -257,7 +485,7 @@ export const STOPS: Stop[] = [
   "sky": "city"
  },
  {
-  "ko": "용의굴",
+  "ko": "용의 굴",
   "region": "성도",
   "terrain": "cave",
   "sky": "dampcave"
@@ -273,6 +501,114 @@ export const STOPS: Stop[] = [
   "region": "성도",
   "terrain": "mountain",
   "sky": "mountain"
+ },
+ {
+  "ko": "절구산",
+  "region": "성도",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "야돈우물",
+  "region": "성도",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "방울탑",
+  "region": "성도",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "동성폭포",
+  "region": "성도",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "연결동굴",
+  "region": "성도",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "로켓단아지트",
+  "region": "성도",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "금빛지하통로",
+  "region": "성도",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "은빛 산",
+  "region": "성도",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "포켓슬론돔",
+  "region": "성도",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "아쿠아호",
+  "region": "성도",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "낭떠러지동굴",
+  "region": "성도",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "프런티어프런트",
+  "region": "성도",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "방울소리좁은길",
+  "region": "성도",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "신도유적",
+  "region": "성도",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "매몰탑",
+  "region": "성도",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "금빛시티 라디오타워",
+  "region": "성도",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "사파리존",
+  "region": "성도",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "담청등대",
+  "region": "성도",
+  "terrain": "field",
+  "sky": null
  },
  {
   "ko": "등화도시",
@@ -356,7 +692,7 @@ export const STOPS: Stop[] = [
   "ko": "해저동굴",
   "region": "호연",
   "terrain": "cave",
-  "sky": "dampcave"
+  "sky": "deepsea"
  },
  {
   "ko": "각성의 사당",
@@ -383,10 +719,16 @@ export const STOPS: Stop[] = [
   "sky": null
  },
  {
-  "ko": "하늘기둥",
+  "ko": "버려진 배",
   "region": "호연",
   "terrain": "field",
   "sky": null
+ },
+ {
+  "ko": "하늘기둥",
+  "region": "호연",
+  "terrain": "mountain",
+  "sky": "mountain"
  },
  {
   "ko": "사파리존",
@@ -405,6 +747,30 @@ export const STOPS: Stop[] = [
   "region": "호연",
   "terrain": "town",
   "sky": "city"
+ },
+ {
+  "ko": "마그마단 아지트",
+  "region": "호연",
+  "terrain": "field",
+  "sky": "volcanocave"
+ },
+ {
+  "ko": "환영탑",
+  "region": "호연",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "사막의 지하도",
+  "region": "호연",
+  "terrain": "desert",
+  "sky": "desert"
+ },
+ {
+  "ko": "아틀리에 굴",
+  "region": "호연",
+  "terrain": "cave",
+  "sky": "dampcave"
  },
  {
   "ko": "미로마을",
@@ -453,6 +819,12 @@ export const STOPS: Stop[] = [
   "region": "호연",
   "terrain": "town",
   "sky": "city"
+ },
+ {
+  "ko": "해저",
+  "region": "호연",
+  "terrain": "lakeside",
+  "sky": "deepsea"
  },
  {
   "ko": "굴뚝산",
@@ -507,6 +879,12 @@ export const STOPS: Stop[] = [
   "region": "호연",
   "terrain": "field",
   "sky": null
+ },
+ {
+  "ko": "배틀타워",
+  "region": "호연",
+  "terrain": "ruins",
+  "sky": "earthycave"
  },
  {
   "ko": "포켓몬리그",
@@ -623,6 +1001,36 @@ export const STOPS: Stop[] = [
   "sky": "meadow"
  },
  {
+  "ko": "육지 동굴",
+  "region": "호연",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "바다 동굴",
+  "region": "호연",
+  "terrain": "cave",
+  "sky": "deepsea"
+ },
+ {
+  "ko": "머나먼 고도",
+  "region": "호연",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "배틀프런티어",
+  "region": "호연",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "이끼 우주센터",
+  "region": "호연",
+  "terrain": "field",
+  "sky": null
+ },
+ {
   "ko": "떡잎마을",
   "region": "신오",
   "terrain": "town",
@@ -657,6 +1065,966 @@ export const STOPS: Stop[] = [
   "region": "신오",
   "terrain": "town",
   "sky": "city"
+ },
+ {
+  "ko": "들판시티",
+  "region": "신오",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "물가시티",
+  "region": "신오",
+  "terrain": "seaside",
+  "sky": "beachshore"
+ },
+ {
+  "ko": "포켓몬 리그",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "무쇠탄갱",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "골짜기발전소",
+  "region": "신오",
+  "terrain": "field",
+  "sky": "thunderplains"
+ },
+ {
+  "ko": "영원의숲",
+  "region": "신오",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "골풀무제철소",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "천관산",
+  "region": "신오",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "대습초원",
+  "region": "신오",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "신수유적",
+  "region": "신오",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "챔피언로드",
+  "region": "신오",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "험한 샛길",
+  "region": "신오",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "하드마운틴",
+  "region": "신오",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "숨겨진 샘의 길",
+  "region": "신오",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "귀혼동굴",
+  "region": "신오",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "선단신전",
+  "region": "신오",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "미혹의 동굴",
+  "region": "신오",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "유적마니아굴",
+  "region": "신오",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "자랑의 뒷마당",
+  "region": "신오",
+  "terrain": "flowers",
+  "sky": "meadow"
+ },
+ {
+  "ko": "강철섬",
+  "region": "신오",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "숲의 양옥집",
+  "region": "신오",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "진실호수",
+  "region": "신오",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "입지호수",
+  "region": "신오",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "예지호수",
+  "region": "신오",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "입지호수근처",
+  "region": "신오",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "예지호수근처",
+  "region": "신오",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "로스트타워",
+  "region": "신오",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "봉신마을",
+  "region": "신오",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "리조트에리어",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "잔모래마을",
+  "region": "신오",
+  "terrain": "desert",
+  "sky": "desert"
+ },
+ {
+  "ko": "신수마을",
+  "region": "신오",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "연고시티",
+  "region": "신오",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "장막시티",
+  "region": "신오",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "선단시티",
+  "region": "신오",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "창기둥",
+  "region": "신오",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "팔파크",
+  "region": "신오",
+  "terrain": "flowers",
+  "sky": "meadow"
+ },
+ {
+  "ko": "상호교류광장",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "꽃향기의 꽃밭",
+  "region": "신오",
+  "terrain": "flowers",
+  "sky": "meadow"
+ },
+ {
+  "ko": "만월섬",
+  "region": "신오",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "송별의샘",
+  "region": "신오",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "꽃의 낙원",
+  "region": "신오",
+  "terrain": "flowers",
+  "sky": "meadow"
+ },
+ {
+  "ko": "갤럭시단아지트",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "진실호수근처",
+  "region": "신오",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "신월섬",
+  "region": "신오",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "배틀타워",
+  "region": "신오",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "파이트에리어",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "서바이벌에리어",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "갈라진 바닷길",
+  "region": "신오",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "시작의 방",
+  "region": "신오",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "모두 두근두근",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "글로벌 트레이드 스테이션",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "무쇠시티 탄갱박물관",
+  "region": "신오",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "콘테스트회장",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "포핀하우스",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "포켓몬키우미집",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "게임코너",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "운하도서관",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "길잡이등대",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "물가시장",
+  "region": "신오",
+  "terrain": "seaside",
+  "sky": "beachshore"
+ },
+ {
+  "ko": "발도장박사",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "호텔 그랜드레이크",
+  "region": "신오",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "배틀파크",
+  "region": "신오",
+  "terrain": "flowers",
+  "sky": "meadow"
+ },
+ {
+  "ko": "배틀프런티어",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "배틀팩토리",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "배틀캐슬",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "배틀룰렛",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "배틀스테이지",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "깨어진세계",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "별장",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "승부장소",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "로토무의 방",
+  "region": "신오",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "갤럭시단 영원시티 빌딩",
+  "region": "신오",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "무쇠의 유적",
+  "region": "신오",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "빙산의 유적",
+  "region": "신오",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "바위산의 유적",
+  "region": "신오",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "포켓치 컴퍼니",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "트레이너 스쿨",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "꽃집",
+  "region": "신오",
+  "terrain": "flowers",
+  "sky": "meadow"
+ },
+ {
+  "ko": "자전거숍",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "장막백화점",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "카페",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "레스토랑",
+  "region": "신오",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "마름꽃마을",
+  "region": "하나",
+  "terrain": "flowers",
+  "sky": "meadow"
+ },
+ {
+  "ko": "넝쿨마을",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "성신시티",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "칠보시티",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "구름시티",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "뇌문시티",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "물풍경시티",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "궐수시티",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "설화시티",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "쌍용시티",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "꿈터",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "바람개비숲",
+  "region": "하나",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "리조트데저트",
+  "region": "하나",
+  "terrain": "desert",
+  "sky": "desert"
+ },
+ {
+  "ko": "고대의 성",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "냉동컨테이너",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "전기돌동굴",
+  "region": "하나",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "태엽산",
+  "region": "하나",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "용나선탑",
+  "region": "하나",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "보배마을",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "물결마을",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "가륜마을",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "포켓몬 리그",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "로열하나호",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "배틀서브웨이",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "포켓몬 뮤지컬",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "블랙시티",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "화이트포리스트",
+  "region": "하나",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "유나이티드타워",
+  "region": "하나",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "지하수맥굴",
+  "region": "하나",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "궐수의 동굴",
+  "region": "하나",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "타워오브해븐",
+  "region": "하나",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "설화의 습지초원",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "수행의 바위동굴",
+  "region": "하나",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "시프트팩토리",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "자이언트홀",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "리버티가든섬",
+  "region": "하나",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "스카이애로 브리지",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "물풍경도개교",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "실린더 브리지",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "빌리지 브리지",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "원더 브리지",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "하일링크",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "풍요의 사당",
+  "region": "하나",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "물결만",
+  "region": "하나",
+  "terrain": "seaside",
+  "sky": null
+ },
+ {
+  "ko": "미혹의 숲",
+  "region": "하나",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "챔피언로드",
+  "region": "하나",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "해저유적",
+  "region": "하나",
+  "terrain": "ruins",
+  "sky": "deepsea"
+ },
+ {
+  "ko": "부채시티",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "모란만시티",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "기하시티",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "포켓우드",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "조인애버뉴",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "산가지마을",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "산로마을",
+  "region": "하나",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "구름하수도",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "산가지목장",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "모란만콤비나트",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "리버스마운틴",
+  "region": "하나",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "스트레인저하우스",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "플라스마프리깃",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "고대샛길",
+  "region": "하나",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "야콘로드",
+  "region": "하나",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "백의 수동",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "흑의 마천루",
+  "region": "하나",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "해변동혈",
+  "region": "하나",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "마음의동",
+  "region": "하나",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "은혈",
+  "region": "하나",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "마린튜브",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "자연보호구역",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "땅밑유적",
+  "region": "하나",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "맹세의숲",
+  "region": "하나",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "N의 성",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "쇼핑몰 나인",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "P2연구소",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "메달사무국",
+  "region": "하나",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "바위산의 방",
+  "region": "하나",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "빙산의 방",
+  "region": "하나",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "쇠철의 방",
+  "region": "하나",
+  "terrain": "ruins",
+  "sky": "earthycave"
  },
  {
   "ko": "조아마을",
@@ -1085,6 +2453,12 @@ export const STOPS: Stop[] = [
   "sky": null
  },
  {
+  "ko": "나무열매밭",
+  "region": "칼로스",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
   "ko": "1번도로",
   "region": "알로라",
   "terrain": "stonepath",
@@ -1423,14 +2797,14 @@ export const STOPS: Stop[] = [
  {
   "ko": "일륜의 제단",
   "region": "알로라",
-  "terrain": "field",
-  "sky": null
+  "terrain": "mountain",
+  "sky": "mountain"
  },
  {
   "ko": "월륜의 제단",
   "region": "알로라",
-  "terrain": "field",
-  "sky": null
+  "terrain": "mountain",
+  "sky": "mountain"
  },
  {
   "ko": "피안의 유적",
@@ -1467,18 +2841,1574 @@ export const STOPS: Stop[] = [
   "region": "알로라",
   "terrain": "field",
   "sky": null
+ },
+ {
+  "ko": "경계터널",
+  "region": "알로라",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "환대비치",
+  "region": "알로라",
+  "terrain": "seaside",
+  "sky": "beachshore"
+ },
+ {
+  "ko": "해변 동굴",
+  "region": "알로라",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "울라울라비치",
+  "region": "알로라",
+  "terrain": "seaside",
+  "sky": "beachshore"
+ },
+ {
+  "ko": "울트라메가로폴리스",
+  "region": "알로라",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "울트라스페이스제로",
+  "region": "알로라",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "포켓리조트",
+  "region": "알로라",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "로켓단의 성",
+  "region": "알로라",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "터검니호의 눈동자",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "볼레이크 호반",
+  "region": "가라르",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "아라베스크마을",
+  "region": "가라르",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "배틀타워",
+  "region": "가라르",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "파이트케이브",
+  "region": "가라르",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "다리아래 벌판",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "챌린지비치",
+  "region": "가라르",
+  "terrain": "seaside",
+  "sky": "beachshore"
+ },
+ {
+  "ko": "챌린지로드",
+  "region": "가라르",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "키르쿠스마을",
+  "region": "가라르",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "투지의 동굴",
+  "region": "가라르",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "왕관신전",
+  "region": "가라르",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "햇살비추는숲",
+  "region": "가라르",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "모래먼지구덩이",
+  "region": "가라르",
+  "terrain": "desert",
+  "sky": "desert"
+ },
+ {
+  "ko": "다이맥스나무 언덕",
+  "region": "가라르",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "터검니호 동쪽",
+  "region": "가라르",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "인사의 들판",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "집중의 숲",
+  "region": "가라르",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "프리즈마을",
+  "region": "가라르",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "얼어붙은 바다",
+  "region": "가라르",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "빙점 설원",
+  "region": "가라르",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "가라르광산",
+  "region": "가라르",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "제2광산",
+  "region": "가라르",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "거인의 침소",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "거인의 밑창",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "거인의 거울 연못",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "거인의 의자",
+  "region": "가라르",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "루미너스메이즈숲",
+  "region": "가라르",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "너클시티",
+  "region": "가라르",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "너클 구릉",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "허니컴섬",
+  "region": "가라르",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "허니컴 바다",
+  "region": "가라르",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "바우마을",
+  "region": "가라르",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "빙산의 유적",
+  "region": "가라르",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "외딴섬 해역",
+  "region": "가라르",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "쇠철의 유적",
+  "region": "가라르",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "역린호수",
+  "region": "가라르",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "호반 동굴",
+  "region": "가라르",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "원환의 만",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "마스터 도장",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "맥스다이맥스굴",
+  "region": "가라르",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "엔진시티",
+  "region": "가라르",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "엔진시티 변두리",
+  "region": "가라르",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "엔진 리버사이드",
+  "region": "가라르",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "밀로틱호 북쪽",
+  "region": "가라르",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "옛 무덤",
+  "region": "가라르",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "정상으로 가는 눈길",
+  "region": "가라르",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "펄롱마을",
+  "region": "가라르",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "냄비바닥사막",
+  "region": "가라르",
+  "terrain": "desert",
+  "sky": "desert"
+ },
+ {
+  "ko": "해명 동굴",
+  "region": "가라르",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "바위산의 유적",
+  "region": "가라르",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "화창한 초원",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "출발의 설원",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "꾸벅졸음숲",
+  "region": "가라르",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "설중 계곡",
+  "region": "가라르",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "청량한 습지초원",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "밀로틱호 남쪽",
+  "region": "가라르",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "스파이크마을",
+  "region": "가라르",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "결정의 유적",
+  "region": "가라르",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "열도 바다",
+  "region": "가라르",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "스톤즈들판",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "래터럴마을",
+  "region": "가라르",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "세갈래 들판",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "악의 탑",
+  "region": "가라르",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "물의 탑",
+  "region": "가라르",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "단련 평원",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "등정터널",
+  "region": "가라르",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "터프마을",
+  "region": "가라르",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "연습의 동굴",
+  "region": "가라르",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "감시탑 유적지",
+  "region": "가라르",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "브래시마을",
+  "region": "가라르",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "터검니호 서쪽",
+  "region": "가라르",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "워크아웃 바다",
+  "region": "가라르",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "슛시티",
+  "region": "가라르",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "거인의 모자",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "에너지플랜트",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "모임의 공터",
+  "region": "가라르",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "모락모락 좁은 길",
+  "region": "가라르",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "갑옷섬의 동굴들",
+  "region": "가라르",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "와일드에리어의 포켓몬 굴",
+  "region": "가라르",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "에이팜산",
+  "region": "히스이",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "고대의 채석장",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "전장으로 가는 길",
+  "region": "히스이",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "포부의 언덕",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "눈사태 언덕",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "크레베이스 빙괴",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "미역감기 석호",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "데굴데굴 산지",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "데굴데굴 언덕",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "극한의 황무지",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "무대의 전장",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "미아의 바위해변",
+  "region": "히스이",
+  "terrain": "seaside",
+  "sky": "beachshore"
+ },
+ {
+  "ko": "공신 사원터",
+  "region": "히스이",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "공신 산길",
+  "region": "히스이",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "등반 절벽",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "삿갓구름 산길",
+  "region": "히스이",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "구름바다 고개",
+  "region": "히스이",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "황새풀 초원",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "건넘의 비탈",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "유령의 모래톱",
+  "region": "히스이",
+  "terrain": "desert",
+  "sky": "desert"
+ },
+ {
+  "ko": "큰뿔 고지",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "큰뿔 산길",
+  "region": "히스이",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "금강부락 뒷산",
+  "region": "히스이",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "금강부락",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "날갯소리 들판",
+  "region": "히스이",
+  "terrain": "flowers",
+  "sky": "meadow"
+ },
+ {
+  "ko": "페어리의 샘",
+  "region": "히스이",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "불뿜는섬",
+  "region": "히스이",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "꽃향기 개척지",
+  "region": "히스이",
+  "terrain": "flowers",
+  "sky": "meadow"
+ },
+ {
+  "ko": "큰입 늪",
+  "region": "히스이",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "은행 해변",
+  "region": "히스이",
+  "terrain": "seaside",
+  "sky": "beachshore"
+ },
+ {
+  "ko": "빙하 단구",
+  "region": "히스이",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "금색 평야",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "거목의 전장",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "험한 숲",
+  "region": "히스이",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "마음 바위산",
+  "region": "히스이",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "신전 고지",
+  "region": "히스이",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "숨겨진 해변",
+  "region": "히스이",
+  "terrain": "seaside",
+  "sky": "beachshore"
+ },
+ {
+  "ko": "시련의 모래톱",
+  "region": "히스이",
+  "terrain": "desert",
+  "sky": "desert"
+ },
+ {
+  "ko": "편자 들판",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "빙주의 방",
+  "region": "히스이",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "얼음귀신 폭포",
+  "region": "히스이",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "빙산의 전장",
+  "region": "히스이",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "빙산 지하도",
+  "region": "히스이",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "섬줄기 해변",
+  "region": "히스이",
+  "terrain": "seaside",
+  "sky": "beachshore"
+ },
+ {
+  "ko": "축복마을",
+  "region": "히스이",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "예지호수",
+  "region": "히스이",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "입지호수",
+  "region": "히스이",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "진실호수",
+  "region": "히스이",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "외딴 용수",
+  "region": "히스이",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "큰물고기의 암초",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "용암의 전장",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": "volcanocave"
+ },
+ {
+  "ko": "영월의 전장",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "숲속 부엌",
+  "region": "히스이",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "흑요 폭포",
+  "region": "히스이",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "무쇠터널",
+  "region": "히스이",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "진주부락",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "태고의 동굴",
+  "region": "히스이",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "해당화섬",
+  "region": "히스이",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "기도의 광장",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "모래손",
+  "region": "히스이",
+  "terrain": "desert",
+  "sky": "desert"
+ },
+ {
+  "ko": "잔모래 평원",
+  "region": "히스이",
+  "terrain": "desert",
+  "sky": "desert"
+ },
+ {
+  "ko": "진홍늪",
+  "region": "히스이",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "해초의 낙원",
+  "region": "히스이",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "바닷가 작은 굴",
+  "region": "히스이",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "안개의 유적",
+  "region": "히스이",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "진흙 대지",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "설경 온천",
+  "region": "히스이",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "선단신전",
+  "region": "히스이",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "신수유적",
+  "region": "히스이",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "순례자의 길",
+  "region": "히스이",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "시공의 뒤틀림",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "숨겨진 샘의 길",
+  "region": "히스이",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "열석 고개",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "신오신전",
+  "region": "히스이",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "안쪽 숲",
+  "region": "히스이",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "하굿둑",
+  "region": "히스이",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "톰볼로 길",
+  "region": "히스이",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "고요한 내해",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "귀혼동굴",
+  "region": "히스이",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "이탄 수련장",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "장막해안가",
+  "region": "히스이",
+  "terrain": "seaside",
+  "sky": "beachshore"
+ },
+ {
+  "ko": "미혹의 동굴",
+  "region": "히스이",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "미혹의 산림",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "폭설 골짜기",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "바람막이 숲",
+  "region": "히스이",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "바람 샛길",
+  "region": "히스이",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "절삭다리",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "해안 베이스캠프",
+  "region": "히스이",
+  "terrain": "seaside",
+  "sky": "beachshore"
+ },
+ {
+  "ko": "고지대 베이스캠프",
+  "region": "히스이",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "티스푼마을",
+  "region": "팔데아",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "플라토마을",
+  "region": "팔데아",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "테이블시티",
+  "region": "팔데아",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "세르클마을",
+  "region": "팔데아",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "베이크마을",
+  "region": "팔데아",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "포켓몬 리그",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "보울마을",
+  "region": "팔데아",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "누룩스시티",
+  "region": "팔데아",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "피케마을",
+  "region": "팔데아",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "카라프시티",
+  "region": "팔데아",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "마리네이드마을",
+  "region": "팔데아",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "참푸르마을",
+  "region": "팔데아",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "프리지마을",
+  "region": "팔데아",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "남부 에리어 1",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "남부 에리어 2",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "남부 에리어 3",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "남부 에리어 4",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "남부 에리어 5",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "남부 에리어 6",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "남팔데아해",
+  "region": "팔데아",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "티스푼 오솔길",
+  "region": "팔데아",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "후미진 동굴",
+  "region": "팔데아",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "오렌지 아카데미",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "베이크 공동",
+  "region": "팔데아",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "후목의 사당",
+  "region": "팔데아",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "동부 에리어 1",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "동부 에리어 2",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "동부 에리어 3",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "동팔데아해",
+  "region": "팔데아",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "표식의 나무숲",
+  "region": "팔데아",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "팀 쉐다르 아지트",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "팀 시 아지트",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "서부 에리어 1",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "서부 에리어 2",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "서부 에리어 3",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "로스트 사막",
+  "region": "팔데아",
+  "terrain": "desert",
+  "sky": "desert"
+ },
+ {
+  "ko": "서팔데아해",
+  "region": "팔데아",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "팀 세긴 아지트",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "동파의 사당",
+  "region": "팔데아",
+  "terrain": "cave",
+  "sky": "icecave"
+ },
+ {
+  "ko": "북부 에리어 1",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "북부 에리어 2",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "북부 에리어 3",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "오야 호수",
+  "region": "팔데아",
+  "terrain": "lakeside",
+  "sky": "river"
+ },
+ {
+  "ko": "푸르피케 산길",
+  "region": "팔데아",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "나페산",
+  "region": "팔데아",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "누룽지 숲길",
+  "region": "팔데아",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "진토의 사당",
+  "region": "팔데아",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "화마의 사당",
+  "region": "팔데아",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "북팔데아해",
+  "region": "팔데아",
+  "terrain": "seaside",
+  "sky": "beach"
+ },
+ {
+  "ko": "팀 카프 아지트",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "에리어제로",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "제로랩",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "그레이프 아카데미",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "애플 힐스",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "찬물 동굴",
+  "region": "팔데아",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "태라수호",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "공포의 굴",
+  "region": "팔데아",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "도깨비뿔 협곡",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "지옥골",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "북신센터",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "북신 가도",
+  "region": "팔데아",
+  "terrain": "stonepath",
+  "sky": null
+ },
+ {
+  "ko": "북신 원생지",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "세벗 플라자",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "북신 합류지",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "스이록마을",
+  "region": "팔데아",
+  "terrain": "town",
+  "sky": "city"
+ },
+ {
+  "ko": "도깨비산",
+  "region": "팔데아",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "도깨비이빨 공동",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "낙원의 황무지",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "신명 산길",
+  "region": "팔데아",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "영겁의 숲",
+  "region": "팔데아",
+  "terrain": "forest",
+  "sky": "forest"
+ },
+ {
+  "ko": "등꽃 들판",
+  "region": "팔데아",
+  "terrain": "flowers",
+  "sky": "meadow"
+ },
+ {
+  "ko": "캐니언 에리어",
+  "region": "팔데아",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "캐니언 스퀘어",
+  "region": "팔데아",
+  "terrain": "mountain",
+  "sky": "mountain"
+ },
+ {
+  "ko": "센터 스퀘어",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "전기돌의 암굴",
+  "region": "팔데아",
+  "terrain": "cave",
+  "sky": "dampcave"
+ },
+ {
+  "ko": "코스트 에리어",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "코스트 스퀘어",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "리그부",
+  "region": "팔데아",
+  "terrain": "ruins",
+  "sky": "earthycave"
+ },
+ {
+  "ko": "폴라 에리어",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "폴라 스퀘어",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "사바나 에리어",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "사바나 스퀘어",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
+ },
+ {
+  "ko": "등불의 미로",
+  "region": "팔데아",
+  "terrain": "field",
+  "sky": null
  }
 ];
 
 /**
  * Encounters spent at one stop before moving on.
  *
- * Hunting settles every five minutes, so this is about two hours — the same
- * number server/trainer.ts uses for "one encounter in twenty-five". At 240
- * stops the whole journey runs about 21 days of
- * uptime, then starts again at 태초마을.
+ * Hunting settles every five minutes, so this is an hour and a quarter at each
+ * place. It was 25 — two hours — back when the route was 240 stops and a lap
+ * came to about 21 days. The route is now nearly 700, and holding 25 would have
+ * made one lap two months of continuous uptime and half a year at a realistic
+ * eight hours a day. Fifteen puts a lap back around five weeks while still
+ * leaving long enough at each place to notice it.
  */
-export const LEG_LENGTH = 25;
+export const LEG_LENGTH = 15;
 
 /**
  * Where the pet is, from how much hunting has happened.

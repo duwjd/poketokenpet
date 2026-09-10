@@ -23,10 +23,13 @@
  * shape `gen-forms.ts` uses for mega stones works here: `item` + `itemnames`
  * filtered to `ko`.
  *
- * Sprite availability is checked with a HEAD per item rather than assumed. The
- * sprite repository thins out around Gen 7, so the Gen-8/9 items genuinely have
- * no icon — recording that here means the bag draws a glyph instead of showing
- * a broken image, the same fallback the Dynamax Band already uses.
+ * Sprite availability is checked with a HEAD per item rather than assumed, and
+ * in all three places upstream keeps them: most item icons sit flat under
+ * `items/`, but Generation 8 and 9 filed theirs in `items/gen8/` and
+ * `items/gen9/` subfolders. Looking only at the flat one is why the Ogerpon
+ * masks and the Clear Amulet were recorded as having no icon when they had one
+ * all along. What genuinely has none is recorded as null, and the bag draws a
+ * glyph rather than a broken image.
  *
  * Nothing here decides WHICH condition opens WHICH species. That is a design
  * judgement, so it is hand-written in server/legends.ts and left out of the
@@ -35,9 +38,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { itemSpriteUrls } from '../server/sprites.ts';
 
 const ENDPOINT = 'https://graphql.pokeapi.co/v1beta2';
-const SPRITES = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items';
 
 /**
  * The signature items, by PokeAPI slug.
@@ -108,14 +111,17 @@ async function gql<T>(query: string): Promise<T> {
   return json.data;
 }
 
-/** Does the sprite repository actually carry this icon? */
+/** Does any icon source the app reaches actually carry this one? */
 async function hasSprite(slug: string): Promise<boolean> {
   try {
-    const res = await fetch(`${SPRITES}/${slug}.png`, {
-      method: 'HEAD',
-      signal: AbortSignal.timeout(15_000),
-    });
-    return res.ok;
+    // The very list `ensureItemSprite` walks, imported rather than copied: an
+    // icon recorded here as present that the app never asks for is a permanent
+    // blank in the bag, and the two drifting apart is how that happens.
+    for (const url of itemSpriteUrls(slug)) {
+      const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(15_000) });
+      if (res.ok) return true;
+    }
+    return false;
   } catch {
     return false;
   }

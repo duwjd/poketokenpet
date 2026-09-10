@@ -3,6 +3,7 @@ import { bridge, fetchState, spriteUrl, type Prefs } from './api.ts';
 import { battleUiVars } from './battleui.ts';
 import { fitScale, petWindow } from './pixelFit.ts';
 import { measureSprite } from './spriteBox.ts';
+import { stillPokemon } from './spriteName.ts';
 import './PetApp.css';
 
 type PetState = {
@@ -207,7 +208,7 @@ function Sprite({ name, isEgg, ratio, size }: { name: string; isEgg: boolean; ra
   return (
     <div className="pet-stage" style={{ width: stageW, height: stageH }}>
       <img
-        className={`pet-sprite${isEgg && ratio > 0.6 ? ' wobble' : ''}`}
+        className={`pet-sprite${isEgg && ratio > 0.6 ? ' wobble' : ''}${stillPokemon(name) ? ' still' : ''}`}
         src={spriteUrl(name)}
         alt=""
         draggable={false}

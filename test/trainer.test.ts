@@ -10,6 +10,7 @@ import {
   trainerReward,
   type Trainer,
 } from '../server/trainer.ts';
+import { gymAt } from '../server/gyms.ts';
 
 const H = 10_000_000;
 const T0 = 1_700_000_000_000;
@@ -307,6 +308,10 @@ describe('trainers inside hunt()', () => {
     for (let k = 0; k < 6000 && checked < 3; k++) {
       const t = trainerAt(k);
       if (!t || !trainerReward(k, t).item) continue;
+      // A gym leader standing at the same encounter takes it, and hands over a
+      // badge rather than a route trainer's prize. Rare, but it happens — and
+      // it happened here the first time the route was regenerated.
+      if (gymAt(k, new Set())) continue;
       const s = hunting({ huntCount: k });
       s.active!.moves = [...TAUGHT];
       const after = settle(s, 1);

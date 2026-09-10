@@ -5,6 +5,7 @@ import { TYPES } from '../server/moves.ts';
 import { DEFAULT_FX, effectFor } from '../server/movefx.ts';
 import { BG_SLUGS } from '../server/biome.ts';
 import { STOPS } from '../src/journey.ts';
+import { stillPokemon } from '../src/spriteName.ts';
 
 /**
  * The dev server and the packaged Electron app serve the same /api/state shape.
@@ -69,6 +70,20 @@ describe('state payload', () => {
     expect(actions('server/plugin.ts')).toContain('teach');
     expect(actions('server/plugin.ts')).toContain('rename');
   });
+
+  it('routes the party actions through one dispatcher, not two copies', () => {
+    // These are the only actions neither surface names. Their names, their
+    // id parsing and their dispatch all live in server/party.ts precisely so
+    // the two surfaces cannot list them differently — the grep above would
+    // never notice, because it would see the same literals in both.
+    for (const f of surfaces) {
+      expect(readFileSync(f, 'utf8'), f).toMatch(/partyAction\(/);
+    }
+    const party = readFileSync('server/party.ts', 'utf8');
+    for (const a of ['partyset', 'partyclear', 'partyassign']) {
+      expect(party, a).toContain(`'${a}'`);
+    }
+  });
 });
 
 /**
@@ -124,6 +139,7 @@ describe('korean particles', () => {
       'server/hunt.ts',
       'server/game.ts',
       'server/trainer.ts',
+      'server/gyms.ts',
       'server/state.ts',
     ];
     for (const f of files) {
@@ -168,6 +184,8 @@ describe('sprite cache purge', () => {
       'payload.dex.map',
       // A trainer's whole team is on screen one after another.
       'trainerFight?.team',
+      // All eight badges are drawn whenever 업적 is open, held or not.
+      'payload.badges.cases.map',
     ]) {
       expect(src.slice(src.indexOf('const keepSprites')), field).toContain(field);
     }
@@ -180,6 +198,42 @@ describe('sprite cache purge', () => {
       // Without this the readout keeps showing the pre-purge size.
       expect(src.slice(src.indexOf('async function clearSprites')), f).toMatch(/cache = null/);
     }
+  });
+
+  /**
+   * A rejected body is not a cached file, so a purge cannot forget it — and it
+   * outlives an ordinary miss by twelve hours. Someone who empties the cache by
+   * hand is asking for another look, so the rejections go with it.
+   */
+  it('forgets rejected downloads too, not only misses', () => {
+    const src = readFileSync('server/sprites.ts', 'utf8');
+    const purge = src.slice(src.indexOf('export async function pruneCache'));
+    expect(purge).toContain('misses.clear()');
+    expect(purge).toContain('rejects.clear()');
+  });
+});
+
+/**
+ * The renderer decides which sprites need an idle drawn over them from the cache
+ * FILE NAME, because a flat PNG is exactly the art that cannot move by itself.
+ * That is the only place `src/` leans on a rule `server/` owns, so pin it here
+ * rather than letting the two drift into a breathing shopkeeper.
+ */
+describe('still-sprite naming', () => {
+  it('names the flat tier the way the renderer expects', () => {
+    const src = readFileSync('server/sprites.ts', 'utf8');
+    expect(src).toContain('return `${id}-s${suffix}.png`;');
+    // The animated tiers must NOT land on that shape, or they get an idle too.
+    for (const other of ['`${id}-a${suffix}.gif`', '`${id}-w${suffix}.gif`', '`${id}-z${suffix}.gif`'])
+      expect(src).toContain(`return ${other};`);
+  });
+
+  it('matches every flat name and nothing else', () => {
+    for (const name of ['530-s.png', '10287-s.png', '10287-ssh.png', '25-sb.png', '25-sshb.png'])
+      expect(stillPokemon(name), name).toBe(true);
+    // A GIF already breathes; the clerk, the badges and the egg are not Pokemon.
+    for (const name of ['530-a.gif', '10287-z.gif', '10034-wsh.gif', 'npc-waitress.png', 'badge-3.png', 'egg.png', 'item-rare-candy.png'])
+      expect(stillPokemon(name), name).toBe(false);
   });
 });
 
@@ -401,17 +455,25 @@ describe('scene art', () => {
     }
   });
 
-  it('never commits a battle backdrop or a move effect', () => {
+  it('never commits a battle backdrop, a move effect, a portrait or a badge', () => {
     // The opposite rule to the one above, and the reason both exist. The Gen-5
-    // backdrops and the impact art are Game Freak's; server/sprites.ts fetches
-    // them at runtime into ~/.poketokenpet and nothing may check one in beside
-    // the CC0 art. Both prefixes, because both come off the same host.
-    for (const dir of ['src', 'src/scenes', 'public']) {
+    // backdrops, the impact art, the trainer portraits and the gym badges are
+    // all Game Freak's; server/sprites.ts fetches them at runtime into
+    // ~/.poketokenpet and nothing may check one in beside the CC0 art. One
+    // clause per cache prefix, so a new asset kind that forgets this fails
+    // here rather than shipping inside a release.
+    for (const dir of ['src', 'src/scenes', 'public', 'build', 'docs']) {
       const files = readdirSync(dir);
-      expect(files.filter((f) => f.startsWith('bg-')), dir).toEqual([]);
-      expect(files.filter((f) => f.startsWith('fx-')), dir).toEqual([]);
+      for (const prefix of ['bg-', 'fx-', 'npc-', 'badge-', 'item-']) {
+        expect(files.filter((f) => f.startsWith(prefix)), `${dir} ${prefix}`).toEqual([]);
+      }
     }
-    expect(readFileSync('server/sprites.ts', 'utf8')).toMatch(/never committed/);
+    // And each fetcher carries the rule it is bound by, in its own doc block.
+    const sprites = readFileSync('server/sprites.ts', 'utf8');
+    const at = sprites.indexOf('export function ensureBadgeSprite');
+    expect(at, 'ensureBadgeSprite has moved or gone').toBeGreaterThan(0);
+    expect(sprites.slice(at - 1400, at)).toMatch(/never committed/);
+    expect(sprites.slice(at)).toMatch(/badges\//);
   });
 
   it('sends the nature in Korean, not as a slug', () => {
@@ -472,3 +534,4 @@ describe('scene art', () => {
     }
   });
 });
+

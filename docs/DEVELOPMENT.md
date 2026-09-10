@@ -78,8 +78,14 @@ rm ~/.poketokenpet/state.json   # 게임만 초기화 (캐시는 유지)
 | `src/ui-*.png` | `npm run gen:ui` |
 | `docs/img/*.png` | `npm run gen:shots` |
 
-반대로 `server/legends.ts`(전설 조우 조건)와 `server/achievements.ts`(업적 표)는
+반대로 `server/legends.ts`(전설 조우 조건), `server/achievements.ts`(업적 표),
+`server/gyms.ts`(관동 체육관 관장·배지·포켓몬리그), `server/shrines.ts`(전설 전용 공간)는
 **손으로 쓰는 파일**입니다.
+
+`server/gyms.ts`에는 규칙이 하나 더 붙습니다. `server/trainer.ts`는 자기 클래스명이
+"공식 로컬라이즈명이 아니라 우리가 붙인 것"이라고 밝혀 두었는데, **그 면허는 gyms.ts에
+미치지 않습니다.** 웅·이슬·회색배지는 실재하는 인물과 물건의 이름이라 지어내면 두 시간마다
+사실 오류가 화면에 찍힙니다. 지명과 같은 규칙 — 확인한 것만 넣고, 확인 안 되면 넣지 않습니다.
 
 ### 새 시스템을 넣으면 업적도 같이 넣습니다
 

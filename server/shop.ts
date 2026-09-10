@@ -114,11 +114,13 @@ export type Product =
       kind: 'item';
       id: ItemId;
       /**
-       * PokeAPI item sprite slug, or null where upstream has no icon.
+       * Item sprite slug, or null where no icon set this app reaches has one.
        *
-       * The Dynamax Band is the only one: it is a Gen-8 key item and the sprite
-       * repository never picked it up. The panel draws a glyph instead, the
-       * same fallback the eggs have always used.
+       * Nothing is null any more. The Dynamax Band was, for as long as only
+       * PokeAPI's flat `items/` folder was searched — it is a Generation 8 key
+       * item that upstream never filed there. `ensureItemSprite` now also asks
+       * pokesprite, which has it. The type stays nullable because the next
+       * generation's key item will be in exactly the same position.
        */
       sprite: string | null;
       rarity: null;
@@ -186,7 +188,7 @@ export const PRODUCTS: Product[] = [
     name: '다이맥스밴드',
     desc: '가지고만 있으면 됩니다. 거다이맥스할 수 있는 종이 배틀 3턴 동안 받는 피해가 절반이 됩니다.',
     priceMult: 24,
-    sprite: null,
+    sprite: 'dynamax-band',
     rarity: null,
     kind: 'item',
   },

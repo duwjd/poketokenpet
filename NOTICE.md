@@ -41,7 +41,10 @@ The runtime sources are:
 | What | Host | Note |
 |---|---|---|
 | Pokémon sprites (Gen-5 B/W, Showdown, static) | [PokeAPI/sprites](https://github.com/PokeAPI/sprites) | Fetched per species, on demand |
+| Gym badge icons | [PokeAPI/sprites](https://github.com/PokeAPI/sprites) | 8 files, ~33 KB total, once ever |
 | Battle backdrops, trainer sprites | [play.pokemonshowdown.com](https://pokemonshowdown.com) | ~15 files, ~0.2 MB total, once ever |
+| Animated sprites PokeAPI has no copy of | [play.pokemonshowdown.com](https://pokemonshowdown.com) | Only where the mirror above has a hole — 54 ids today, none of which Showdown has drawn yet |
+| Two item icons PokeAPI has no copy of | [msikma/pokesprite](https://github.com/msikma/pokesprite) | Dynamax Band and Reins of Unity, once ever |
 | Species / move / dex / form text data | [PokeAPI](https://pokeapi.co) | Generated once into `server/*.ts` by `scripts/gen-*.ts` |
 
 If you are a rights holder and want this changed or taken down, please open an
@@ -123,8 +126,8 @@ their own licences; see `package.json` and `node_modules/*/LICENSE`.
   `scripts/gen-shots.ts`가 만드는 **실행 중인 앱의 사진**이고, 에셋을 재배포하는 것이
   아니라 소프트웨어를 보여주는 것이며, 여기서 쓸 수 있는 스프라이트를 뽑아낼 수는 없습니다.
 
-실행 중 접속하는 곳은 위 영문 표와 같습니다 — PokeAPI/sprites, Pokémon Showdown,
-그리고 텍스트 데이터 생성에만 쓰이는 PokeAPI입니다.
+실행 중 접속하는 곳은 위 영문 표와 같습니다 — PokeAPI/sprites, pokesprite,
+Pokémon Showdown, 그리고 텍스트 데이터 생성에만 쓰이는 PokeAPI입니다.
 
 권리자께서 수정이나 삭제를 원하시면 이 저장소에 이슈를 남겨 주세요. 즉시
 처리하겠습니다.

@@ -28,7 +28,10 @@ const maxed = () =>
   base({
     lifetimeEarned: H * 5000,
     spentTokens: H * 500,
-    huntCount: 10_000,
+    // Past a full lap of the route, which is what `travel-lap` measures. It
+    // was 10_000 and the route grew to 10_920 encounters, so the top rung of
+    // the 여행 ladder quietly stopped being reachable by this fixture.
+    huntCount: 20_000,
     // Spans all nine generations, and carries a shiny, a fusion and a nickname.
     dex: Array.from({ length: 1024 }, (_, i) => ({
       speciesId: i + 1,
@@ -40,6 +43,15 @@ const maxed = () =>
     active: { ...ALIVE, moves: [1, 2, 3, 4] },
     retiredCount: 200,
     trainerWins: 500,
+    // Every Kanto badge, and enough gym wins for the rematch row to have paid.
+    badges: [1, 2, 3, 4, 5, 6, 7, 8],
+    gymWins: 40,
+    // The league cleared, so its one-shots and its repeat have both paid.
+    leagueBest: 5,
+    leagueWins: 3,
+    // Twenty legendaries met — the counter the shrine rooms and the 조우
+    // rungs both read. Distinct from having RAISED any of them.
+    metLegends: [144, 145, 146, 150, 151, 243, 244, 245, 249, 250, 380, 381, 382, 383, 384, 480, 481, 482, 483, 484],
     tmsFound: 500,
     tms: Object.fromEntries(Array.from({ length: 70 }, (_, i) => [i + 1, 1])),
     stones: Object.fromEntries(Array.from({ length: 40 }, (_, i) => [10_000 + i, 1])),

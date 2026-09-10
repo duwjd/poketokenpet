@@ -1447,6 +1447,65 @@ describe('panel tabs — keyboard', () => {
   });
 });
 
+describe('the league party', () => {
+  const openParty = async () => {
+    const u = userEvent.setup();
+    render(<App />);
+    await ready();
+    await u.click(screen.getByRole('tab', { name: '도감' }));
+    await u.click(screen.getByRole('button', { name: /파티/ }));
+    return u;
+  };
+
+  it('is a third view of the dex, not a tab of its own', async () => {
+    // Every candidate is on the grid below it, which is the whole argument
+    // for putting it here.
+    const u = userEvent.setup();
+    render(<App />);
+    await ready();
+    await u.click(screen.getByRole('tab', { name: '도감' }));
+    expect(screen.getByRole('button', { name: '파티 2 / 6' })).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: /파티/ })).toBeNull();
+  });
+
+  it('draws six seats, filled and empty', async () => {
+    await openParty();
+    expect(document.querySelectorAll('.partyseats li')).toHaveLength(6);
+    expect(document.querySelectorAll('.partyseats li.empty')).toHaveLength(4);
+    // Scoped to the seats: the grid below is still on screen and carries the
+    // same names, which is the point of putting the two together.
+    const seated = [...document.querySelectorAll('.partyseats .lbl > span')].map(
+      (el) => el.textContent,
+    );
+    expect(seated.join(' ')).toContain('리자몽');
+    expect(seated.join(' ')).toContain('거북왕');
+  });
+
+  it('names the nearer obstacle first', async () => {
+    // One badge of eight, so the badges are what is missing — not the party.
+    // Saying "fill six seats" to somebody who cannot enter yet would be true
+    // and useless.
+    await openParty();
+    expect(screen.getByText(/배지 8개를 모으면/)).toBeTruthy();
+  });
+
+  it('separates a move it already knows from one that costs a machine', async () => {
+    const u = await openParty();
+    await u.click(screen.getAllByRole('button', { name: '기술' })[0]);
+    // Free, because the dex records 리자몽 having known it.
+    expect(screen.getByText('날개치기')).toBeTruthy();
+    expect(screen.getByText('이미 배운 기술')).toBeTruthy();
+    // And the one out of the bag says out loud that it is spent.
+    expect(screen.getByText('기술머신 소비')).toBeTruthy();
+  });
+
+  it('marks a dex card that is already fielded', async () => {
+    await openParty();
+    // 리자몽 is in the party and on the grid; the card wears the accent edge.
+    expect(document.querySelectorAll('.dex li.inparty').length).toBeGreaterThan(0);
+  });
+});
+
 describe('the achievement board', () => {
   const open = async () => {
     const u = userEvent.setup();
@@ -1455,6 +1514,36 @@ describe('the achievement board', () => {
     await u.click(screen.getByRole('tab', { name: '업적' }));
     return u;
   };
+
+  it('draws all eight badge slots, earned or not', async () => {
+    await open();
+    // A checklist, not a shelf: the seven you have not won are the point.
+    expect(screen.getByRole('heading', { level: 3, name: /배지\s*1 \/ 8/ })).toBeTruthy();
+    const slots = document.querySelectorAll('.badgecase li');
+    expect(slots).toHaveLength(8);
+    expect(document.querySelectorAll('.badgecase li.unseen')).toHaveLength(7);
+    // Every slot draws real art, including the ones not yet earned.
+    expect(document.querySelectorAll('.badgecase img')).toHaveLength(8);
+  });
+
+  it('says what an earned slot is and where an unearned one waits', async () => {
+    await open();
+    // Earned: the badge's own name, and the TM it came with.
+    expect(screen.getByText('회색배지')).toBeTruthy();
+    expect(screen.getByText('암석봉인')).toBeTruthy();
+    // Not yet: the city, and how far the journey still has to walk.
+    expect(screen.getByText('블루시티')).toBeTruthy();
+    expect(screen.getByText('47조우')).toBeTruthy();
+    // Shut behind the other seven, which is 상록시티 and only ever 상록시티.
+    expect(screen.getByText('배지 7개 필요')).toBeTruthy();
+  });
+
+  it('keeps the case up when a category is filtered', async () => {
+    // It is the case, not a group of the board, so the chips do not hide it.
+    const u = await open();
+    await u.click(screen.getByRole('button', { name: '도감' }));
+    expect(document.querySelectorAll('.badgecase li')).toHaveLength(8);
+  });
 
   it('counts what is done against the whole board', async () => {
     await open();
@@ -1474,7 +1563,13 @@ describe('the achievement board', () => {
   it('drops the headings once a single category is chosen', async () => {
     const u = await open();
     await u.click(screen.getByRole('button', { name: '도감' }));
-    expect(screen.queryByRole('heading', { level: 3 })).toBeNull();
+    // The board's own group headings, not the badge case's — that one is not
+    // part of the board and stays put whatever the chips say.
+    expect(
+      screen.queryAllByRole('heading', { level: 3 }).filter((h) =>
+        h.className.includes('awardshelf'),
+      ),
+    ).toEqual([]);
     expect(screen.queryByText('첫 졸업')).toBeNull();
     expect(screen.getByText('도감 50종')).toBeTruthy();
 

@@ -145,6 +145,27 @@ export type Companion = {
   moves: number[];
 };
 
+/**
+ * One member of the Pokemon League party.
+ *
+ * Backed by the dex — you may only field something you actually raised — and
+ * so keyed the way the dex is, on (species, shiny). Lives here rather than in
+ * server/party.ts because it is save state, and because server/gyms.ts needs
+ * the type to fight with and must not import the builder to get it.
+ *
+ * `moves` is a copy, not a reference to the dex entry's: a TM spent putting a
+ * move here is spent, and the dex's own record of what the species has known
+ * keeps growing independently.
+ */
+export type PartyMember = {
+  speciesId: number;
+  shiny: boolean;
+  /** Decoration, as in the dex entry it came from. */
+  formId?: number;
+  /** Up to MOVE_SLOTS. May be empty — an unarmed member is a legal bad choice. */
+  moves: number[];
+};
+
 export type DexEntry = {
   speciesId: number;
   shiny: boolean;
@@ -159,6 +180,25 @@ export type DexEntry = {
    * id in 1..1025. This changes the card's picture, nothing else.
    */
   formId?: number;
+  /**
+   * Machine moves this species has been left knowing, across every individual
+   * of it that has graduated.
+   *
+   * A UNION rather than the last one's moveset, and never overwritten — the
+   * dex is a record of the collection, so "이 종이 배운 적 있는 기술" is the
+   * honest reading and it can only ever grow. `server/party.ts` treats these
+   * as free: the Pokemon already knows them, so putting one back on a league
+   * party costs no TM from the bag.
+   *
+   * Filtered by `canLearn` on the species it is filed under. A move taught to
+   * a 파이리 and carried into a 리자몽 is real for the 리자몽 only if a 리자몽
+   * could be taught it too, and claiming otherwise would let the party builder
+   * offer a move the battle would refuse.
+   *
+   * Absent on every entry that predates this, which is the honest answer: no
+   * record of those movesets exists anywhere to recover.
+   */
+  moves?: number[];
 };
 
 /** One settled encounter, kept for the UI. Keyed by `seq` so re-runs overwrite. */
@@ -196,6 +236,60 @@ export type HuntEntry = {
     won: boolean;
     /** The item handed over, if any. */
     item?: 'shiny-charm' | 'everstone';
+  };
+  /**
+   * Set when the trainer above was a gym leader rather than someone off a route.
+   *
+   * A SIBLING of `trainer`, not a replacement. A leader's name, team and
+   * outcome are the same three facts a route trainer records, and the scene
+   * draws them with the same component — so reusing that field is what lets
+   * `SceneTrainerFight`, the `meet` beat, the portrait and the ball tray work
+   * with no changes at all. Only what a badge adds lives here.
+   *
+   * Recorded rather than re-derived, and here that is a correctness rule
+   * rather than a preference: a gym challenge is NOT pure in `seq` the way
+   * `trainerAt` is — it reads the badge count, which changes inside the very
+   * range `hunt()` replays. The panel must read this record.
+   */
+  gym?: {
+    /** `GymRow.id`. A permanent key; see server/gyms.ts. */
+    id: string;
+    /** The badge handed over on a win, or null on a loss or a rematch. */
+    badge: number | null;
+    /** The TM that came with it, as a move id. Null when no badge was won. */
+    prize: number | null;
+  };
+  /**
+   * Set when this encounter was one Elite Four member of a league run.
+   *
+   * Like `gym`, it rides beside `trainer` rather than replacing it — the panel
+   * draws a named challenger the same way either way. What is new is `party`:
+   * WHICH of the six were out, in round order. Without it a replay would draw
+   * today's party into yesterday's fight, the same failure `form` is recorded
+   * to avoid.
+   */
+  league?: {
+    /** `LeagueRow.id`. */
+    id: string;
+    /** Which member, 0..4. */
+    at: number;
+    won: boolean;
+    /** True on the encounter that finished the whole run. */
+    cleared: boolean;
+    /** The party species that actually stood, per round. */
+    party: number[];
+    /**
+     * The party as it was when this encounter began: its six species, and its
+     * six bars.
+     *
+     * Enough to replay the fight exactly, and enough to know when not to try.
+     * The panel re-runs `leagueRoundAt` rather than storing turns — the same
+     * bargain every other battle here makes — and that needs the HP it started
+     * from, which nothing else records. `team` is the tripwire: a party
+     * rebuilt since would narrate somebody else's fight.
+     */
+    team: number[];
+    hp: number[];
   };
   /**
    * Set when this encounter was a gated legendary.
@@ -280,6 +374,77 @@ export type GameState = {
    * ideal, and the achievements screen says so.
    */
   trainerWins?: number;
+  /**
+   * Gym badges earned, by badge number. 1..8 is Kanto.
+   *
+   * A sorted array rather than a Set because state.json is JSON, and keyed by
+   * NUMBER rather than by leader id for the same reason `stones` is keyed by
+   * form id: the number IS the upstream sprite's filename, and every region
+   * numbers its badges 1..8 in gym order. One number is the save key, the
+   * sprite and the display order at once.
+   *
+   * Nothing else in the save can re-derive a badge, so `migrate` dedupes,
+   * sorts and clamps it rather than passing it through.
+   *
+   * Optional, so old saves need no migration — but it MUST still be named in
+   * `migrate`; see the allow-list warning there.
+   */
+  badges?: number[];
+  /**
+   * Gym battles won, ever, rematches included.
+   *
+   * Separate from `trainerWins`, which a gym win also increments — a leader IS
+   * a trainer, and a board that did not count the biggest trainer battles in
+   * the game would start lying the day they shipped. This one exists because
+   * `badges` caps at eight and stops moving, so it cannot measure the habit
+   * the way a repeating achievement needs to.
+   */
+  gymWins?: number;
+  /**
+   * The Pokemon League party — up to six, drawn from the dex.
+   *
+   * The only save field that is a CHOICE rather than a tally, which is why it
+   * has no self-healing floor in `migrate`: nothing else in the save can say
+   * what six the player picked, so a lost write costs the picking, not the
+   * Pokemon. Arming a member spends the machine, so `tms` moves with this.
+   *
+   * Optional, no schema bump — and it MUST be named in `migrate`.
+   */
+  party?: PartyMember[];
+  /**
+   * A league challenge in progress.
+   *
+   * `at` is which Elite Four member comes next (0..4) and `hp` is the party's
+   * six bars as they stand. Cleared by a loss, by clearing the fifth, and by
+   * walking out of 석영고원 — a challenge is something you finish where you
+   * started it.
+   */
+  leagueRun?: { at: number; hp: number[] } | null;
+  /** Region -> when its Hall of Fame was first reached, in ms. */
+  leagues?: Record<string, number>;
+  /** League runs cleared, ever. */
+  leagueWins?: number;
+  /**
+   * Legendaries this save has actually MET in the wild, by species id.
+   *
+   * Written whether the fight was won or lost — meeting is the encounter, not
+   * the outcome, and a Palkia that knocked you flat was still met. Nothing
+   * else in the save can answer this: `legendEggs` records a WIN and empties
+   * when the egg hatches, `dex` records a graduation, and a loss leaves no
+   * trace at all.
+   *
+   * `server/shrines.ts` reads it. Optional, no schema bump, and `migrate`
+   * floors it at what the save can already prove — see there.
+   */
+  metLegends?: number[];
+  /**
+   * The furthest a challenge has ever reached, 0..5.
+   *
+   * Most runs end in a loss, and a loss that leaves nothing behind gives the
+   * screen nothing to say. This one number feeds both the "사천왕 돌파"
+   * achievement and the case's "목호까지 갔다". It never goes down.
+   */
+  leagueBest?: number;
   /**
    * TMs picked up, ever.
    *

@@ -14,6 +14,7 @@ import {
   progress,
   speciesIdOf,
   type GameEvent,
+  type HuntEntry,
   type Rarity,
 } from './game.ts';
 import { ACHIEVEMENTS, CAT_KO, settleAchievements, tiersOf } from './achievements.ts';
@@ -39,6 +40,7 @@ import { NAMES, NATURE_KO, speciesName } from './species.ts';
 import {
   cacheStats,
   ensureBackground,
+  ensureBadgeSprite,
   ensureEffect,
   ensureEggSprite,
   ensureItemSprite,
@@ -51,9 +53,21 @@ import { biomeFor } from './biome.ts';
 // Renderer-side module, imported for its data rather than its rendering: it is
 // pure, DOM-free, and its only import is a type. server/hunt.ts already reaches
 // across for src/josa.ts for the same reason.
-import { journeyFor } from '../src/journey.ts';
 import { generationOf, rarityOfSpecies } from './dex.ts';
 import { trainerAt, trainerBattleAt } from './trainer.ts';
+import {
+  GYMS,
+  LEAGUE,
+  LEAGUE_CITY,
+  encountersUntilStop,
+  gymById,
+  gymLocked,
+  gymTrainer,
+  leagueById,
+  leagueRoundAt,
+} from './gyms.ts';
+import { PARTY_SIZE, assignable } from './party.ts';
+import { shrinesOpen, stopFor } from './shrines.ts';
 import { appDataDir } from './paths.ts';
 
 /**
@@ -362,14 +376,45 @@ export async function buildState(mode: CountMode = 'activity') {
    * log row still says who it was and whether it was won, from the record.
    * Happens at most once, immediately after such an update.
    */
-  const trainerFor = async (seq: number, form: Form | null, saved: { name: string }) => {
-    const t = trainerAt(seq);
+  const trainerFor = async (
+    seq: number,
+    form: Form | null,
+    saved: { name: string },
+    gym?: HuntEntry['gym'],
+  ) => {
+    /**
+     * A gym leader is looked up by the id the entry RECORDED, never re-derived
+     * from `seq`.
+     *
+     * For a route trainer that is a preference; here it is correctness.
+     * `gymAt` reads the badge count, and the badge count changes inside the
+     * very range `hunt()` replays — so "who was standing at seq 78" has no
+     * answer that does not also name which badges were held at the time. The
+     * record has it; the function does not.
+     *
+     * The name tripwire below still applies. For a gym it guards the table
+     * rather than the roll: renaming a leader drops one replay instead of
+     * narrating a fight against somebody else.
+     */
+    const row = gym ? gymById(gym.id) : null;
+    const t = gym ? (row ? gymTrainer(row) : null) : trainerAt(seq);
     if (!t || !active || t.name !== saved.name) return null;
     const fight = trainerBattleAt(seq, t, active.moves, speciesId ?? undefined, formOpts(form, activeForm));
     return {
       name: t.name,
       won: fight.won,
       lostAt: fight.lostAt,
+      /**
+       * The badge this fight handed over, or null.
+       *
+       * Read off the RECORD rather than off the leader, because a rematch
+       * hands over nothing and the row still has a badge number. Resolved
+       * here for the same reason `nature` is: the renderer never looks
+       * anything up.
+       */
+      badgeKo: gym?.badge ? (row?.badgeKo ?? null) : null,
+      badgeSprite: gym?.badge ? await ensureBadgeSprite(gym.badge) : null,
+      prizeKo: gym?.prize ? (moveById(gym.prize)?.ko ?? null) : null,
       /** The class portrait for the challenge beat. Null while it downloads. */
       sprite: await ensureNpcSprite(t.sprite),
       team: await Promise.all(
@@ -380,6 +425,63 @@ export async function buildState(mode: CountMode = 'activity') {
         })),
       ),
       rounds: fight.rounds.map(dressTurns),
+      /**
+       * Which of MY side stood for each round.
+       *
+       * Always null here: a route trainer and a gym leader are both fought by
+       * the one companion, whose art the scene already has. Present so the two
+       * resolvers hand back the same shape and `SceneTrainerFight` needs no
+       * union — the league is the only fight where my side changes mid-battle.
+       */
+      mine: null as { speciesId: number; name: string; sprite: string | null }[] | null,
+    };
+  };
+
+  /**
+   * One Elite Four encounter, replayed for the panel.
+   *
+   * Re-runs the fight rather than storing its turns, which is the bargain
+   * every other battle here makes — and needs two things the entry records for
+   * exactly this reason: the six bars it started from, and the six species
+   * that were fielded. If the party has been rebuilt since, the second one no
+   * longer matches and the animation is dropped rather than narrating somebody
+   * else's fight. The log row still says who it was and how it went.
+   *
+   * The MOVES are read live, so re-arming a member between the fight and the
+   * replay shifts it. That is the same latitude `trainerFor` gives the
+   * companion's own moveset, and for the same reason: nothing records them.
+   */
+  const leagueFor = async (seq: number, saved: NonNullable<HuntEntry['league']>) => {
+    const member = leagueById(saved.id);
+    const party = state.party ?? [];
+    if (!member) return null;
+    if (party.length !== saved.team.length) return null;
+    if (!party.every((m, i) => m.speciesId === saved.team[i])) return null;
+    const fight = leagueRoundAt(seq, member, party, saved.hp);
+    return {
+      name: member.ko,
+      won: fight.won,
+      lostAt: fight.won ? null : fight.rounds.length - 1,
+      sprite: await ensureNpcSprite(member.sprite),
+      team: await Promise.all(
+        member.team.map(async (id) => ({
+          speciesId: id,
+          name: speciesName(id),
+          sprite: await ensureSprite(id),
+        })),
+      ),
+      rounds: fight.rounds.map(dressTurns),
+      /** Which of my six stood for each round, so the scene can swap art. */
+      mine: await Promise.all(
+        fight.outFor.map(async (i) => ({
+          speciesId: party[i].speciesId,
+          name: speciesName(party[i].speciesId),
+          sprite: await ensureSprite(party[i].speciesId, party[i].shiny, true),
+        })),
+      ),
+      badgeKo: null,
+      badgeSprite: null,
+      prizeKo: null,
     };
   };
 
@@ -396,6 +498,9 @@ export async function buildState(mode: CountMode = 'activity') {
         ...formOpts(form, activeForm),
       }),
     );
+
+  /** Where the pet is, with any shut legendary room passed over. */
+  const here = stopFor(state.huntCount, state);
 
   const payload = {
     tokens: {
@@ -525,7 +630,18 @@ export async function buildState(mode: CountMode = 'activity') {
        * and both mean the same thing on screen: the flat sky colour the scene
        * had before this existed.
        */
-      skylineBg: await ensureBackground(journeyFor(state.huntCount).sky),
+      /**
+       * Where the pet is, resolved ONCE and sent down.
+       *
+       * `journeyFor` is a pure function of the count, but a shut shrine is a
+       * function of the save — so the answer stops being something the
+       * renderer can work out on its own, and it should not have to. The
+       * caption, the backdrop and the ground now all read this one stop.
+       */
+      stop: here,
+      /** How many of the legendary rooms this save has opened. */
+      shrines: shrinesOpen(state),
+      skylineBg: await ensureBackground(here.sky),
       intervalMs: HUNT_INTERVAL_MS,
       slots: MOVE_SLOTS,
       /** ms until the next encounter settles, or null when not hunting. */
@@ -573,7 +689,11 @@ export async function buildState(mode: CountMode = 'activity') {
            */
           icon: await ensureStaticSprite(e.wildId),
           /** The trainer fight, newest entry only — same rule as wildSprite. */
-          trainerFight: e.seq === newestSeq && e.trainer ? await trainerFor(e.seq, form, e.trainer) : null,
+          trainerFight:
+            e.seq !== newestSeq ? null
+            : e.league ? await leagueFor(e.seq, e.league)
+            : e.trainer ? await trainerFor(e.seq, form, e.trainer, e.gym)
+            : null,
           /**
            * The backdrop this fight happens on, newest entry only — the older
            * entries are list rows that never draw a battle screen.
@@ -787,6 +907,95 @@ export async function buildState(mode: CountMode = 'activity') {
      * actually uses; `have`/`need` are the same numbers the gate itself tests,
      * so the gauge on screen cannot disagree with whether the row is open.
      */
+    /**
+     * The league party.
+     *
+     * Its moves are unfolded here like every other name in this payload, and
+     * what MAY be assigned is sent as two id lists rather than six more move
+     * tables: `canTake` joins against `payload.tms`, which the bag already
+     * carries in full, and `free` is the handful the dex records for that
+     * species and is therefore not in the bag at all. Six copies of a 47-row
+     * machine list, every twenty seconds, is the shape this avoids.
+     */
+    party: {
+      size: PARTY_SIZE,
+      ready: (state.party ?? []).length === PARTY_SIZE,
+      cityKo: LEAGUE_CITY,
+      members: await Promise.all(
+        (state.party ?? []).map(async (m) => {
+          const options = assignable(state, (state.party ?? []).indexOf(m));
+          return {
+            speciesId: m.speciesId,
+            name: speciesName(m.speciesId),
+            shiny: m.shiny,
+            sprite: await ensureSprite(m.formId ?? m.speciesId, m.shiny),
+            moves: known(m.moves.map((id) => describeMove(id))),
+            /** Machines in the bag this one could be taught. */
+            canTake: options.filter((o) => o.from === 'bag').map((o) => o.moveId),
+            /** Already known by the species, so free — and named, since the bag may not hold it. */
+            free: known(options.filter((o) => o.from === 'dex').map((o) => describeMove(o.moveId))),
+          };
+        }),
+      ),
+    },
+    /**
+     * The badge case.
+     *
+     * Deliberately NOT the "only what is held" rule the TM icons and the stone
+     * shelf follow. A badge case is a CHECKLIST — a slot that draws nothing
+     * has nothing to say, and the whole point of the screen is the eight
+     * outlines you have not filled in yet. So all eight are resolved and the
+     * panel greys the ones not held. Eight files at ~4KB, fetched once ever.
+     */
+    badges: await (async () => {
+      const held = new Set(state.badges ?? []);
+      return {
+        count: held.size,
+        total: GYMS.length,
+        wins: state.gymWins ?? 0,
+        /** The road's summit, and how far along it this save has come. */
+        league: {
+          cityKo: LEAGUE_CITY,
+          open: held.size === GYMS.length,
+          /** Members of the current run already down, 0..5. Null when none is running. */
+          at: state.leagueRun?.at ?? null,
+          size: LEAGUE.length,
+          best: state.leagueBest ?? 0,
+          wins: state.leagueWins ?? 0,
+          clearedAt: state.leagues?.kanto ?? null,
+          until: encountersUntilStop(state.huntCount, LEAGUE_CITY),
+          members: await Promise.all(
+            LEAGUE.map(async (m) => ({
+              id: m.id,
+              ko: m.ko,
+              /** Beaten in the run that is under way, or in a run already cleared. */
+              down: (state.leagueRun?.at ?? 0) > LEAGUE.indexOf(m),
+              sprite: await ensureNpcSprite(m.sprite),
+            })),
+          ),
+        },
+        cases: await Promise.all(
+          [...GYMS]
+            // Displayed by badge NUMBER, which is the games' own order and the
+            // order the case is printed in. `order` is when you meet them.
+            .sort((a, b) => a.badge - b.badge)
+            .map(async (g) => ({
+              no: g.badge,
+              ko: g.badgeKo,
+              leaderKo: g.ko,
+              cityKo: g.city,
+              have: held.has(g.badge),
+              /** 상록시티, and only it: shut until the other seven are held. */
+              locked: gymLocked(g, held),
+              /** Encounters until the pet stands there. 0 means it is there now. */
+              until: encountersUntilStop(state.huntCount, g.city),
+              /** The TM the badge comes with, for the card's second line. */
+              prizeKo: moveById(g.prize)?.ko ?? null,
+              sprite: await ensureBadgeSprite(g.badge),
+            })),
+        ),
+      };
+    })(),
     legends: {
       /** Signature items held, resolved for the bag. */
       items: await Promise.all(
@@ -923,6 +1132,15 @@ export async function buildState(mode: CountMode = 'activity') {
     // The award icons, for the same reason the dex art is pinned: they are on
     // screen whenever that tab is open.
     ...payload.awards.map((a) => a.itemSprite),
+    // The badge case sits in that same tab, and all eight are drawn whether
+    // held or not — so all eight are pinned.
+    ...payload.badges.cases.map((b) => b.sprite),
+    // The Elite Four's portraits, on the same screen.
+    ...payload.badges.league.members.map((m) => m.sprite),
+    // The league party, drawn in the dex tab whenever it is being built, and
+    // one of them stands in the battle scene through a whole run.
+    ...payload.party.members.map((m) => m.sprite),
+    ...payload.hunt.log.flatMap((e) => e.trainerFight?.mine?.map((x) => x.sprite) ?? []),
     // The legendary shelf: item icons and the eggs' own art.
     ...payload.legends.items.map((i) => i.sprite),
     ...payload.legends.eggs.map((e) => e.sprite),

@@ -331,3 +331,25 @@ describe('the new fields survive a reload', () => {
     expect(back.forcedNext).toEqual({ seq: 42, speciesId: 483 });
   });
 });
+
+describe('the Mewtwo road', () => {
+  // `either` exists so a new condition can be added to a gate somebody has
+  // already opened. If it ever becomes a `both`, the second case here fails
+  // and that is the whole point of writing it down.
+  const withState = (over: Partial<GameState>): GameState => ({ ...initialState(), ...over });
+  const mewtwoOpen = (s: GameState) => openLegends(s).has(150);
+
+  it('opens for a Hall of Fame entry alone', () => {
+    expect(mewtwoOpen(withState({ leagueWins: 1 }))).toBe(true);
+  });
+
+  it('still opens the way it always did, and takes nothing back', () => {
+    const veteran = withState({
+      trainerWins: 80,
+      dex: Array.from({ length: 300 }, (_, i) => ({ speciesId: i + 1, shiny: false, firstSeenAt: 0 })),
+    });
+    expect(mewtwoOpen(veteran)).toBe(true);
+    // ...and neither road is required of the other.
+    expect(mewtwoOpen(withState({}))).toBe(false);
+  });
+});

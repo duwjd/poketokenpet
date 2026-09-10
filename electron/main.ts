@@ -15,6 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadState, saveState } from '../server/store.ts';
 import { buy, consumeItem, type ItemId, type ProductId } from '../server/shop.ts';
+import { partyAction } from '../server/party.ts';
 import { forget, setHuntEnabled, setHuntUncapped, teach } from '../server/hunt.ts';
 import { rename, setShowBattleForm } from '../server/game.ts';
 import { fuseShards, hatchLegendEgg, spendLegendItem } from '../server/legends.ts';
@@ -92,7 +93,11 @@ async function runShopAction(action: string, id: string, slot: number | null = n
                         ? hatchLegendEgg(state, Number(id))
                         : action === 'fuse'
                           ? fuseShards(state, id)
-                          : { state, ok: false, message: '알 수 없는 요청입니다.' };
+                          : (partyAction(state, action, id, slot) ?? {
+                              state,
+                              ok: false,
+                              message: '알 수 없는 요청입니다.',
+                            });
 
   if (action === 'sprites') return clearSprites();
 

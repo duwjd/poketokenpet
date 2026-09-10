@@ -128,18 +128,33 @@ const GENERATIONS = 9;
 /**
  * Where each region starts, in encounters.
  *
- * `journeyFor` is `STOPS[floor(huntCount / 25) % 240]`, so a region's first stop
- * index times 25 is the encounter it is first reached at. Read off the
- * generated table rather than guessed: 관동 0, 성도 20, 호연 41, 신오 99,
- * 칼로스 105, 알로라 176. The whole route is 240 stops, hence the lap.
+ * `journeyFor` is `STOPS[floor(huntCount / LEG_LENGTH) % STOPS.length]`, so a
+ * region's first stop index times `LEG_LENGTH` is the encounter it is first
+ * reached at. Read off the generated table rather than guessed — and REREAD
+ * whenever `npm run gen:journey` changes the route, because these are the
+ * numbers the 여행 rows print as goals and a stale one claims you arrived
+ * somewhere you have not.
+ *
+ * The route was 240 stops over six regions on a 25-encounter leg, and is now
+ * 728 over ten on a 15-encounter one. Every number below moved, and four
+ * regions that had no row at all now have one.
+ *
+ * Raising these is safe in the one way that matters: `settleAchievements`
+ * never revokes an id already in `state.achievements`, so nobody loses a
+ * 도달 they already earned. Somebody still walking toward one has further to
+ * go, which is simply true — the region really is further away now.
  */
 const REGION_AT = {
-  johto: 500,
-  hoenn: 1025,
-  sinnoh: 2475,
-  kalos: 2625,
-  alola: 4400,
-  lap: 6000,
+  johto: 870,
+  hoenn: 1455,
+  sinnoh: 2505,
+  unova: 3825,
+  kalos: 4995,
+  alola: 6075,
+  galar: 7155,
+  hisui: 8340,
+  paldea: 9675,
+  lap: 10920,
 } as const;
 
 const stoneKinds = (s: GameState) =>
@@ -155,9 +170,6 @@ const one = (yes: boolean) => ({ have: yes ? 1 : 0, need: 1 });
 /** Legendaries raised to graduation. The dex is still the only record. */
 const legendsRaised = (s: GameState) =>
   s.dex.filter((d) => LEGENDS.some((l) => l.id === d.speciesId)).length;
-/** Legendary eggs won but not yet raised. */
-const eggsWon = (s: GameState) =>
-  Object.values(s.legendEggs ?? {}).reduce((a, n) => a + (n ?? 0), 0);
 
 export const ACHIEVEMENTS: Achievement[] = [
   // ── 성장 ── what the tokens actually bought, in hatch thresholds.
@@ -230,12 +242,20 @@ export const ACHIEVEMENTS: Achievement[] = [
     money: 3,
   },
   {
+    id: 'travel-unova',
+    cat: 'travel',
+    ko: '하나 도달',
+    desc: '신오를 지나 하나에 들어섰다.',
+    metric: (s) => ({ have: s.huntCount, need: REGION_AT.unova }),
+    money: 4,
+  },
+  {
     id: 'travel-kalos',
     cat: 'travel',
     ko: '칼로스 도달',
-    desc: '신오를 지나 칼로스에 들어섰다.',
+    desc: '하나를 지나 칼로스에 들어섰다.',
     metric: (s) => ({ have: s.huntCount, need: REGION_AT.kalos }),
-    money: 4,
+    money: 5,
   },
   {
     id: 'travel-alola',
@@ -243,13 +263,37 @@ export const ACHIEVEMENTS: Achievement[] = [
     ko: '알로라 도달',
     desc: '칼로스를 지나 알로라에 들어섰다.',
     metric: (s) => ({ have: s.huntCount, need: REGION_AT.alola }),
+    money: 6,
+  },
+  {
+    id: 'travel-galar',
+    cat: 'travel',
+    ko: '가라르 도달',
+    desc: '알로라를 지나 가라르에 들어섰다.',
+    metric: (s) => ({ have: s.huntCount, need: REGION_AT.galar }),
     money: 8,
+  },
+  {
+    id: 'travel-hisui',
+    cat: 'travel',
+    ko: '히스이 도달',
+    desc: '가라르를 지나 히스이에 들어섰다.',
+    metric: (s) => ({ have: s.huntCount, need: REGION_AT.hisui }),
+    money: 10,
+  },
+  {
+    id: 'travel-paldea',
+    cat: 'travel',
+    ko: '팔데아 도달',
+    desc: '히스이를 지나 팔데아에 들어섰다. 열 지방의 마지막이다.',
+    metric: (s) => ({ have: s.huntCount, need: REGION_AT.paldea }),
+    money: 12,
   },
   {
     id: 'travel-lap',
     cat: 'travel',
     ko: '세계일주',
-    desc: '240개 정거장을 한 바퀴 다 돌았다.',
+    desc: '728개 정거장을 한 바퀴 다 돌았다.',
     metric: (s) => ({ have: s.huntCount, need: REGION_AT.lap }),
     money: 15,
   },
@@ -426,6 +470,84 @@ export const ACHIEVEMENTS: Achievement[] = [
     ko: '승부사',
     desc: '트레이너를 25번 이길 때마다.',
     metric: (s) => ({ have: s.trainerWins ?? 0, need: 25 }),
+    money: 2,
+    repeat: true,
+  },
+
+  // ── 체육관 ──
+  //
+  // Deliberately NOT a new category. `AwardCat` is presentation and the chip
+  // row is already at ten, which docs/DESIGN.md names as a layout limit — and
+  // a gym leader IS a trainer, which is also why a gym win increments
+  // `trainerWins` in hunt.ts. These rows measure the badges rather than the
+  // wins, because the badges are the thing the road is for.
+  {
+    id: 'badge-1',
+    cat: 'trainer',
+    ko: '첫 배지',
+    desc: '체육관 관장에게 처음 이겼다.',
+    metric: (s) => ({ have: s.badges?.length ?? 0, need: 1 }),
+    money: 1,
+  },
+  {
+    id: 'badge-4',
+    cat: 'trainer',
+    ko: '배지 4개',
+    desc: '관동의 체육관을 절반 돌았다.',
+    metric: (s) => ({ have: s.badges?.length ?? 0, need: 4 }),
+    money: 3,
+  },
+  {
+    id: 'badge-8',
+    cat: 'trainer',
+    ko: '관동 제패',
+    desc: '관동의 배지 여덟 개를 전부 모았다.',
+    metric: (s) => ({ have: s.badges?.length ?? 0, need: 8 }),
+    money: 8,
+  },
+  {
+    id: 'league-4',
+    cat: 'trainer',
+    ko: '사천왕 돌파',
+    /**
+     * Reads `leagueBest`, not a live run: most challenges end in a loss, and a
+     * board that only noticed the wins would say nothing to the many people
+     * who got to 목호 and fell.
+     */
+    desc: '한 번의 도전에서 사천왕 넷을 모두 꺾었다.',
+    metric: (s) => ({ have: s.leagueBest ?? 0, need: 4 }),
+    money: 10,
+  },
+  {
+    id: 'league-champion',
+    cat: 'trainer',
+    ko: '명예의 전당',
+    desc: '사천왕과 챔피언을 꺾고 명예의 전당에 올랐다.',
+    metric: (s) => ({ have: s.leagueWins ?? 0, need: 1 }),
+    money: 20,
+    item: 'shiny-charm',
+  },
+  {
+    id: 'league-repeat',
+    cat: 'trainer',
+    ko: '다시 도전',
+    desc: '포켓몬리그를 제패할 때마다.',
+    metric: (s) => ({ have: s.leagueWins ?? 0, need: 1 }),
+    money: 5,
+    repeat: true,
+  },
+  {
+    id: 'gym-rematch',
+    cat: 'trainer',
+    ko: '도장깨기',
+    /**
+     * Not `badges`, which stops at eight and then measures nothing. A beaten
+     * leader spars once per visit, so this grows by at most eight a lap and
+     * every step needs a won fight — an idle machine with a bare companion
+     * earns none of it.
+     */
+    desc: '관장을 10번 이길 때마다.',
+    metric: (s) => ({ have: s.gymWins ?? 0, need: 10 }),
     money: 2,
     repeat: true,
   },
@@ -648,9 +770,40 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'legend-first-meet',
     cat: 'legend',
     ko: '첫 전설 조우',
-    desc: '전설의 포켓몬을 처음 만났다.',
-    metric: (s) => one(eggsWon(s) > 0 || legendsRaised(s) > 0),
+    /**
+     * Reads the MEETING now, where it used to read a win.
+     *
+     * The row said 만났다 and measured `eggsWon || legendsRaised`, both of
+     * which require beating one — so somebody who had stood in front of
+     * 기라티나 and lost was told they had never met a legendary. `metLegends`
+     * exists for the shrines and answers this honestly.
+     *
+     * Strictly more generous, so nobody's unlock is at risk: `migrate` floors
+     * `metLegends` at exactly what the old condition could prove.
+     */
+    desc: '전설의 포켓몬을 처음 만났다. 이기지 못했어도 만난 것이다.',
+    metric: (s) => one((s.metLegends?.length ?? 0) > 0),
     money: 5,
+  },
+  {
+    id: 'legend-meet-5',
+    cat: 'legend',
+    ko: '전설 5종과 마주침',
+    desc: '서로 다른 전설의 포켓몬 다섯을 만났다.',
+    metric: (s) => ({ have: s.metLegends?.length ?? 0, need: 5 }),
+    money: 6,
+  },
+  {
+    id: 'legend-meet-15',
+    cat: 'legend',
+    ko: '전설 15종과 마주침',
+    /**
+     * Worth its own rung because meeting one opens its room — see
+     * server/shrines.ts. This is the counter the journey grows on.
+     */
+    desc: '서로 다른 전설의 포켓몬 열다섯을 만났다. 만난 곳은 여정에 남는다.',
+    metric: (s) => ({ have: s.metLegends?.length ?? 0, need: 15 }),
+    money: 10,
   },
   {
     id: 'legend-raise-1',

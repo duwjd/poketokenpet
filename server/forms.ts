@@ -25,6 +25,17 @@ export type Form = {
   id: number;
   /** The base species. Dex, rarity, learnset and the tray all keep using this. */
   base: number;
+  /**
+   * The name Pokemon Showdown files this form's sprite under.
+   *
+   * PokeAPI has no animated art for the Legends Z-A megas (#10287-10326), so
+   * `ensureSprite` falls through to Showdown's own host for those — and Showdown
+   * spells a form differently from PokeAPI: `charizard-megax`, not
+   * `charizard-mega-x`. The rule is "English species name with everything but
+   * letters and digits removed, then the form after one hyphen", and it is applied
+   * in the generator because `form_name` only exists there.
+   */
+  slug: string;
   kind: FormKind;
   ko: string;
   en: string;
@@ -56,6 +67,7 @@ export const FORMS: Form[] = [
   {
     "id": 10022,
     "base": 646,
+    "slug": "kyurem-black",
     "types": [
       "dragon",
       "ice"
@@ -74,6 +86,7 @@ export const FORMS: Form[] = [
   {
     "id": 10023,
     "base": 646,
+    "slug": "kyurem-white",
     "types": [
       "dragon",
       "ice"
@@ -92,6 +105,7 @@ export const FORMS: Form[] = [
   {
     "id": 10033,
     "base": 3,
+    "slug": "venusaur-mega",
     "types": [
       "grass",
       "poison"
@@ -113,6 +127,7 @@ export const FORMS: Form[] = [
   {
     "id": 10034,
     "base": 6,
+    "slug": "charizard-megax",
     "types": [
       "fire",
       "dragon"
@@ -134,6 +149,7 @@ export const FORMS: Form[] = [
   {
     "id": 10035,
     "base": 6,
+    "slug": "charizard-megay",
     "types": [
       "fire",
       "flying"
@@ -155,6 +171,7 @@ export const FORMS: Form[] = [
   {
     "id": 10036,
     "base": 9,
+    "slug": "blastoise-mega",
     "types": [
       "water"
     ],
@@ -175,6 +192,7 @@ export const FORMS: Form[] = [
   {
     "id": 10037,
     "base": 65,
+    "slug": "alakazam-mega",
     "types": [
       "psychic"
     ],
@@ -188,13 +206,14 @@ export const FORMS: Form[] = [
       65
     ],
     "stone": {
-      "ko": "후딘나이트",
-      "sprite": null
+      "ko": "후디나이트",
+      "sprite": "alakazite"
     }
   },
   {
     "id": 10038,
     "base": 94,
+    "slug": "gengar-mega",
     "types": [
       "ghost",
       "poison"
@@ -216,6 +235,7 @@ export const FORMS: Form[] = [
   {
     "id": 10039,
     "base": 115,
+    "slug": "kangaskhan-mega",
     "types": [
       "normal"
     ],
@@ -236,6 +256,7 @@ export const FORMS: Form[] = [
   {
     "id": 10040,
     "base": 127,
+    "slug": "pinsir-mega",
     "types": [
       "bug",
       "flying"
@@ -257,6 +278,7 @@ export const FORMS: Form[] = [
   {
     "id": 10041,
     "base": 130,
+    "slug": "gyarados-mega",
     "types": [
       "water",
       "dark"
@@ -278,6 +300,7 @@ export const FORMS: Form[] = [
   {
     "id": 10042,
     "base": 142,
+    "slug": "aerodactyl-mega",
     "types": [
       "rock",
       "flying"
@@ -299,6 +322,7 @@ export const FORMS: Form[] = [
   {
     "id": 10043,
     "base": 150,
+    "slug": "mewtwo-megax",
     "types": [
       "psychic",
       "fighting"
@@ -320,6 +344,7 @@ export const FORMS: Form[] = [
   {
     "id": 10044,
     "base": 150,
+    "slug": "mewtwo-megay",
     "types": [
       "psychic"
     ],
@@ -340,6 +365,7 @@ export const FORMS: Form[] = [
   {
     "id": 10045,
     "base": 181,
+    "slug": "ampharos-mega",
     "types": [
       "electric",
       "dragon"
@@ -361,6 +387,7 @@ export const FORMS: Form[] = [
   {
     "id": 10046,
     "base": 212,
+    "slug": "scizor-mega",
     "types": [
       "bug",
       "steel"
@@ -382,6 +409,7 @@ export const FORMS: Form[] = [
   {
     "id": 10047,
     "base": 214,
+    "slug": "heracross-mega",
     "types": [
       "bug",
       "fighting"
@@ -403,6 +431,7 @@ export const FORMS: Form[] = [
   {
     "id": 10048,
     "base": 229,
+    "slug": "houndoom-mega",
     "types": [
       "dark",
       "fire"
@@ -424,6 +453,7 @@ export const FORMS: Form[] = [
   {
     "id": 10049,
     "base": 248,
+    "slug": "tyranitar-mega",
     "types": [
       "rock",
       "dark"
@@ -445,6 +475,7 @@ export const FORMS: Form[] = [
   {
     "id": 10050,
     "base": 257,
+    "slug": "blaziken-mega",
     "types": [
       "fire",
       "fighting"
@@ -466,6 +497,7 @@ export const FORMS: Form[] = [
   {
     "id": 10051,
     "base": 282,
+    "slug": "gardevoir-mega",
     "types": [
       "psychic",
       "fairy"
@@ -487,6 +519,7 @@ export const FORMS: Form[] = [
   {
     "id": 10052,
     "base": 303,
+    "slug": "mawile-mega",
     "types": [
       "steel",
       "fairy"
@@ -508,6 +541,7 @@ export const FORMS: Form[] = [
   {
     "id": 10053,
     "base": 306,
+    "slug": "aggron-mega",
     "types": [
       "steel"
     ],
@@ -528,6 +562,7 @@ export const FORMS: Form[] = [
   {
     "id": 10054,
     "base": 308,
+    "slug": "medicham-mega",
     "types": [
       "fighting",
       "psychic"
@@ -549,6 +584,7 @@ export const FORMS: Form[] = [
   {
     "id": 10055,
     "base": 310,
+    "slug": "manectric-mega",
     "types": [
       "electric"
     ],
@@ -569,6 +605,7 @@ export const FORMS: Form[] = [
   {
     "id": 10056,
     "base": 354,
+    "slug": "banette-mega",
     "types": [
       "ghost"
     ],
@@ -589,6 +626,7 @@ export const FORMS: Form[] = [
   {
     "id": 10057,
     "base": 359,
+    "slug": "absol-mega",
     "types": [
       "dark"
     ],
@@ -609,6 +647,7 @@ export const FORMS: Form[] = [
   {
     "id": 10058,
     "base": 445,
+    "slug": "garchomp-mega",
     "types": [
       "dragon",
       "ground"
@@ -630,6 +669,7 @@ export const FORMS: Form[] = [
   {
     "id": 10059,
     "base": 448,
+    "slug": "lucario-mega",
     "types": [
       "fighting",
       "steel"
@@ -651,6 +691,7 @@ export const FORMS: Form[] = [
   {
     "id": 10060,
     "base": 460,
+    "slug": "abomasnow-mega",
     "types": [
       "grass",
       "ice"
@@ -672,6 +713,7 @@ export const FORMS: Form[] = [
   {
     "id": 10062,
     "base": 380,
+    "slug": "latias-mega",
     "types": [
       "dragon",
       "psychic"
@@ -693,6 +735,7 @@ export const FORMS: Form[] = [
   {
     "id": 10063,
     "base": 381,
+    "slug": "latios-mega",
     "types": [
       "dragon",
       "psychic"
@@ -714,6 +757,7 @@ export const FORMS: Form[] = [
   {
     "id": 10064,
     "base": 260,
+    "slug": "swampert-mega",
     "types": [
       "water",
       "ground"
@@ -735,6 +779,7 @@ export const FORMS: Form[] = [
   {
     "id": 10065,
     "base": 254,
+    "slug": "sceptile-mega",
     "types": [
       "grass",
       "dragon"
@@ -756,6 +801,7 @@ export const FORMS: Form[] = [
   {
     "id": 10066,
     "base": 302,
+    "slug": "sableye-mega",
     "types": [
       "dark",
       "ghost"
@@ -777,6 +823,7 @@ export const FORMS: Form[] = [
   {
     "id": 10067,
     "base": 334,
+    "slug": "altaria-mega",
     "types": [
       "dragon",
       "fairy"
@@ -798,6 +845,7 @@ export const FORMS: Form[] = [
   {
     "id": 10068,
     "base": 475,
+    "slug": "gallade-mega",
     "types": [
       "psychic",
       "fighting"
@@ -819,6 +867,7 @@ export const FORMS: Form[] = [
   {
     "id": 10069,
     "base": 531,
+    "slug": "audino-mega",
     "types": [
       "normal",
       "fairy"
@@ -840,6 +889,7 @@ export const FORMS: Form[] = [
   {
     "id": 10070,
     "base": 319,
+    "slug": "sharpedo-mega",
     "types": [
       "water",
       "dark"
@@ -861,6 +911,7 @@ export const FORMS: Form[] = [
   {
     "id": 10071,
     "base": 80,
+    "slug": "slowbro-mega",
     "types": [
       "water",
       "psychic"
@@ -882,6 +933,7 @@ export const FORMS: Form[] = [
   {
     "id": 10072,
     "base": 208,
+    "slug": "steelix-mega",
     "types": [
       "steel",
       "ground"
@@ -903,6 +955,7 @@ export const FORMS: Form[] = [
   {
     "id": 10073,
     "base": 18,
+    "slug": "pidgeot-mega",
     "types": [
       "normal",
       "flying"
@@ -924,6 +977,7 @@ export const FORMS: Form[] = [
   {
     "id": 10074,
     "base": 362,
+    "slug": "glalie-mega",
     "types": [
       "ice"
     ],
@@ -944,6 +998,7 @@ export const FORMS: Form[] = [
   {
     "id": 10075,
     "base": 719,
+    "slug": "diancie-mega",
     "types": [
       "rock",
       "fairy"
@@ -965,6 +1020,7 @@ export const FORMS: Form[] = [
   {
     "id": 10076,
     "base": 376,
+    "slug": "metagross-mega",
     "types": [
       "steel",
       "psychic"
@@ -986,6 +1042,7 @@ export const FORMS: Form[] = [
   {
     "id": 10077,
     "base": 382,
+    "slug": "kyogre-primal",
     "types": [
       "water"
     ],
@@ -1006,6 +1063,7 @@ export const FORMS: Form[] = [
   {
     "id": 10078,
     "base": 383,
+    "slug": "groudon-primal",
     "types": [
       "ground",
       "fire"
@@ -1027,6 +1085,7 @@ export const FORMS: Form[] = [
   {
     "id": 10079,
     "base": 384,
+    "slug": "rayquaza-mega",
     "types": [
       "dragon",
       "flying"
@@ -1048,6 +1107,7 @@ export const FORMS: Form[] = [
   {
     "id": 10087,
     "base": 323,
+    "slug": "camerupt-mega",
     "types": [
       "fire",
       "ground"
@@ -1069,6 +1129,7 @@ export const FORMS: Form[] = [
   {
     "id": 10088,
     "base": 428,
+    "slug": "lopunny-mega",
     "types": [
       "normal",
       "fighting"
@@ -1090,6 +1151,7 @@ export const FORMS: Form[] = [
   {
     "id": 10089,
     "base": 373,
+    "slug": "salamence-mega",
     "types": [
       "dragon",
       "flying"
@@ -1111,6 +1173,7 @@ export const FORMS: Form[] = [
   {
     "id": 10090,
     "base": 15,
+    "slug": "beedrill-mega",
     "types": [
       "bug",
       "poison"
@@ -1132,6 +1195,7 @@ export const FORMS: Form[] = [
   {
     "id": 10155,
     "base": 800,
+    "slug": "necrozma-duskmane",
     "types": [
       "psychic",
       "steel"
@@ -1150,6 +1214,7 @@ export const FORMS: Form[] = [
   {
     "id": 10156,
     "base": 800,
+    "slug": "necrozma-dawnwings",
     "types": [
       "psychic",
       "ghost"
@@ -1168,6 +1233,7 @@ export const FORMS: Form[] = [
   {
     "id": 10157,
     "base": 800,
+    "slug": "necrozma-ultra",
     "types": [
       "psychic",
       "dragon"
@@ -1186,6 +1252,7 @@ export const FORMS: Form[] = [
   {
     "id": 10193,
     "base": 898,
+    "slug": "calyrex-ice",
     "types": [
       "psychic",
       "ice"
@@ -1204,6 +1271,7 @@ export const FORMS: Form[] = [
   {
     "id": 10194,
     "base": 898,
+    "slug": "calyrex-shadow",
     "types": [
       "psychic",
       "ghost"
@@ -1222,6 +1290,7 @@ export const FORMS: Form[] = [
   {
     "id": 10195,
     "base": 3,
+    "slug": "venusaur-gmax",
     "types": [
       "grass",
       "poison"
@@ -1239,6 +1308,7 @@ export const FORMS: Form[] = [
   {
     "id": 10196,
     "base": 6,
+    "slug": "charizard-gmax",
     "types": [
       "fire",
       "flying"
@@ -1256,6 +1326,7 @@ export const FORMS: Form[] = [
   {
     "id": 10197,
     "base": 9,
+    "slug": "blastoise-gmax",
     "types": [
       "water"
     ],
@@ -1272,6 +1343,7 @@ export const FORMS: Form[] = [
   {
     "id": 10198,
     "base": 12,
+    "slug": "butterfree-gmax",
     "types": [
       "bug",
       "flying"
@@ -1289,6 +1361,7 @@ export const FORMS: Form[] = [
   {
     "id": 10199,
     "base": 25,
+    "slug": "pikachu-gmax",
     "types": [
       "electric"
     ],
@@ -1305,6 +1378,7 @@ export const FORMS: Form[] = [
   {
     "id": 10200,
     "base": 52,
+    "slug": "meowth-gmax",
     "types": [
       "normal"
     ],
@@ -1321,6 +1395,7 @@ export const FORMS: Form[] = [
   {
     "id": 10201,
     "base": 68,
+    "slug": "machamp-gmax",
     "types": [
       "fighting"
     ],
@@ -1337,6 +1412,7 @@ export const FORMS: Form[] = [
   {
     "id": 10202,
     "base": 94,
+    "slug": "gengar-gmax",
     "types": [
       "ghost",
       "poison"
@@ -1354,6 +1430,7 @@ export const FORMS: Form[] = [
   {
     "id": 10203,
     "base": 99,
+    "slug": "kingler-gmax",
     "types": [
       "water"
     ],
@@ -1370,6 +1447,7 @@ export const FORMS: Form[] = [
   {
     "id": 10204,
     "base": 131,
+    "slug": "lapras-gmax",
     "types": [
       "water",
       "ice"
@@ -1387,6 +1465,7 @@ export const FORMS: Form[] = [
   {
     "id": 10205,
     "base": 133,
+    "slug": "eevee-gmax",
     "types": [
       "normal"
     ],
@@ -1403,6 +1482,7 @@ export const FORMS: Form[] = [
   {
     "id": 10206,
     "base": 143,
+    "slug": "snorlax-gmax",
     "types": [
       "normal"
     ],
@@ -1419,6 +1499,7 @@ export const FORMS: Form[] = [
   {
     "id": 10207,
     "base": 569,
+    "slug": "garbodor-gmax",
     "types": [
       "poison"
     ],
@@ -1435,6 +1516,7 @@ export const FORMS: Form[] = [
   {
     "id": 10208,
     "base": 809,
+    "slug": "melmetal-gmax",
     "types": [
       "steel"
     ],
@@ -1451,6 +1533,7 @@ export const FORMS: Form[] = [
   {
     "id": 10209,
     "base": 812,
+    "slug": "rillaboom-gmax",
     "types": [
       "grass"
     ],
@@ -1467,6 +1550,7 @@ export const FORMS: Form[] = [
   {
     "id": 10210,
     "base": 815,
+    "slug": "cinderace-gmax",
     "types": [
       "fire"
     ],
@@ -1483,6 +1567,7 @@ export const FORMS: Form[] = [
   {
     "id": 10211,
     "base": 818,
+    "slug": "inteleon-gmax",
     "types": [
       "water"
     ],
@@ -1499,6 +1584,7 @@ export const FORMS: Form[] = [
   {
     "id": 10212,
     "base": 823,
+    "slug": "corviknight-gmax",
     "types": [
       "flying",
       "steel"
@@ -1516,6 +1602,7 @@ export const FORMS: Form[] = [
   {
     "id": 10213,
     "base": 826,
+    "slug": "orbeetle-gmax",
     "types": [
       "bug",
       "psychic"
@@ -1533,6 +1620,7 @@ export const FORMS: Form[] = [
   {
     "id": 10214,
     "base": 834,
+    "slug": "drednaw-gmax",
     "types": [
       "water",
       "rock"
@@ -1550,6 +1638,7 @@ export const FORMS: Form[] = [
   {
     "id": 10215,
     "base": 839,
+    "slug": "coalossal-gmax",
     "types": [
       "rock",
       "fire"
@@ -1567,6 +1656,7 @@ export const FORMS: Form[] = [
   {
     "id": 10216,
     "base": 841,
+    "slug": "flapple-gmax",
     "types": [
       "grass",
       "dragon"
@@ -1584,6 +1674,7 @@ export const FORMS: Form[] = [
   {
     "id": 10217,
     "base": 842,
+    "slug": "appletun-gmax",
     "types": [
       "grass",
       "dragon"
@@ -1601,6 +1692,7 @@ export const FORMS: Form[] = [
   {
     "id": 10218,
     "base": 844,
+    "slug": "sandaconda-gmax",
     "types": [
       "ground"
     ],
@@ -1617,6 +1709,7 @@ export const FORMS: Form[] = [
   {
     "id": 10219,
     "base": 849,
+    "slug": "toxtricity-gmax",
     "types": [
       "electric",
       "poison"
@@ -1634,6 +1727,7 @@ export const FORMS: Form[] = [
   {
     "id": 10220,
     "base": 851,
+    "slug": "centiskorch-gmax",
     "types": [
       "fire",
       "bug"
@@ -1651,6 +1745,7 @@ export const FORMS: Form[] = [
   {
     "id": 10221,
     "base": 858,
+    "slug": "hatterene-gmax",
     "types": [
       "psychic",
       "fairy"
@@ -1668,6 +1763,7 @@ export const FORMS: Form[] = [
   {
     "id": 10222,
     "base": 861,
+    "slug": "grimmsnarl-gmax",
     "types": [
       "dark",
       "fairy"
@@ -1685,6 +1781,7 @@ export const FORMS: Form[] = [
   {
     "id": 10223,
     "base": 869,
+    "slug": "alcremie-gmax",
     "types": [
       "fairy"
     ],
@@ -1701,6 +1798,7 @@ export const FORMS: Form[] = [
   {
     "id": 10224,
     "base": 879,
+    "slug": "copperajah-gmax",
     "types": [
       "steel"
     ],
@@ -1717,6 +1815,7 @@ export const FORMS: Form[] = [
   {
     "id": 10225,
     "base": 884,
+    "slug": "duraludon-gmax",
     "types": [
       "steel",
       "dragon"
@@ -1734,6 +1833,7 @@ export const FORMS: Form[] = [
   {
     "id": 10226,
     "base": 892,
+    "slug": "urshifu-gmax",
     "types": [
       "fighting",
       "dark"
@@ -1751,6 +1851,7 @@ export const FORMS: Form[] = [
   {
     "id": 10227,
     "base": 892,
+    "slug": "urshifu-rapidstrike-gmax",
     "types": [
       "fighting",
       "water"
@@ -1768,6 +1869,7 @@ export const FORMS: Form[] = [
   {
     "id": 10228,
     "base": 849,
+    "slug": "toxtricity-lowkey-gmax",
     "types": [
       "electric",
       "poison"
@@ -1785,6 +1887,7 @@ export const FORMS: Form[] = [
   {
     "id": 10278,
     "base": 36,
+    "slug": "clefable-mega",
     "types": [
       "fairy",
       "flying"
@@ -1800,12 +1903,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "픽시나이트",
-      "sprite": null
+      "sprite": "clefablite"
     }
   },
   {
     "id": 10279,
     "base": 71,
+    "slug": "victreebel-mega",
     "types": [
       "grass",
       "poison"
@@ -1821,12 +1925,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "우츠보트나이트",
-      "sprite": null
+      "sprite": "victreebelite"
     }
   },
   {
     "id": 10280,
     "base": 121,
+    "slug": "starmie-mega",
     "types": [
       "water",
       "psychic"
@@ -1842,12 +1947,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "아쿠스타나이트",
-      "sprite": null
+      "sprite": "starminite"
     }
   },
   {
     "id": 10281,
     "base": 149,
+    "slug": "dragonite-mega",
     "types": [
       "dragon",
       "flying"
@@ -1863,12 +1969,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "망나뇽나이트",
-      "sprite": null
+      "sprite": "dragoninite"
     }
   },
   {
     "id": 10282,
     "base": 154,
+    "slug": "meganium-mega",
     "types": [
       "grass",
       "fairy"
@@ -1884,12 +1991,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "메가니움나이트",
-      "sprite": null
+      "sprite": "meganiumite"
     }
   },
   {
     "id": 10283,
     "base": 160,
+    "slug": "feraligatr-mega",
     "types": [
       "water",
       "dragon"
@@ -1905,12 +2013,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "장크로다일나이트",
-      "sprite": null
+      "sprite": "feraligite"
     }
   },
   {
     "id": 10284,
     "base": 227,
+    "slug": "skarmory-mega",
     "types": [
       "steel",
       "flying"
@@ -1926,12 +2035,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "무장조나이트",
-      "sprite": null
+      "sprite": "skarmorite"
     }
   },
   {
     "id": 10285,
     "base": 478,
+    "slug": "froslass-mega",
     "types": [
       "ice",
       "ghost"
@@ -1947,12 +2057,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "눈여아나이트",
-      "sprite": null
+      "sprite": "froslassite"
     }
   },
   {
     "id": 10286,
     "base": 500,
+    "slug": "emboar-mega",
     "types": [
       "fire",
       "fighting"
@@ -1968,12 +2079,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "염무왕나이트",
-      "sprite": null
+      "sprite": "emboarite"
     }
   },
   {
     "id": 10287,
     "base": 530,
+    "slug": "excadrill-mega",
     "types": [
       "ground",
       "steel"
@@ -1989,12 +2101,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "몰드류나이트",
-      "sprite": null
+      "sprite": "excadrite"
     }
   },
   {
     "id": 10288,
     "base": 545,
+    "slug": "scolipede-mega",
     "types": [
       "bug",
       "poison"
@@ -2010,12 +2123,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "펜드라나이트",
-      "sprite": null
+      "sprite": "scolipite"
     }
   },
   {
     "id": 10289,
     "base": 560,
+    "slug": "scrafty-mega",
     "types": [
       "dark",
       "fighting"
@@ -2031,12 +2145,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "곤율거니나이트",
-      "sprite": null
+      "sprite": "scraftinite"
     }
   },
   {
     "id": 10290,
     "base": 604,
+    "slug": "eelektross-mega",
     "types": [
       "electric"
     ],
@@ -2051,12 +2166,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "저리더프나이트",
-      "sprite": null
+      "sprite": "eelektrossite"
     }
   },
   {
     "id": 10291,
     "base": 609,
+    "slug": "chandelure-mega",
     "types": [
       "ghost",
       "fire"
@@ -2072,12 +2188,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "샹델라나이트",
-      "sprite": null
+      "sprite": "chandelurite"
     }
   },
   {
     "id": 10292,
     "base": 652,
+    "slug": "chesnaught-mega",
     "types": [
       "grass",
       "fighting"
@@ -2093,12 +2210,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "브리가론나이트",
-      "sprite": null
+      "sprite": "chesnaughtite"
     }
   },
   {
     "id": 10293,
     "base": 655,
+    "slug": "delphox-mega",
     "types": [
       "fire",
       "psychic"
@@ -2114,12 +2232,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "마폭시나이트",
-      "sprite": null
+      "sprite": "delphoxite"
     }
   },
   {
     "id": 10294,
     "base": 658,
+    "slug": "greninja-mega",
     "types": [
       "water",
       "dark"
@@ -2135,12 +2254,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "개굴닌자나이트",
-      "sprite": null
+      "sprite": "greninjite"
     }
   },
   {
     "id": 10295,
     "base": 668,
+    "slug": "pyroar-mega",
     "types": [
       "fire",
       "normal"
@@ -2156,12 +2276,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "화염레오나이트",
-      "sprite": null
+      "sprite": "pyroarite"
     }
   },
   {
     "id": 10296,
     "base": 670,
+    "slug": "floette-mega",
     "types": [
       "fairy"
     ],
@@ -2176,12 +2297,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "플라엣테나이트",
-      "sprite": null
+      "sprite": "floettite"
     }
   },
   {
     "id": 10297,
     "base": 687,
+    "slug": "malamar-mega",
     "types": [
       "dark",
       "psychic"
@@ -2197,12 +2319,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "칼라마네로나이트",
-      "sprite": null
+      "sprite": "malamarite"
     }
   },
   {
     "id": 10298,
     "base": 689,
+    "slug": "barbaracle-mega",
     "types": [
       "rock",
       "fighting"
@@ -2218,12 +2341,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "거북손데스나이트",
-      "sprite": null
+      "sprite": "barbaracite"
     }
   },
   {
     "id": 10299,
     "base": 691,
+    "slug": "dragalge-mega",
     "types": [
       "poison",
       "dragon"
@@ -2239,12 +2363,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "드래캄나이트",
-      "sprite": null
+      "sprite": "dragalgite"
     }
   },
   {
     "id": 10300,
     "base": 701,
+    "slug": "hawlucha-mega",
     "types": [
       "fighting",
       "flying"
@@ -2260,12 +2385,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "루차불나이트",
-      "sprite": null
+      "sprite": "hawluchanite"
     }
   },
   {
     "id": 10301,
     "base": 718,
+    "slug": "zygarde-mega",
     "types": [
       "dragon",
       "ground"
@@ -2281,12 +2407,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "지가르데나이트",
-      "sprite": null
+      "sprite": "zygardite"
     }
   },
   {
     "id": 10302,
     "base": 780,
+    "slug": "drampa-mega",
     "types": [
       "normal",
       "dragon"
@@ -2302,12 +2429,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "할비롱나이트",
-      "sprite": null
+      "sprite": "drampanite"
     }
   },
   {
     "id": 10303,
     "base": 870,
+    "slug": "falinks-mega",
     "types": [
       "fighting"
     ],
@@ -2322,12 +2450,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "대여르나이트",
-      "sprite": null
+      "sprite": "falinksite"
     }
   },
   {
     "id": 10304,
     "base": 26,
+    "slug": "raichu-megax",
     "types": [
       "electric"
     ],
@@ -2342,12 +2471,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "라이츄나이트X",
-      "sprite": null
+      "sprite": "raichunite-x"
     }
   },
   {
     "id": 10305,
     "base": 26,
+    "slug": "raichu-megay",
     "types": [
       "electric"
     ],
@@ -2362,12 +2492,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "라이츄나이트Y",
-      "sprite": null
+      "sprite": "raichunite-y"
     }
   },
   {
     "id": 10306,
     "base": 358,
+    "slug": "chimecho-mega",
     "types": [
       "psychic",
       "steel"
@@ -2383,12 +2514,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "치렁나이트",
-      "sprite": null
+      "sprite": "chimechite"
     }
   },
   {
     "id": 10307,
     "base": 359,
+    "slug": "absol-megaz",
     "types": [
       "dark",
       "ghost"
@@ -2404,12 +2536,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "앱솔나이트Z",
-      "sprite": null
+      "sprite": "absolite-z"
     }
   },
   {
     "id": 10308,
     "base": 398,
+    "slug": "staraptor-mega",
     "types": [
       "fighting",
       "flying"
@@ -2425,12 +2558,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "찌르호크나이트",
-      "sprite": null
+      "sprite": "staraptite"
     }
   },
   {
     "id": 10309,
     "base": 445,
+    "slug": "garchomp-megaz",
     "types": [
       "dragon"
     ],
@@ -2445,12 +2579,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "한카리아스나이트Z",
-      "sprite": null
+      "sprite": "garchompite-z"
     }
   },
   {
     "id": 10310,
     "base": 448,
+    "slug": "lucario-megaz",
     "types": [
       "fighting",
       "steel"
@@ -2466,12 +2601,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "루카리오나이트Z",
-      "sprite": null
+      "sprite": "lucarionite-z"
     }
   },
   {
     "id": 10311,
     "base": 485,
+    "slug": "heatran-mega",
     "types": [
       "fire",
       "steel"
@@ -2487,12 +2623,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "히드런나이트",
-      "sprite": null
+      "sprite": "heatranite"
     }
   },
   {
     "id": 10312,
     "base": 491,
+    "slug": "darkrai-mega",
     "types": [
       "dark"
     ],
@@ -2507,12 +2644,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "다크라이나이트",
-      "sprite": null
+      "sprite": "darkranite"
     }
   },
   {
     "id": 10313,
     "base": 623,
+    "slug": "golurk-mega",
     "types": [
       "ground",
       "ghost"
@@ -2528,12 +2666,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "골루그나이트",
-      "sprite": null
+      "sprite": "golurkite"
     }
   },
   {
     "id": 10314,
     "base": 678,
+    "slug": "meowstic-megamale",
     "types": [
       "psychic"
     ],
@@ -2548,12 +2687,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "냐오닉스나이트♂",
-      "sprite": null
+      "sprite": "meowsticite"
     }
   },
   {
     "id": 10315,
     "base": 740,
+    "slug": "crabominable-mega",
     "types": [
       "fighting",
       "ice"
@@ -2569,12 +2709,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "모단단게나이트",
-      "sprite": null
+      "sprite": "crabominite"
     }
   },
   {
     "id": 10316,
     "base": 768,
+    "slug": "golisopod-mega",
     "types": [
       "bug",
       "steel"
@@ -2590,12 +2731,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "갑주무사나이트",
-      "sprite": null
+      "sprite": "golisopite"
     }
   },
   {
     "id": 10317,
     "base": 801,
+    "slug": "magearna-mega",
     "types": [
       "steel",
       "fairy"
@@ -2611,12 +2753,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "마기아나나이트",
-      "sprite": null
+      "sprite": "magearnite"
     }
   },
   {
     "id": 10318,
     "base": 801,
+    "slug": "magearna-original-mega",
     "types": [
       "steel",
       "fairy"
@@ -2632,12 +2775,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "마기아나나이트(500년 전의 색)",
-      "sprite": null
+      "sprite": "magearnite"
     }
   },
   {
     "id": 10319,
     "base": 807,
+    "slug": "zeraora-mega",
     "types": [
       "electric"
     ],
@@ -2652,12 +2796,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "제라오라나이트",
-      "sprite": null
+      "sprite": "zeraorite"
     }
   },
   {
     "id": 10320,
     "base": 952,
+    "slug": "scovillain-mega",
     "types": [
       "grass",
       "fire"
@@ -2673,12 +2818,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "스코빌런나이트",
-      "sprite": null
+      "sprite": "scovillainite"
     }
   },
   {
     "id": 10321,
     "base": 970,
+    "slug": "glimmora-mega",
     "types": [
       "rock",
       "poison"
@@ -2694,12 +2840,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "킬라플로르나이트",
-      "sprite": null
+      "sprite": "glimmoranite"
     }
   },
   {
     "id": 10322,
     "base": 978,
+    "slug": "tatsugiri-mega",
     "types": [
       "dragon",
       "water"
@@ -2715,12 +2862,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "싸리용나이트(말린 모습)",
-      "sprite": null
+      "sprite": "tatsugirinite"
     }
   },
   {
     "id": 10323,
     "base": 978,
+    "slug": "tatsugiri-droopy-mega",
     "types": [
       "dragon",
       "water"
@@ -2736,12 +2884,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "싸리용나이트(늘어진 모습)",
-      "sprite": null
+      "sprite": "tatsugirinite"
     }
   },
   {
     "id": 10324,
     "base": 978,
+    "slug": "tatsugiri-stretchy-mega",
     "types": [
       "dragon",
       "water"
@@ -2757,12 +2906,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "싸리용나이트(쭉 편 모습)",
-      "sprite": null
+      "sprite": "tatsugirinite"
     }
   },
   {
     "id": 10325,
     "base": 998,
+    "slug": "baxcalibur-mega",
     "types": [
       "dragon",
       "ice"
@@ -2778,12 +2928,13 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "드닐레이브나이트",
-      "sprite": null
+      "sprite": "baxcalibrite"
     }
   },
   {
     "id": 10326,
     "base": 678,
+    "slug": "meowstic-megafemale",
     "types": [
       "psychic"
     ],
@@ -2798,7 +2949,7 @@ export const FORMS: Form[] = [
     ],
     "stone": {
       "ko": "냐오닉스나이트♀",
-      "sprite": null
+      "sprite": "meowsticite"
     }
   }
 ] as Form[];

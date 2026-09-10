@@ -1,5 +1,6 @@
 import { rarityOf, type Companion, type DexEntry, type Rarity } from './game.ts';
 import { LINES, type SpeciesLine } from './species.ts';
+import { canLearn } from './moves.ts';
 
 /**
  * Pokedex bookkeeping, kept out of game.ts now that it is a feature of its own.
@@ -104,11 +105,25 @@ function record(dex: DexEntry[], entry: DexEntry): DexEntry[] {
   if (at < 0) return [...dex, entry];
 
   const had = dex[at];
+  /**
+   * The one field that MERGES rather than filling a blank.
+   *
+   * `nickname` and `formId` belong to an individual, so the first one to leave
+   * keeps them. Moves are not about an individual: the entry answers "what has
+   * this species been taught in this save", which is a collection and can only
+   * grow. Freezing the first graduate's four would mean a better-taught second
+   * one left no trace, and the league party builder reads this.
+   */
+  const merged =
+    entry.moves?.length && entry.moves.some((m) => !(had.moves ?? []).includes(m))
+      ? { moves: [...new Set([...(had.moves ?? []), ...entry.moves])].sort((a, b) => a - b) }
+      : {};
   const gained = {
     ...(had.nickname === undefined && entry.nickname !== undefined
       ? { nickname: entry.nickname }
       : {}),
     ...(had.formId === undefined && entry.formId !== undefined ? { formId: entry.formId } : {}),
+    ...merged,
   };
   if (!Object.keys(gained).length) return dex;
   const out = [...dex];
@@ -143,6 +158,14 @@ export function retireInto(dex: DexEntry[], a: Companion, at: number): DexEntry[
       firstSeenAt: at,
       ...(departing && a.nickname ? { nickname: a.nickname } : {}),
       ...(departing && a.formId !== undefined ? { formId: a.formId } : {}),
+      // Recorded on every stage it passed through, not only the last, and
+      // filtered by what THAT species can be taught: a move learned as a
+      // 파이리 and carried into a 리자몽 is the 리자몽's only if a 리자몽 could
+      // learn it too. Without the filter the party builder would offer a move
+      // `teach`'s own rule refuses.
+      ...(a.moves.length
+        ? { moves: a.moves.filter((m) => canLearn(speciesId, m)).sort((x, y) => x - y) }
+        : {}),
     });
   });
   return out;

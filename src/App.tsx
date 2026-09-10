@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import './App.css';
 import Scene, { type SceneBattle, type SceneTrainerFight } from './Scene.tsx';
-import { journeyFor } from './journey.ts';
 import { timeOfDayAt } from './timeOfDay.ts';
 import { euro, josa } from './josa.ts';
 import { battleUiVars } from './battleui.ts';
 import { fitScale } from './pixelFit.ts';
+import type { Stop } from './journey.ts';
 
 /** Mirrors NICKNAME_MAX in server/game.ts. The renderer must not import from
  *  server/, so the length lives in both places; the server is authoritative and
@@ -99,6 +99,16 @@ type MoveCard = {
   damageClass: 'physical' | 'special' | 'status';
   sprite: string | null;
 };
+
+/**
+ * A move on a party member.
+ *
+ * `MoveCard` without the icon: the bag fetches a per-type TM sprite for every
+ * machine it lists, and doing that again for twenty-four party slots would add
+ * six copies of the same eighteen files to a payload that already carries them.
+ * The party rows print text.
+ */
+type PartyMove = Omit<MoveCard, 'sprite'>;
 
 type HuntLogEntry = {
   seq: number;
@@ -205,6 +215,16 @@ type State = {
     count: number;
     /** The same two, scoped to the companion that is out right now. */
     sinceBirth: { tokens: number; count: number };
+    /**
+     * Where the pet is.
+     *
+     * Resolved server-side rather than derived here from `count`: a legendary
+     * room that has not been met yet is passed over, and that depends on the
+     * save. See server/shrines.ts.
+     */
+    stop: Stop;
+    /** How many legendary rooms this save has opened. */
+    shrines: { open: number; total: number };
     /** Gen-5 backdrop for where the pet is walking. Null is the flat sky. */
     skylineBg: string | null;
     intervalMs: number;
@@ -249,6 +269,54 @@ type State = {
     itemKo: string | null;
     itemSprite: string | null;
   }[];
+  /** The league party, and what each member could still be taught. */
+  party: {
+    size: number;
+    ready: boolean;
+    cityKo: string;
+    members: {
+      speciesId: number;
+      name: string;
+      shiny: boolean;
+      sprite: string | null;
+      moves: PartyMove[];
+      /** Machine ids in the bag this one can learn. Join against `tms`. */
+      canTake: number[];
+      /** Already known by the species, so free — and named, since the bag may not hold it. */
+      free: PartyMove[];
+    }[];
+  };
+  /** The badge case. All eight arrive, held or not — see server/state.ts. */
+  badges: {
+    count: number;
+    total: number;
+    wins: number;
+    league: {
+      cityKo: string;
+      open: boolean;
+      /** Members already down in the run under way, or null when none is. */
+      at: number | null;
+      size: number;
+      best: number;
+      wins: number;
+      clearedAt: number | null;
+      until: number;
+      members: { id: string; ko: string; down: boolean; sprite: string | null }[];
+    };
+    cases: {
+      no: number;
+      ko: string;
+      leaderKo: string;
+      cityKo: string;
+      have: boolean;
+      /** 상록시티, and only it: shut until the other seven are held. */
+      locked: boolean;
+      /** Encounters until the pet stands in that city. 0 means it is there. */
+      until: number;
+      prizeKo: string | null;
+      sprite: string | null;
+    }[];
+  };
   events: { kind: string; speciesId?: number; shiny?: boolean }[];
   sprites: { bytes: number; files: number };
   /** Impact art for the move types swung this encounter, by type. */
@@ -691,8 +759,17 @@ export default function App() {
   const [fGen, setFGen] = useState<number | null>(null);
   const [fType, setFType] = useState<string | null>(null);
   const [showUnseen, setShowUnseen] = useState(false);
-  /** The legendary board, shown in place of the dex grid. */
-  const [showLegends, setShowLegends] = useState(false);
+  /**
+   * Which of the dex tab's three boards is up.
+   *
+   * One collection, three views: the grid, the legendary conditions, and the
+   * league party. The party lives here rather than in a tab of its own because
+   * every candidate for it is on the grid two rows below — picking six out of
+   * the dex on a screen that is not the dex would be the wrong screen.
+   */
+  const [dexView, setDexView] = useState<'dex' | 'legends' | 'party'>('dex');
+  /** Which party seat's move sheet is open, or null. */
+  const [partySeat, setPartySeat] = useState<number | null>(null);
   /** Which achievement category is showing. Null is all of them. */
   const [awardCat, setAwardCat] = useState<string | null>(null);
   /**
@@ -768,7 +845,8 @@ export default function App() {
     setPendingTm(null);
     setAwardCat(null);
     setHideDone(false);
-    setShowLegends(false);
+    setDexView('dex');
+    setPartySeat(null);
     // Opening the board IS reading it, so the dot goes out here.
     if (id === 'awards') setAwardsSeen(state?.awards.filter((a) => a.at !== null).length ?? 0);
     closeDex();
@@ -1144,6 +1222,16 @@ export default function App() {
    * Collected entries carry their own art; unseen slots are pulled from the
    * index and show a placeholder, so switching the toggle on downloads nothing.
    */
+  /**
+   * Party membership, by the key the dex itself uses.
+   *
+   * (species, shiny) — the same pair `record` in server/dex.ts keys on, so a
+   * shiny and a plain 리자몽 are two entries here exactly as they are there.
+   */
+  const partyIndexOf = (d: { speciesId: number; shiny: boolean }) =>
+    state?.party.members.findIndex((m) => m.speciesId === d.speciesId && m.shiny === d.shiny) ?? -1;
+  const inParty = (d: { speciesId: number; shiny: boolean }) => partyIndexOf(d) >= 0;
+
   const dexCards = ((): DexCard[] => {
     const seen: DexCard[] = state.dex.filter(matches).map((d) => ({ ...d, seen: true }));
     const have = new Set(state.dex.map((d) => d.speciesId));
@@ -1336,7 +1424,7 @@ export default function App() {
         log={state.hunt.log}
         idleReason={state.hunt.idleReason}
         nextInMs={state.hunt.nextInMs}
-        stop={journeyFor(state.hunt.count)}
+        stop={state.hunt.stop}
         skylineBg={state.hunt.skylineBg}
         /*
          * Read at render rather than on a timer of its own. The payload already
@@ -2081,13 +2169,13 @@ export default function App() {
         <p className="muted sub">
           아직 아무것도 없습니다. 전설의 조건을 채우면 전용 도구가 사냥에서 떨어지기 시작합니다.
           {' '}
-          {/* It says 조건 and offered no way to see them. `goTab` clears
-              showLegends, so it has to be set after the switch. */}
+          {/* It says 조건 and offered no way to see them. `goTab` resets the
+              dex view, so it has to be set after the switch. */}
           <button
             className="linky"
             onClick={() => {
               goTab('dex');
-              setShowLegends(true);
+              setDexView('legends');
             }}
           >
             조건 보기
@@ -2185,7 +2273,7 @@ export default function App() {
       <>
       <div className="dexbar">
         <h2>도감</h2>
-        {!showLegends && (
+        {dexView === 'dex' && (
           <button className="linky" onClick={() => setShowFilters(!showFilters)}>
             {showFilters ? '필터 닫기' : '필터'}
             {activeFilters > 0 && ` (${activeFilters})`}
@@ -2200,15 +2288,165 @@ export default function App() {
           already has a chip called 전설, and two buttons of the same name in
           one screen is a coin toss for anything looking one up. */}
       <div className="chips shopchips" role="group" aria-label="도감 화면">
-        <button className={showLegends ? '' : 'on'} onClick={() => setShowLegends(false)}>
+        <button className={dexView === 'dex' ? 'on' : ''} onClick={() => setDexView('dex')}>
           도감
         </button>
-        <button className={showLegends ? 'on' : ''} onClick={() => setShowLegends(true)}>
+        <button className={dexView === 'legends' ? 'on' : ''} onClick={() => setDexView('legends')}>
           전설 목록
+        </button>
+        <button className={dexView === 'party' ? 'on' : ''} onClick={() => setDexView('party')}>
+          파티 {state.party.members.length} / {state.party.size}
         </button>
       </div>
 
-      {showLegends && (
+      {dexView === 'party' && (
+      <>
+      {/* The party board.
+
+          Six seats above the grid, so picking and reviewing are one screen.
+          The seats are `.items` rows rather than `.dex` cards because each one
+          carries four move names, and four lines do not fit in a 95px cell. */}
+      <p className="sub">
+        <b>{state.party.members.length}</b>
+        <span className="muted">마리 / {state.party.size}마리</span>
+        {state.badges.league.wins > 0 && (
+          <span className="muted"> · {state.badges.league.wins}회 제패</span>
+        )}
+      </p>
+      <p className="muted sub note">
+        {state.badges.count < state.badges.total
+          ? `배지 ${state.badges.total}개를 모으면 ${state.badges.league.cityKo}에서 사천왕에게 도전합니다. 지금 ${state.badges.count}개.`
+          : state.party.ready
+            ? `${state.badges.league.cityKo}에 도착하면 도전이 시작됩니다.`
+            : `${state.party.size}마리를 채워야 도전할 수 있습니다. 아래 도감에서 고르세요.`}
+      </p>
+      <ul className="items partyseats">
+        {Array.from({ length: state.party.size }, (_, i) => {
+          const m = state.party.members[i];
+          if (!m) {
+            return (
+              <li key={`empty-${i}`} className="empty">
+                <span className="icon">➕</span>
+                <span className="lbl">
+                  <span>비었음</span>
+                  <em>아래 도감에서 고르세요.</em>
+                </span>
+              </li>
+            );
+          }
+          return (
+            <li key={`${m.speciesId}-${m.shiny}`}>
+              <span className="icon">
+                {m.sprite ? <DexSprite name={m.sprite} alt="" /> : '?'}
+              </span>
+              <span className="lbl">
+                <span className="awardtop">
+                  <span>
+                    {m.name}
+                    {m.shiny && '✨'}
+                  </span>
+                  <em className="num">
+                    {m.moves.length} / {state.hunt.slots}
+                  </em>
+                </span>
+                <em>
+                  {m.moves.length ? m.moves.map((x) => x.name).join(' · ') : '기술이 없습니다.'}
+                </em>
+              </span>
+              <button onClick={() => setPartySeat(partySeat === i ? null : i)}>
+                {partySeat === i ? '닫기' : '기술'}
+              </button>
+              <button onClick={() => void act('partyclear', String(i))} disabled={busy}>
+                빼기
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      {partySeat !== null && state.party.members[partySeat] && (
+        <>
+          <h3 className="shelf">
+            {state.party.members[partySeat].name} 기술
+            <span className="muted"> {state.party.members[partySeat].moves.length} / {state.hunt.slots}</span>
+          </h3>
+          {/* Already on it. Overwriting one is what the sheet below does, so
+              these are shown to be read rather than pressed. */}
+          {state.party.members[partySeat].moves.length > 0 && (
+            <ul className="items">
+              {state.party.members[partySeat].moves.map((mv) => (
+                <li key={mv.id} data-type={mv.type}>
+                  <span className="icon">•</span>
+                  <span className="lbl">
+                    <span>{mv.name}</span>
+                    <em>
+                      {mv.typeName} · {mv.damageClass === 'status' ? '변화' : `위력 ${mv.power}`}
+                    </em>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <h3 className="shelf">배울 수 있는 기술</h3>
+          <p className="muted sub note">
+            도감에 남은 기술은 그냥 배웁니다. 가방의 기술머신은 <b>쓰면 사라집니다</b> —
+            파트너에게 가르치는 것과 같습니다.
+          </p>
+          <ul className="items">
+            {(() => {
+              const seat = state.party.members[partySeat];
+              const bag = seat.canTake
+                .map((id) => state.tms.find((t) => t.id === id))
+                .filter((t): t is (typeof state.tms)[number] => !!t);
+              const rows = [
+                ...seat.free.map((mv) => ({ mv, free: true })),
+                ...bag.map((t) => ({ mv: t, free: false })),
+              ];
+              if (!rows.length) {
+                return (
+                  <li className="empty">
+                    <span className="icon">🔒</span>
+                    <span className="lbl">
+                      <span>배울 수 있는 기술이 없습니다</span>
+                      <em>이 포켓몬이 배울 수 있는 기술머신을 아직 모으지 못했습니다.</em>
+                    </span>
+                  </li>
+                );
+              }
+              return rows.map(({ mv, free }) => (
+                <li key={`${free ? 'f' : 'b'}-${mv.id}`} data-type={mv.type}>
+                  <span className="icon">{free ? '↩︎' : '💿'}</span>
+                  <span className="lbl">
+                    <span className="awardtop">
+                      <span>{mv.name}</span>
+                      <em className={free ? 'got' : 'num'}>{free ? '이미 배운 기술' : '기술머신 소비'}</em>
+                    </span>
+                    <em>
+                      {mv.typeName} · {mv.damageClass === 'status' ? '변화' : `위력 ${mv.power}`}
+                    </em>
+                  </span>
+                  <button
+                    disabled={busy}
+                    onClick={() =>
+                      void act(
+                        'partyassign',
+                        `${partySeat}:${mv.id}`,
+                        seat.moves.length >= state.hunt.slots ? 0 : null,
+                      )
+                    }
+                  >
+                    {seat.moves.length >= state.hunt.slots ? '1번과 교체' : '배우기'}
+                  </button>
+                </li>
+              ));
+            })()}
+          </ul>
+        </>
+      )}
+      </>
+      )}
+
+      {dexView === 'legends' && (
       <>
       <p className="sub">
         <b>{legendsOpen}</b>
@@ -2221,6 +2459,13 @@ export default function App() {
       <p className="muted sub note">
         조건을 채우면 야생에서 만날 수 있게 됩니다. 이기면 그 포켓몬의 알이 남고, 알을 품어
         키워야 도감에 들어갑니다.
+      </p>
+      {/* The rooms. Counted here rather than on the journey caption because
+          this is the screen about legendaries, and a place you have not opened
+          is not somewhere the caption can mention. */}
+      <p className="muted sub note">
+        전용 공간 <b>{state.hunt.shrines.open}</b> / {state.hunt.shrines.total}곳 —
+        시작의 방·창기둥 같은 곳은 그 포켓몬을 만나기 전까지 여정에 나오지 않습니다.
       </p>
       {/* Grouped by generation, the same shelf idiom the shop and the awards
           board use. Ninety-four rows in one column is a wall; nine of ten is a
@@ -2269,7 +2514,7 @@ export default function App() {
       </>
       )}
 
-      {!showLegends && (
+      {dexView !== 'legends' && (
       <>
       {/*
         Two counts in two different units, side by side.
@@ -2397,7 +2642,15 @@ export default function App() {
               </>
             );
             return (
-              <li key={key} className={d.seen ? (d.shiny ? 'shinydex' : '') : 'unseen'}>
+              <li
+                key={key}
+                className={[
+                  d.seen ? (d.shiny ? 'shinydex' : '') : 'unseen',
+                  dexView === 'party' && inParty(d) ? 'inparty' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
                 {d.seen || d.locked ? (
                   /* No aria-expanded and no aria-haspopup: this navigates to a
                      screen, it does not disclose a region or open a menu. No
@@ -2411,8 +2664,26 @@ export default function App() {
                     type="button"
                     className="card"
                     data-key={key}
-                    aria-label={d.locked ? `${d.speciesId}번 전설, 획득 조건 보기` : undefined}
-                    onClick={() => openDex(d)}
+                    aria-label={
+                      dexView === 'party'
+                        ? `${d.name}${inParty(d) ? ' 파티에서 빼기' : ' 파티에 넣기'}`
+                        : d.locked
+                          ? `${d.speciesId}번 전설, 획득 조건 보기`
+                          : undefined
+                    }
+                    /* In 파티 mode the same card does a different job: it puts
+                       the entry into the party instead of opening its screen.
+                       One grid, two verbs — which is why the mode chip sits
+                       directly above it rather than on another tab. */
+                    onClick={() =>
+                      dexView === 'party'
+                        ? d.locked
+                          ? undefined
+                          : inParty(d)
+                            ? act('partyclear', String(partyIndexOf(d)))
+                            : act('partyset', `${d.speciesId}:${d.shiny ? 1 : 0}`)
+                        : openDex(d)
+                    }
                   >
                     {face}
                   </button>
@@ -2768,6 +3039,86 @@ export default function App() {
       <div className="bar" role="progressbar" aria-valuenow={awardPct}>
         <i className="fill" style={{ width: `${awardPct}%` }} />
       </div>
+
+      {/* The badge case.
+
+          Above the category chips rather than below the board, so the tab
+          reads "here is what you hold, here is what you are working toward".
+          Borrowed wholesale from the dex grid — four across, two down, the
+          same card, the same dashed edge for a slot not yet filled — because
+          that is already what a badge case looks like in the games, and a
+          second grid idiom in one panel would be one too many. */}
+      {/* `badgeshelf`, not `awardshelf`: the board's group headings come and
+          go with the category chips and this one never does, so sharing a
+          class would make "the headings are gone" untestable. */}
+      <h3 className="shelf badgeshelf">
+        배지 <span className="muted">{state.badges.count} / {state.badges.total}</span>
+      </h3>
+      <ul className="dex badgecase">
+        {state.badges.cases.map((b) => (
+          <li key={b.no} className={b.have ? '' : 'unseen'}>
+            <span className="card">
+              <span className="art">
+                {b.sprite ? <img src={spriteUrl(b.sprite)} alt="" /> : '🔒'}
+              </span>
+              <span className="nm">{b.have ? b.ko : b.cityKo}</span>
+              {/* One line that changes with the state, so a locked slot is
+                  never a blank that leaves the reader guessing. */}
+              <span className="no">
+                {b.have
+                  ? (b.prizeKo ?? b.leaderKo)
+                  : b.locked
+                    ? '배지 7개 필요'
+                    : b.until === 0
+                      ? '지금 여기'
+                      : `${compact(b.until)}조우`}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      {state.badges.count === 0 && (
+        <p className="muted sub note">
+          여정이 관동의 체육관 도시를 지날 때 관장이 승부를 걸어옵니다. 이기면 배지와 그 관장의
+          기술머신을 받습니다. 배지는 이 업데이트부터 셉니다.
+        </p>
+      )}
+
+      {/* The summit. Shown whether or not it is reachable — an eight-badge
+          requirement you cannot see is a requirement nobody works toward. */}
+      <h3 className="shelf badgeshelf">
+        포켓몬리그
+        {state.badges.league.wins > 0 && (
+          <span className="muted"> {state.badges.league.wins}회 제패</span>
+        )}
+      </h3>
+      <ul className="dex leagueline">
+        {state.badges.league.members.map((m, i) => (
+          <li key={m.id} className={m.down || state.badges.league.wins > 0 ? '' : 'unseen'}>
+            <span className="card">
+              <span className="art">
+                {m.sprite ? <DexSprite name={m.sprite} alt="" /> : '?'}
+              </span>
+              <span className="nm">{m.ko.replace('사천왕 ', '').replace('챔피언 ', '')}</span>
+              <span className="no">{i === 4 ? '챔피언' : `사천왕 ${i + 1}`}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="muted sub note">
+        {!state.badges.league.open
+          ? `배지 ${state.badges.total}개를 모으면 ${state.badges.league.cityKo}에서 도전할 수 있습니다.`
+          : !state.party.ready
+            ? '도감에서 파티 6마리를 짜야 도전할 수 있습니다.'
+            : state.badges.league.at !== null
+              ? `도전 중 — ${state.badges.league.at} / ${state.badges.league.size}명 격파.`
+              : state.badges.league.until === 0
+                ? `${state.badges.league.cityKo}에 있습니다. 도전이 곧 시작됩니다.`
+                : `${state.badges.league.cityKo}까지 ${compact(state.badges.league.until)}조우.`}
+        {state.badges.league.best > 0 && state.badges.league.wins === 0 && (
+          <> 최고 기록 {state.badges.league.best} / {state.badges.league.size}명.</>
+        )}
+      </p>
 
       <div className="chips awardcats" role="group" aria-label="업적 분야">
         <button className={awardCat === null ? 'on' : ''} onClick={() => setAwardCat(null)}>

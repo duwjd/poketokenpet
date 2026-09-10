@@ -24,6 +24,13 @@ export type PetActionKind =
   | 'legendegg'
   /** Fuse a full set of fragments into its signature item. */
   | 'fuse'
+  /**
+   * The league party. Two numbers ride in `id`, colon-separated — see
+   * `partyAction` in server/party.ts, which owns the parsing for both surfaces.
+   */
+  | 'partyset'
+  | 'partyclear'
+  | 'partyassign'
   | 'sprites';
 export type ShopReply = { ok: boolean; message: string };
 

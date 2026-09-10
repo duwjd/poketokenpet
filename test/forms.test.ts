@@ -47,6 +47,29 @@ describe('the generated form table', () => {
     expect(odd).toEqual([]);
   });
 
+  /**
+   * The slug is what `ensureSprite` hands to Pokemon Showdown when PokeAPI has
+   * no animated art, so two forms sharing one would quietly fetch each other's
+   * picture. Three Tatsugiri megas and both Toxtricity gigantamaxes really did
+   * collide until the variety qualifier was folded in.
+   */
+  it('gives every form its own Showdown slug', () => {
+    for (const f of FORMS) expect(f.slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+    expect(new Set(FORMS.map((f) => f.slug)).size).toBe(FORMS.length);
+  });
+
+  it('builds the slug out of the base species, not the Korean name', () => {
+    // The rule Showdown actually uses, checked against the live host: English
+    // species name with everything but letters and digits removed, then the
+    // form. PokeAPI's own spelling (`charizard-mega-x`) is not it.
+    const slug = (id: number) => FORMS.find((f) => f.id === id)?.slug;
+    expect(slug(10287)).toBe('excadrill-mega');
+    expect(slug(10034)).toBe('charizard-megax');
+    // The DEFAULT variety's token is one Showdown never writes down.
+    expect(slug(10219)).toBe('toxtricity-gmax');
+    expect(slug(10228)).toBe('toxtricity-lowkey-gmax');
+  });
+
   it('keeps every base inside the dex', () => {
     for (const f of FORMS) {
       expect(f.base).toBeGreaterThanOrEqual(1);

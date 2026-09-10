@@ -393,6 +393,23 @@ body {
   94% { transform: rotate(-3deg); }
 }
 
+/*
+ * An idle for a Pokemon whose art cannot move by itself.
+ *
+ * A Gen-5 GIF breathes on its own; the flat PNG a Legends Z-A mega falls back to
+ * does not, and beside a companion that moves it reads as a broken image rather
+ * than a calm one. Three percent on the vertical only, with the origin at the
+ * feet — this is deliberately NOT a bob. See the note by `.scene-sprite` in
+ * Scene.css for why lifting the sprite off the ground was rejected.
+ *
+ * Same file-serves-two-windows arrangement as `wobble` above: Scene.css reads
+ * this, and PetApp.css carries its own copy because that window loads neither.
+ */
+@keyframes breathe {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.97); }
+}
+
 h1 { font-size: 24px; margin: var(--s2) 0 var(--s1); }
 h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: var(--s5) 0 var(--s3); }
 .shiny { margin-left: var(--s3); }
@@ -633,6 +650,24 @@ p.muted.warn { color: var(--gold); }
   display: grid; place-items: center;
   font-size: 20px;
 }
+/*
+ * Two shapes reach that box. Most rows put the class on the <img> itself, so it
+ * is already 24x24; the 전용 도구 and 전설의 알 lists wrap the image in a
+ * `span.icon` because those rows fall back to a glyph, and the inner image had
+ * no size rule at all.
+ *
+ * That was invisible for as long as every icon upstream was 30x30 — six pixels
+ * of overflow behind a centred box. It stopped being invisible the moment
+ * `ensureItemSprite` learned to read PokeAPI's `gen8/` and `gen9/` folders,
+ * because those hold 160x160 art: measured in headless Chrome, the Rusted Sword
+ * drew across the whole panel and over three rows of text.
+ *
+ * `object-fit: contain` on the sized one is insurance rather than a fix — every
+ * icon upstream is square today — but a stretched icon is the failure this
+ * prevents and it costs a line.
+ */
+.items .icon img { max-width: 100%; max-height: 100%; }
+.items img.icon { object-fit: contain; }
 .items .lbl { flex: 1; min-width: 0; font-size: 12px; display: flex; flex-direction: column; gap: var(--s1); }
 .items .lbl em { font-style: normal; font-size: 12px; color: var(--muted); line-height: 1.4; }
 
@@ -1445,17 +1480,25 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
 .chips.awardcats { margin-top: var(--s4); }
 /* The per-category count on a shelf heading. Tabular so the headings line up. */
 .awardshelf span { font-variant-numeric: tabular-nums; font-weight: 400; }
-.awards .awardtop {
+/*
+ * A name on the left and a figure on the right, on one line.
+ *
+ * Unscoped from `.awards` on purpose: it is a layout idiom rather than a thing
+ * the achievement board owns, and the league party rows want the same line —
+ * a species and its move count, a move and what it costs. It was scoped, and
+ * the party rows silently rendered as "리자몽2 / 4" until they were looked at.
+ */
+.awardtop {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--s3);
 }
 /* The figure on the right holds its width; the name is what may ellipsis. */
-.awards .awardtop > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.awards .awardtop em { flex: none; font-size: 10px; font-family: 'Galmuri9'; }
-.awards .awardtop .num { font-variant-numeric: tabular-nums; }
-.awards .awardtop .got,
+.awardtop > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.awardtop em { flex: none; font-size: 10px; font-family: 'Galmuri9'; }
+.awardtop .num { font-variant-numeric: tabular-nums; }
+.awardtop .got,
 .sub .got { color: var(--accent); }
 .awards .icon img { width: var(--ctl); height: var(--ctl); image-rendering: pixelated; }
 /* The same 8px inline gauge the readout rows use, which is why it keeps the name. */
@@ -1489,3 +1532,53 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
     border-image-source: var(--ui-btn-down-dark);
   }
 }
+
+/*
+ * The badge case: the dex grid, with a smaller picture box.
+ *
+ * A badge arrives at ~85x85 where a dex sprite is 96x96 drawn at 1x, and the
+ * dex's 48px box does not contain it — `max-height: 100%` on a grid item is
+ * not honoured against a grid area, measured in Chrome, so the art overflowed
+ * and the name printed on top of it. The box is given its own height from the
+ * scale instead, and the cap on the image is an absolute length rather than a
+ * percentage for the same reason.
+ *
+ * `--ctl-lg` is a control height rather than a picture height, and it is used
+ * here because 32px is the size these read at — checked against the real PNGs
+ * at 24, 32 and 40. Below 32 the multi-coloured ones (무지개배지 especially)
+ * turn to confetti.
+ *
+ * A slot not yet earned wears the dex's own `.unseen` — dashed edge, 45%
+ * opacity — plus the grayscale below. Colour is the whole difference between
+ * "held" and "not yet", so it has to be the thing that goes.
+ */
+.badgeshelf { margin-top: var(--s4); }
+.badgecase { margin-bottom: var(--s4); }
+.badgecase .art { height: var(--ctl-lg); }
+.badgecase .art img { max-height: var(--ctl-lg); width: auto; max-width: 100%; }
+.badgecase li.unseen .art img { filter: grayscale(1); }
+
+/*
+ * The Elite Four and the Champion.
+ *
+ * Five across rather than the dex's four, because they are one row or they are
+ * not a row. Sized like the badge case beside it and for the same reason —
+ * the portraits are 80x80 and the dex's 48px box does not contain them — but
+ * deliberately NOT sharing its class: `test/ui/tabs.test.tsx` counts
+ * `.badgecase li` to check that eight slots are drawn, and five more of them
+ * under the same name would make that count mean nothing.
+ */
+.leagueline { grid-template-columns: repeat(5, 1fr); margin-bottom: var(--s3); }
+/* Half again the badge box. A badge is one flat shape and reads at 32px; a
+   portrait is a whole person and does not — checked against the real 80x80
+   sprites, where 32px turns 시바 and 목호 into the same grey smudge. */
+.leagueline .art { height: calc(var(--ctl-lg) * 1.5); }
+.leagueline .art img { max-height: calc(var(--ctl-lg) * 1.5); width: auto; max-width: 100%; }
+.leagueline li.unseen .art img { filter: grayscale(1); }
+/* A party member on the dex grid. The accent edge the shiny card already uses,
+   because it means the same thing here — this one is picked out. */
+.dex li.inparty .card { border-color: var(--accent); border-width: 2px; }
+/* Six seats above the grid. The empty ones are dashed, like an unseen slot. */
+.partyseats li.empty { border-style: dashed; opacity: .6; }
+/* The same box the award icons use, so the two lists line up down the page. */
+.partyseats .icon img { width: var(--ctl-lg); height: var(--ctl-lg); image-rendering: pixelated; object-fit: contain; }

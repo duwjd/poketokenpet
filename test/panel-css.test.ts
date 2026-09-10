@@ -35,6 +35,18 @@ describe('the item list', () => {
     expect(css).toContain('.items li.row:hover { background: var(--track); }');
   });
 
+  /**
+   * PokeAPI files Generation 8 and 9 item icons at 160x160, not the 30x30 every
+   * other item is, and the 전용 도구 and 전설의 알 rows wrap their image in a
+   * `span.icon` rather than putting the class on it. Without a size the inner
+   * image renders at its natural width: measured in headless Chrome, the Rusted
+   * Sword drew across the whole panel and over three rows of text.
+   */
+  it('keeps an icon inside its box however the row wraps it', () => {
+    expect(css).toContain('.items .icon img { max-width: 100%; max-height: 100%; }');
+    expect(css).toContain('.items img.icon { object-fit: contain; }');
+  });
+
   /** Only the row button is one line; move slots and settings have two. */
   it('flattens only the row button', () => {
     expect(css).toContain('.items .rowbtn.lbl');
@@ -327,3 +339,4 @@ describe('the horizontal margins', () => {
     expect(rule('.items li.row')).toMatch(/padding-left:\s*var\(--gutter-cursor\)/);
   });
 });
+

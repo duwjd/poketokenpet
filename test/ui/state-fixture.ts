@@ -142,6 +142,9 @@ export const STATE = {
     uncapped: false,
     count: 37,
     sinceBirth: { tokens: 1_200_000, count: 14 },
+    /** 회색시티 — a Kanto gym town, so no shut shrine shadows it. */
+    stop: { ko: '회색시티', region: '관동', terrain: 'town' as const, sky: 'city' as const },
+    shrines: { open: 2, total: 36 },
     intervalMs: 300_000,
     slots: 4,
     nextInMs: 92_000,
@@ -225,6 +228,72 @@ export const STATE = {
     ],
   },
   /** One of each state: done, locked, repeating, and a second category. */
+  /** A league party half built: two seats filled, one of them armed. */
+  party: {
+    size: 6,
+    ready: false,
+    cityKo: '석영고원',
+    members: [
+      {
+        speciesId: 6,
+        name: '리자몽',
+        shiny: false,
+        sprite: '6-a.gif',
+        moves: [
+          { id: 53, name: '화염방사', nameEn: 'Flamethrower', type: 'fire', typeName: '불꽃', power: 90, accuracy: 100, pp: 15, damageClass: 'special' as const },
+        ],
+        canTake: [63],
+        free: [
+          { id: 17, name: '날개치기', nameEn: 'Wing Attack', type: 'flying', typeName: '비행', power: 60, accuracy: 100, pp: 35, damageClass: 'physical' as const },
+        ],
+      },
+      {
+        speciesId: 9,
+        name: '거북왕',
+        shiny: false,
+        sprite: '9-a.gif',
+        moves: [],
+        canTake: [],
+        free: [],
+      },
+    ],
+  },
+  /**
+   * The badge case, with one of each state the card has to draw: earned,
+   * still ahead on the road, and shut behind the other seven.
+   */
+  badges: {
+    count: 1,
+    total: 8,
+    wins: 3,
+    league: {
+      cityKo: '석영고원',
+      open: false,
+      at: null,
+      size: 5,
+      best: 2,
+      wins: 0,
+      clearedAt: null,
+      until: 5972,
+      members: [
+        { id: 'lorelei', ko: '사천왕 칸나', down: false, sprite: 'npc-lorelei-gen1.png' },
+        { id: 'bruno', ko: '사천왕 시바', down: false, sprite: 'npc-bruno.png' },
+        { id: 'agatha', ko: '사천왕 국화', down: false, sprite: 'npc-agatha-gen1.png' },
+        { id: 'lance', ko: '사천왕 목호', down: false, sprite: 'npc-lance.png' },
+        { id: 'blue', ko: '챔피언 그린', down: false, sprite: 'npc-blue.png' },
+      ],
+    },
+    cases: [
+      { no: 1, ko: '회색배지', leaderKo: '웅', cityKo: '회색시티', have: true, locked: false, until: 0, prizeKo: '암석봉인', sprite: 'badge-1.png' },
+      { no: 2, ko: '블루배지', leaderKo: '이슬', cityKo: '블루시티', have: false, locked: false, until: 47, prizeKo: '물의파동', sprite: 'badge-2.png' },
+      { no: 3, ko: '오렌지배지', leaderKo: '마티스', cityKo: '갈색시티', have: false, locked: false, until: 72, prizeKo: '전격파', sprite: 'badge-3.png' },
+      { no: 4, ko: '무지개배지', leaderKo: '민화', cityKo: '무지개시티', have: false, locked: false, until: 197, prizeKo: '기가드레인', sprite: 'badge-4.png' },
+      { no: 5, ko: '핑크배지', leaderKo: '독수', cityKo: '연분홍시티', have: false, locked: false, until: 272, prizeKo: '맹독', sprite: 'badge-5.png' },
+      { no: 6, ko: '골드배지', leaderKo: '초련', cityKo: '노랑시티', have: false, locked: false, until: 247, prizeKo: '명상', sprite: 'badge-6.png' },
+      { no: 7, ko: '진홍색배지', leaderKo: '강연', cityKo: '홍련섬', have: false, locked: false, until: 322, prizeKo: '불대문자', sprite: 'badge-7.png' },
+      { no: 8, ko: '그린배지', leaderKo: '비주기', cityKo: '상록시티', have: false, locked: true, until: 5947, prizeKo: '지진', sprite: 'badge-8.png' },
+    ],
+  },
   awards: [
     {
       id: 'raise-1',

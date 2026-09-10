@@ -242,6 +242,13 @@
 .scene-sprite.wobble { animation: wobble 2.4s ease-in-out infinite; transform-origin: 50% 80%; }
 .scene-sprite.cracking { animation: wobble 1.1s ease-in-out infinite; transform-origin: 50% 80%; }
 
+/* A sprite with no animation of its own gets one drawn over it. `breathe` is in
+   App.css beside `wobble`, and `stillPokemon` in spriteBox.ts decides who gets
+   it — only the flat PNGs, never a GIF that already moves and never the shop
+   clerk. The origin is the feet, which is the whole difference from the bob
+   rejected below. */
+.scene-sprite.still { animation: breathe 2.6s ease-in-out infinite; transform-origin: 50% 100%; }
+
 /* A soft shadow anchors the sprite to the ground instead of floating it. */
 .scene-shadow {
   position: absolute;
@@ -254,8 +261,10 @@
 }
 
 /* The grass stops while an encounter is being announced or resolved. The sprite
-   itself never animates — the scrolling grass is what says "travelling", and a
-   bobbing sprite on top of it read as a hover rather than a walk. */
+   is never LIFTED — the scrolling grass is what says "travelling", and a bobbing
+   sprite on top of it read as a hover rather than a walk. `.still` above is not
+   that: it squashes a couple of percent about the feet, which stay on the
+   ground, and it goes only on art that would otherwise be frozen solid. */
 .scene.frozen .scene-grass {
   animation-play-state: paused;
 }
@@ -954,10 +963,29 @@
   /* This list is an allowlist, not a wildcard — a new animated class has to be
      added by hand or it keeps moving. */
   .scene-fx,
+  .scene-sprite.still,
   .scene-text::after {
     animation: none;
   }
   /* Without a running animation the art would sit on screen at full opacity. */
   .scene-fx { display: none; }
   .scene-hp i { transition: none; }
+}
+
+/**
+ * The badge in the reward box.
+ *
+ * Upstream badges are ~85x85 and the message box line is 12px, so this is the
+ * one place in the scene that scales art DOWN rather than by a whole number.
+ * `image-rendering` stays pixelated anyway: a badge is flat vector-ish art
+ * with a heavy outline, and smoothing it turns the outline to mush at this
+ * size. Sat on the text baseline rather than floated, so a page with the badge
+ * line on it is exactly as tall as any other.
+ */
+.scene-badge {
+  height: 1.4em;
+  width: auto;
+  vertical-align: -0.35em;
+  margin-right: 3px;
+  image-rendering: pixelated;
 }

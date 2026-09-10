@@ -60,6 +60,7 @@ const Q_BASE = `{
     limit: 1200
   ) {
     id
+    name
     pokemonstats { base_stat }
   }
 }`;
@@ -67,7 +68,10 @@ const Q_BASE = `{
 const Q_STONES = `{
   item(where: { itemcategory: { name: { _eq: "mega-stones" } } }, order_by: { id: asc }) {
     name
-    itemnames(where: { language: { name: { _eq: "ko" } } }) { name }
+    itemnames(where: { language: { name: { _in: ["ko", "en"] } } }) {
+      name
+      language { name }
+    }
   }
 }`;
 
@@ -118,6 +122,21 @@ const ULTRA_NECROZMA = { form: 10157, from: [10155, 10156] };
 const SPECIAL_ITEMS: Record<number, { ko: string; sprite: string | null }> = {
   10077: { ko: '푸른구슬', sprite: 'blue-orb' },
   10078: { ko: '붉은구슬', sprite: 'red-orb' },
+};
+
+/**
+ * Forms Pokemon Showdown spells differently from PokeAPI.
+ *
+ * PokeAPI's form_name for the two Necrozma fusions is `dusk` and `dawn`;
+ * Showdown writes out the whole wing. Both spellings were checked against the
+ * live host — `necrozma-duskmane` and `necrozma-dawnwings` resolve, `necrozma-dusk`
+ * and `necrozma-dawn` do not. Everything else in the table follows the ordinary
+ * rule, verified the same way: 115 of the 140 slugs resolve, and the 25 that do
+ * not are forms Showdown has simply never drawn.
+ */
+const SD_SLUG: Record<number, string> = {
+  10155: 'necrozma-duskmane',
+  10156: 'necrozma-dawnwings',
 };
 
 /**
@@ -194,20 +213,88 @@ async function run() {
   process.stdout.write('PokeAPI에서 폼 데이터 가져오는 중... ');
   const [{ pokemon: rows }, { pokemon: bases }, { item: stoneItems }] = await Promise.all([
     gql<{ pokemon: Row[] }>(Q_FORMS),
-    gql<{ pokemon: { id: number; pokemonstats: { base_stat: number }[] }[] }>(Q_BASE),
-    gql<{ item: { name: string; itemnames: { name: string }[] }[] }>(Q_STONES),
+    gql<{ pokemon: { id: number; name: string; pokemonstats: { base_stat: number }[] }[] }>(
+      Q_BASE,
+    ),
+    gql<{
+      item: { name: string; itemnames: { name: string; language: { name: string } }[] }[];
+    }>(Q_STONES),
   ]);
   console.log(`폼 ${rows.length}개 · 기준 종 ${bases.length}개 · 메가스톤 ${stoneItems.length}개`);
 
   const bst = (stats: { base_stat: number }[]) => stats.reduce((a, s) => a + s.base_stat, 0);
   const baseBst = new Map(bases.map((b) => [b.id, bst(b.pokemonstats)]));
+  /**
+   * species id -> the variety token PokeAPI's DEFAULT form carries, if any.
+   *
+   * Toxtricity's default variety is `toxtricity-amped`, so 'amped' is not a
+   * qualifier anyone spells out — Showdown files its gigantamax as
+   * `toxtricity-gmax`, verified against the live host. Same for Urshifu, whose
+   * default is `urshifu-single-strike` and whose gigantamax is `urshifu-gmax`.
+   */
+  const defaultQual = new Map(
+    bases.map((b) => [b.id, b.name.split('-').slice(1).join('-')] as const),
+  );
 
-  /** Korean stone name -> PokeAPI sprite slug. Only the localised ones land here. */
-  const stoneSprite = new Map<string, string>();
-  for (const it of stoneItems) {
-    const ko = it.itemnames[0]?.name;
-    if (ko) stoneSprite.set(ko, it.name);
-  }
+  /**
+   * Every mega stone upstream, as {slug, ko}.
+   *
+   * This used to be keyed by the Korean name we COMPOSED for the stone, which
+   * meant a stone whose official Korean differs by one syllable was invisible:
+   * Alakazite is 후디나이트 upstream and `${speciesKo}나이트` makes 후딘나이트, so
+   * for years Mega Alakazam showed a made-up name and a placeholder glyph beside
+   * an icon that had been sitting there the whole time. Worse, the 45 Legends Z-A
+   * stones carry NO Korean name at all upstream, so all 45 were invisible too.
+   *
+   * Keyed on the slug instead, and reached from the species — see `stoneFor`.
+   */
+  const stones = stoneItems.map((it) => ({
+    slug: it.name,
+    ko: it.itemnames.find((n) => n.language.name === 'ko')?.name ?? null,
+  }));
+
+  const bare = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, '');
+  /** How many leading characters two strings agree on. */
+  const agree = (a: string, b: string) => {
+    let i = 0;
+    while (i < a.length && i < b.length && a[i] === b[i]) i += 1;
+    return i;
+  };
+
+  /**
+   * The stone that triggers this form, found from the species rather than the name.
+   *
+   * PokeAPI exposes no link from a form to its stone, and the slugs are not
+   * derivable — Alakazam takes `alakazite`, Excadrill `excadrite`, Chandelure
+   * `chandelurite`. What they DO share is a long prefix with the English species
+   * name, so the stone is the mega-stone item whose head agrees with the species
+   * for longest.
+   *
+   * Two guards make that safe rather than merely likely. The X/Y/Z suffix has to
+   * agree first, which is what keeps Charizard's two apart. And the agreement has
+   * to run at least five characters: the shortest true match is Absol at five
+   * (absol/absolite-z) and Mawile at five (mawile/mawilite), while the nearest
+   * false one — Kyogre against `kangaskhanite` — reaches one.
+   *
+   * Checked against the old Korean-name map before replacing it: it agrees on all
+   * 46 that map found, finds 50 the map could not, and disagrees nowhere.
+   */
+  const stoneFor = (speciesEn: string, formName: string) => {
+    const m = /^mega-([xyz])$/.exec(formName);
+    const want = m ? m[1] : '';
+    let best: { slug: string; ko: string | null } | null = null;
+    let bestN = 0;
+    for (const st of stones) {
+      const [head, suffix = ''] = st.slug.split('-');
+      if (suffix !== want) continue;
+      const n = agree(bare(head), bare(speciesEn));
+      if (n > bestN) {
+        best = st;
+        bestN = n;
+      }
+    }
+    return bestN >= 5 ? best : null;
+  };
 
   const byId = new Map(rows.map((r) => [r.id, r]));
   const koName = (id: number) => {
@@ -248,6 +335,7 @@ async function run() {
   type Out = {
     id: number;
     base: number;
+    slug: string;
     kind: 'mega' | 'gmax' | 'fusion';
     ko: string;
     en: string;
@@ -278,6 +366,34 @@ async function run() {
     return n && n.includes(species) ? n : null;
   };
 
+  /**
+   * The name Pokemon Showdown files a sprite under.
+   *
+   * Showdown strips every non-alphanumeric character out of the ENGLISH species
+   * name and hangs the form on with one hyphen. Verified against the live host:
+   * `venusaur-mega` and `excadrill-mega` resolve, `charizard-megax` resolves and
+   * PokeAPI's own `charizard-mega-x` does not, and the plain species `gouging-fire`
+   * is filed as `gougingfire`.
+   *
+   * Composed here rather than in server/sprites.ts because this is the only place
+   * that holds `form_name` — PokeAPI's variety name (`charizard-mega-x`) cannot be
+   * split back into species and form without guessing where the species ends.
+   */
+  const sdId = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const showdownSlug = (r: Row) => {
+    const form = r.pokemonforms[0]?.form_name ?? '';
+    // The variety qualifier has to survive, or three Tatsugiri megas and both
+    // Toxtricity gigantamaxes collapse onto one name and fetch each other's art.
+    // `qualifierOf` is the same function the Korean name uses for exactly this.
+    const qual = qualifierOf(r, r.name.split('-')[0], form);
+    // ...but the DEFAULT variety's token is not one Showdown ever writes down.
+    const wear = qual && qual !== defaultQual.get(r.pokemon_species_id) ? sdId(qual) : '';
+    return (
+      SD_SLUG[r.id] ??
+      [sdId(enName(r.pokemon_species_id)), wear, form && sdId(form)].filter(Boolean).join('-')
+    );
+  };
+
   const shared = (r: Row) => {
     const base = r.pokemon_species_id;
     const bb = baseBst.get(base);
@@ -285,6 +401,7 @@ async function run() {
     return {
       id: r.id,
       base,
+      slug: showdownSlug(r),
       types: r.pokemontypes.map((t) => t.type.name),
       // Rounded to three places: 625/525 is 1.190476..., and a full float in a
       // generated file is noise in every future diff.
@@ -297,6 +414,8 @@ async function run() {
   const out: Out[] = [];
   let composedName = 0;
   let composedStone = 0;
+  /** Megas whose stone could not be found upstream — listed, not silently dropped. */
+  const unmatchedStone: string[] = [];
 
   // ── mega + primal ────────────────────────────────────────────────────────
   for (const r of rows) {
@@ -312,8 +431,12 @@ async function run() {
 
     let stone = SPECIAL_ITEMS[r.id];
     if (!stone && !NO_ITEM.has(r.id)) {
-      const stoneKo = `${speciesKo}나이트${suffix}${tag}`;
-      stone = { ko: stoneKo, sprite: stoneSprite.get(stoneKo) ?? null };
+      const found = stoneFor(enName(s.base), form);
+      // Upstream's own Korean beats ours whenever it has one — that is the whole
+      // 후디나이트 lesson. It has none for any of the Legends Z-A stones, so those
+      // are still composed, and the composed rule is right for every one of them.
+      stone = { ko: found?.ko ?? `${speciesKo}나이트${suffix}${tag}`, sprite: found?.slug ?? null };
+      if (!found) unmatchedStone.push(`${r.id} ${ko}`);
     }
     if (stone && !stone.sprite) composedStone += 1;
 
@@ -422,6 +545,17 @@ export type Form = {
   id: number;
   /** The base species. Dex, rarity, learnset and the tray all keep using this. */
   base: number;
+  /**
+   * The name Pokemon Showdown files this form's sprite under.
+   *
+   * PokeAPI has no animated art for the Legends Z-A megas (#10287-10326), so
+   * \`ensureSprite\` falls through to Showdown's own host for those — and Showdown
+   * spells a form differently from PokeAPI: \`charizard-megax\`, not
+   * \`charizard-mega-x\`. The rule is "English species name with everything but
+   * letters and digits removed, then the form after one hyphen", and it is applied
+   * in the generator because \`form_name\` only exists there.
+   */
+  slug: string;
   kind: FormKind;
   ko: string;
   en: string;
@@ -486,6 +620,9 @@ export function formsFrom(displayId: number): Form[] {
   console.log(`   메가 ${n('mega')} · 거다이맥스 ${n('gmax')} · 합체 ${n('fusion')} (총 ${out.length})`);
   console.log(`   한글명 공식 ${out.length - composedName}개 / 합성 ${composedName}개`);
   console.log(`   메가스톤 아이콘 있음 ${n('mega') - composedStone}개 / 없음 ${composedStone}개`);
+  if (unmatchedStone.length) {
+    console.log(`   스톤을 못 찾은 메가 ${unmatchedStone.length}개: ${unmatchedStone.join(' · ')}`);
+  }
 }
 
 main();

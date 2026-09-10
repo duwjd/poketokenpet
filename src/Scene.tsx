@@ -6,6 +6,7 @@ import { sceneVars } from './scenes.ts';
 import type { TimeOfDay } from './timeOfDay.ts';
 import { euro, josa } from './josa.ts';
 import { fitScale } from './pixelFit.ts';
+import { stillPokemon } from './spriteName.ts';
 import './Scene.css';
 
 export type SceneTurn = {
@@ -58,6 +59,26 @@ export type SceneTrainerFight = {
   team: { speciesId: number; name: string; sprite: string | null }[];
   /** One per team member fought. Shorter than the team if the companion fell. */
   rounds: SceneBattle[];
+  /**
+   * The badge this fight handed over, or null.
+   *
+   * Set only when a gym leader was beaten for the first time — a rematch and a
+   * loss both leave it null, so the reward box needs no rule of its own. All
+   * three come resolved from the server, the way every other name here does.
+   */
+  badgeKo?: string | null;
+  badgeSprite?: string | null;
+  /** The TM that came with the badge. */
+  prizeKo?: string | null;
+  /**
+   * Which of MY six stood for each round. Null for every fight but the league.
+   *
+   * A route trainer and a gym leader are both fought by the one companion, so
+   * the scene's usual back sprite is right for the whole battle. The league is
+   * the only fight where my side changes mid-fight, and this is per ROUND
+   * rather than per member — one of the six can hold two of theirs.
+   */
+  mine?: { speciesId: number; name: string; sprite: string | null }[] | null;
 };
 
 export type SceneEncounter = {
@@ -381,7 +402,7 @@ function SceneSprite({
 
   return (
     <img
-      className="scene-sprite"
+      className={`scene-sprite${stillPokemon(name) ? ' still' : ''}`}
       src={spriteUrl(name)}
       alt={alt}
       draggable={false}
@@ -430,6 +451,23 @@ function rewardPages(enc: Snapshot | null): React.ReactNode[][] {
       ? [`${fight.name}에게 지고 말았다…`, '다음엔 이기겠어!']
       : [
           ...(fight ? [`${fight.name}${josa(fight.name, '을', '를')} 이겼다!`] : []),
+          // The badge, then what came with it. Two lines rather than one
+          // because the box is a window frame, not a container — PAGE_LINES
+          // pages them, exactly as it pages a TM drop during a catch-up.
+          ...(fight?.badgeKo
+            ? [
+                <>
+                  {fight.badgeSprite && (
+                    <img className="scene-badge" src={spriteUrl(fight.badgeSprite)} alt="" />
+                  )}
+                  {fight.badgeKo}
+                  {josa(fight.badgeKo, '을', '를')} 받았다!
+                </>,
+              ]
+            : []),
+          ...(fight?.prizeKo
+            ? [`기술머신 ${fight.prizeKo}${josa(fight.prizeKo, '을', '를')} 함께 받았다!`]
+            : []),
           <>
             진행도 <b>+{compact(enc.tokens)}</b>
           </>,
@@ -567,7 +605,18 @@ export default function Scene({
     st.phase !== 'enter' &&
     st.phase !== 'intro' &&
     !(enc.formKind === 'gmax' && acting && st.turn >= GMAX_TURNS);
-  const myBack = transformed ? enc!.formBackSprite : (enc?.petBack ?? null);
+  /**
+   * The Pokemon on my side of this round.
+   *
+   * The companion, except in a league fight — where it is whichever of the six
+   * is still standing. Read per round rather than per encounter, so a bar that
+   * empties hands over mid-fight exactly as the record says it did.
+   */
+  const mineNow = enc?.trainerFight?.mine?.[st.round] ?? null;
+  const myBack =
+    mineNow ? mineNow.sprite : transformed ? enc!.formBackSprite : (enc?.petBack ?? null);
+  /** What to call my side. The companion's nickname, or the party member's species. */
+  const myName = mineNow ? mineNow.name : (enc?.petName ?? '');
 
   // The exchange on screen, and the one before it — the bars animate from the
   // previous turn's HP to this one's, which is what makes the drain visible.
@@ -854,14 +903,17 @@ export default function Scene({
           <div
             className="scene-plate uiplate mine"
             role="group"
-            aria-label={myStatus ? `${enc.petName} 체력, ${myStatus}` : `${enc.petName} 체력`}
+            aria-label={myStatus ? `${myName} 체력, ${myStatus}` : `${myName} 체력`}
             hidden={!showMyPlate}
           >
-            {/* petName is already the nickname when one is set — buildState
+            {/* `petName` is already the nickname when one is set — buildState
                 resolves `nickname ?? name` — so the plate calls the companion
-                whatever the rest of the app calls it. */}
+                whatever the rest of the app calls it. A league round overrides
+                it with the party member that is actually out; those have no
+                nicknames, because they are dex entries rather than the one
+                Pokemon being raised. */}
             <span className="scene-who">
-              <span className="scene-nm">{enc.petName}</span>
+              <span className="scene-nm">{myName}</span>
             </span>
             <span className="scene-gauge">
               <span className="lbl">HP</span>
@@ -887,7 +939,7 @@ export default function Scene({
               <SceneSprite
                 name={myBack}
                 target={transformed ? BATTLE_TARGET * FORM_SCALE : BATTLE_TARGET}
-                alt={enc.petName}
+                alt={myName}
               />
             ) : (
               <span className="scene-silhouette" />
@@ -924,8 +976,8 @@ export default function Scene({
               </>
             ) : st.phase === 'form' ? (
               <>
-                {enc.petName}
-                {josa(enc.petName, '은', '는')} {enc.formKo}
+                {myName}
+                {josa(myName, '은', '는')} {enc.formKo}
                 {euro(enc.formKo ?? '')} 변했다!
                 <br />
                 {enc.formKind === 'gmax'
@@ -934,7 +986,7 @@ export default function Scene({
               </>
             ) : st.phase === 'turn' && now ? (
               <>
-                {enc.petName}의 {now.moveName}!
+                {myName}의 {now.moveName}!
                 <br />
                 {/* One follow-up line, in the order the games say them. A
                     status move deals nothing, so its line is the effect. */}
@@ -943,9 +995,9 @@ export default function Scene({
                   : now.ailmentKo
                     ? `${foeName}${josa(foeName, '은', '는')} ${now.ailmentKo}`
                     : now.selfEffect === 'boost'
-                      ? `${enc.petName}의 기세가 올랐다!`
+                      ? `${myName}의 기세가 올랐다!`
                       : now.selfEffect === 'heal'
-                        ? `${enc.petName}의 체력이 회복됐다!`
+                        ? `${myName}의 체력이 회복됐다!`
                         : now.selfEffect === 'guard'
                           ? `${foeName}의 기세가 꺾였다!`
                           : now.selfEffect === 'failed'
@@ -967,7 +1019,7 @@ export default function Scene({
                 {foeName}의 {now.foeMoveName}!
                 <br />
                 {now.foeAilmentKo
-                  ? `${enc.petName}${josa(enc.petName, '은', '는')} ${now.foeAilmentKo}`
+                  ? `${myName}${josa(myName, '은', '는')} ${now.foeAilmentKo}`
                   : now.foeEffect === 0
                     ? '효과가 없는 것 같다…'
                     : now.foeEffect > 1
@@ -979,8 +1031,8 @@ export default function Scene({
             ) : st.phase === 'faint' ? (
               wiped ? (
                 <>
-                  {enc.petName}
-                  {josa(enc.petName, '은', '는')} 눈앞이 캄캄해졌다…
+                  {myName}
+                  {josa(myName, '은', '는')} 눈앞이 캄캄해졌다…
                 </>
               ) : (
                 <>

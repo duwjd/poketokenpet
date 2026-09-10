@@ -4,6 +4,7 @@ import type { CountMode } from './usage.ts';
 import { loadState, saveState } from './store.ts';
 import { fuseShards, hatchLegendEgg, spendLegendItem } from './legends.ts';
 import { buy, consumeItem, type ItemId, type ProductId } from './shop.ts';
+import { partyAction } from './party.ts';
 import { forget, setHuntEnabled, setHuntUncapped, teach } from './hunt.ts';
 import { rename, setShowBattleForm } from './game.ts';
 import { contentTypeFor, pruneCache, readSprite } from './sprites.ts';
@@ -87,7 +88,17 @@ async function runShopAction(body: PetAction) {
   } else if (body.action === 'sprites') {
     return clearSprites();
   } else {
-    return { ok: false, message: '알 수 없는 요청입니다.' };
+    /**
+     * The party actions, which neither surface spells out.
+     *
+     * `partyAction` owns their names, their id parsing and their dispatch, so
+     * the two surfaces cannot drift apart on them — which is the drift
+     * `test/payload-shape.test.ts` exists to catch, and the reason it also
+     * asserts that both files reach this one function.
+     */
+    const party = partyAction(state, body.action ?? '', body.id ?? '', slot);
+    if (!party) return { ok: false, message: '알 수 없는 요청입니다.' };
+    result = party;
   }
 
   if (result.ok) {

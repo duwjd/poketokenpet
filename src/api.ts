@@ -105,6 +105,9 @@ type Bridge = {
   setInteractive(v: boolean): void;
   onState(cb: (s: unknown) => void): () => void;
   onPrefs(cb: (p: unknown) => void): () => void;
+  /** True while the machine is asleep or the screen is locked. */
+  isIdle(): Promise<boolean>;
+  onIdle(cb: (v: boolean) => void): () => void;
 };
 
 declare global {

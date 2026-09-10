@@ -120,6 +120,34 @@ html[data-window='pet'] body:active {
   }
 }
 
+/*
+ * Nobody is looking, so stop repainting.
+ *
+ * A transparent, always-on-top window is composited on every frame the content
+ * changes, and `wobble` and `breathe` never stop asking for one. Paused rather
+ * than removed: `animation: none` would snap the sprite back to its untransformed
+ * pose and then jump again on resume, which is visible if the pause was a brief
+ * occlusion.
+ */
+.pet-root.paused,
+.pet-root.paused * {
+  animation-play-state: paused !important;
+}
+
+/*
+ * Asleep or locked, where invisibility is certain — see the note in PetApp.tsx.
+ * `animation-play-state` has no effect on an animated GIF, so the only way to
+ * stop that decoding is to take the subtree out of rendering entirely.
+ *
+ * Applied to the stage rather than the anchor because the stage is the one
+ * element carrying an explicit width and height, set in JS from the measured
+ * sprite. Skipped content contributes no intrinsic size, so an element without
+ * one would collapse to nothing and have to be laid out again on wake.
+ */
+.pet-root.asleep .pet-stage {
+  content-visibility: hidden;
+}
+
 .pet-hud {
   position: absolute;
   left: 50%;

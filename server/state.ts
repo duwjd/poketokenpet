@@ -110,12 +110,32 @@ const FULL_SCAN =
   process.env.PTP_FULL_SCAN === '1' || fs.existsSync(path.join(appDataDir(), 'full-scan'));
 
 /**
+ * Whether now is a good moment for a full rebuild.
+ *
+ * A hook rather than a direct check, because the answer is host-specific:
+ * Electron can ask `powerMonitor` how long the machine has been idle, and this
+ * module must not import it. Unset — the browser build, the tests, the
+ * generator scripts — means "always fine", which is the old behaviour.
+ */
+let quietEnough: (() => boolean) | undefined;
+
+/** Called once by the host at startup. See `canReconcile` in usage.ts. */
+export function setReconcileGate(fn: () => boolean) {
+  quietEnough = fn;
+}
+
+/**
  * One scanner for the process.
  *
  * It holds the record map and the per-file cursors between ticks — that
  * retention IS the optimisation, so it must not be recreated per call.
+ *
+ * The gate is read through `quietEnough` on every call rather than captured, so
+ * the host can install it after this module is first imported.
  */
-const scanner = createScanner();
+const scanner = createScanner(undefined, undefined, {
+  canReconcile: () => !quietEnough || quietEnough(),
+});
 
 export async function buildState(mode: CountMode = 'activity') {
   const records = FULL_SCAN ? await scanAll() : await scanner.scan();

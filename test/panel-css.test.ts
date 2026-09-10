@@ -340,3 +340,25 @@ describe('the horizontal margins', () => {
   });
 });
 
+/**
+ * What the pet does when nobody can see it.
+ *
+ * Pinned against the source for the same reason everything else here is:
+ * happy-dom resolves no stylesheet, so the rendering test in
+ * test/ui/pet-idle.test.tsx can prove the classes land but not what they do.
+ */
+describe('the pet at rest', () => {
+  it('pauses its animations rather than clearing them', () => {
+    expect(pet).toContain('animation-play-state: paused');
+    // `animation: none` would snap the sprite back to its untransformed pose
+    // and jump again on resume, which is visible after a brief occlusion.
+    expect(pet).not.toMatch(/\.pet-root\.paused[^{]*\{[^}]*animation:\s*none/);
+  });
+
+  it('takes the sprite out of rendering only when asleep', () => {
+    // The only way to stop an animated GIF; reserved for sleep and the lock
+    // screen, where invisibility is certain rather than a guess.
+    expect(pet).toMatch(/\.pet-root\.asleep \.pet-stage[^{]*\{[^}]*content-visibility:\s*hidden/);
+    expect(pet).not.toMatch(/\.pet-root\.paused[^{]*\{[^}]*content-visibility/);
+  });
+});

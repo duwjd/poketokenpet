@@ -324,15 +324,39 @@ export type ScanStats = {
  *
  * The safety net for every incremental hazard at once: a drifted offset, a
  * rotation the fingerprint missed, a record left behind by a file we stopped
- * seeing. Rebuilding costs one full scan — about 2s per half hour, a 0.1% duty
- * cycle, against the 16% this replaced — and it turns any such bug from
+ * seeing. Rebuilding costs one full scan, and it turns any such bug from
  * permanent into at-most-this-long.
+ *
+ * ## Why two hours and not thirty minutes
+ *
+ * A full scan is not cheap and does not stay cheap: it re-reads the entire
+ * corpus, which only grows. Measured on a 1.36 GB, 255-file corpus it costs
+ * 2.7s of CPU, and streaming that many bytes leaves the process resident at
+ * ~220 MB against a 15 MB live heap, because the allocator does not hand the
+ * pages back. At thirty minutes that is 48 rebuilds a day, most of them landing
+ * while somebody is using the machine.
+ *
+ * The frequency was never what made this correct — the per-file id sets, the
+ * inode and size checks and the resume fingerprint are, as the note above says.
+ * So the interval buys a bound, and a looser bound is worth four times fewer
+ * rebuilds. `canReconcile` then moves most of what remains off the user's
+ * active time entirely.
  *
  * It cannot undo an overcount `accrue()` has already banked into
  * `lifetimeEarned`, which is why the structural defences (per-file id sets, the
  * resume fingerprint) matter more than this does.
  */
-export const RECONCILE_MS = 30 * 60_000;
+export const RECONCILE_MS = 2 * 60 * 60_000;
+
+/**
+ * How long a due reconciliation may wait for a quiet moment before it stops
+ * asking and just runs.
+ *
+ * Without a ceiling, a machine that is never idle would never be repaired,
+ * which is the one thing periodic reconciliation exists to prevent. Two hours
+ * plus one is still a far tighter bound than the structural defences need.
+ */
+export const MAX_DEFER_MS = 60 * 60_000;
 
 export type Scanner = {
   /** Drop-in for `scanAll()`. Returns the same map, built incrementally. */
@@ -387,7 +411,25 @@ export type Scanner = {
  *     offset actually differ; identical tails there would be read as an append.
  *     Periodic full reconciliation is what bounds that.
  */
-export function createScanner(root = projectsDir(), reconcileMs = RECONCILE_MS): Scanner {
+export type ScannerOptions = {
+  /**
+   * Asked only when a reconciliation is already due. Return false to let it
+   * wait for a better moment; it is asked again on every scan, and runs anyway
+   * once `MAX_DEFER_MS` has passed.
+   *
+   * Injected rather than read here because the only good answer lives in the
+   * host — Electron knows how long the machine has been idle, and server/ must
+   * not import it.
+   */
+  canReconcile?: () => boolean;
+  maxDeferMs?: number;
+};
+
+export function createScanner(
+  root = projectsDir(),
+  reconcileMs = RECONCILE_MS,
+  { canReconcile, maxDeferMs = MAX_DEFER_MS }: ScannerOptions = {},
+): Scanner {
   const cursors = new Map<string, Cursor>();
   const records = new Map<string, UsageRecord>();
   /** When the map was last built from nothing. 0 = never. */
@@ -460,7 +502,13 @@ export function createScanner(root = projectsDir(), reconcileMs = RECONCILE_MS):
 
     // A cold scan IS a reconciliation, so periodic repair is just "forget
     // everything first" rather than a second code path that could itself drift.
-    const reconciled = t0 - lastFull >= reconcileMs;
+    //
+    // The first scan is unconditional: the maps are empty, so clearing them is
+    // free and there is nothing to defer. Skipping it would instead leave
+    // `lastFull` at 0 and mark every later scan due for ever.
+    const due = lastFull === 0 || t0 - lastFull >= reconcileMs;
+    const overdue = lastFull === 0 || t0 - lastFull >= reconcileMs + maxDeferMs;
+    const reconciled = due && (overdue || !canReconcile || canReconcile());
     if (reconciled) {
       cursors.clear();
       records.clear();

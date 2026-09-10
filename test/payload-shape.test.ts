@@ -535,3 +535,39 @@ describe('scene art', () => {
   });
 });
 
+/**
+ * Work the tray app must not do when nobody is watching.
+ *
+ * None of this is reachable from a test — it needs a real Electron main
+ * process, a tray and a power event — so it is pinned against the source, the
+ * same way the buildState surfaces above are.
+ */
+describe('staying quiet', () => {
+  const main = readFileSync('electron/main.ts', 'utf8');
+
+  it('does not push state into a hidden window', () => {
+    // A hidden popover still receives IPC — hide() throttles timers, not
+    // message delivery — so it re-rendered its whole tree every 20 seconds
+    // behind a window nobody could see.
+    expect(main).toMatch(/function sendIfVisible/);
+    expect(main).toMatch(/!win\.isVisible\(\)/);
+    expect(main).toMatch(/sendIfVisible\(popover, s\)/);
+    expect(main).toMatch(/sendIfVisible\(pet, s\)/);
+    // And no raw send survives that would reach a hidden window again.
+    expect(main).not.toMatch(/popover\?\.webContents\.send\('state'/);
+    expect(main).not.toMatch(/pet\?\.webContents\.send\('state'/);
+  });
+
+  it('stops refreshing while the machine is asleep or locked', () => {
+    for (const e of ['suspend', 'resume', 'lock-screen', 'unlock-screen']) {
+      expect(main, e).toContain(`powerMonitor.on('${e}'`);
+    }
+    expect(main).toMatch(/function stopRefreshTimer/);
+    // Catching up on the way back is the whole reason stopping is safe.
+    expect(main).toMatch(/startRefreshTimer\(\);\s*\n\s*void refreshAll\(true\);/);
+  });
+
+  it('waits for a quiet machine before rebuilding the token map', () => {
+    expect(main).toMatch(/setReconcileGate\(\(\) =>\s*powerMonitor\.getSystemIdleTime\(\) >= QUIET_SECONDS\)/);
+  });
+});

@@ -6,6 +6,7 @@ import {
   nativeImage,
   net,
   nativeTheme,
+  powerMonitor,
   protocol,
   screen,
   shell,
@@ -20,7 +21,7 @@ import { forget, setHuntEnabled, setHuntUncapped, teach } from '../server/hunt.t
 import { rename, setShowBattleForm } from '../server/game.ts';
 import { fuseShards, hatchLegendEgg, spendLegendItem } from '../server/legends.ts';
 import {
-  REFRESH_MS, buildState, dexIndex, type PetState } from '../server/state.ts';
+  REFRESH_MS, buildState, dexIndex, setReconcileGate, type PetState } from '../server/state.ts';
 import { dexEntry } from '../server/dexentry.ts';
 import { MAX_PET_WINDOW } from '../src/pixelFit.ts';
 import {
@@ -42,6 +43,15 @@ let popover: BrowserWindow | null = null;
 let pet: BrowserWindow | null = null;
 let prefs: Prefs = { ...DEFAULT_PREFS };
 let refreshTimer: NodeJS.Timeout | null = null;
+/**
+ * True while the machine is asleep or the screen is locked.
+ *
+ * An always-on-top, `visibleOnFullScreen` pet keeps its layer composited over
+ * the lock screen, so neither the refresh timer nor the sprite's animations
+ * stop on their own — the app went on scanning and wobbling at nobody for as
+ * long as the lid stayed shut.
+ */
+let idle = false;
 
 // ---------------------------------------------------------------- data
 
@@ -561,12 +571,76 @@ async function logStartup(s: PetState) {
   console.log(`\n[poketokenpet]\n  ${lines.join('\n  ')}\n`);
 }
 
+/**
+ * Push state to a window only if it is actually on screen.
+ *
+ * A hidden popover still receives IPC — `hide()` throttles timers, not message
+ * delivery — so the panel re-rendered its whole tree every 20 seconds behind a
+ * window nobody could see. The renderer already stops its own polling on
+ * `visibilitychange` and re-fetches the moment it comes back, so dropping the
+ * push costs nothing: `togglePopover` shows the window, visibility flips, and
+ * the panel pulls fresh state before it paints.
+ */
+function sendIfVisible(win: BrowserWindow | null, s: PetState) {
+  if (!win || win.isDestroyed() || !win.isVisible()) return;
+  win.webContents.send('state', s);
+}
+
 async function refreshAll(force = false) {
   const s = await getState(force);
   await refreshTray();
-  popover?.webContents.send('state', s);
-  pet?.webContents.send('state', s);
+  sendIfVisible(popover, s);
+  sendIfVisible(pet, s);
   return s;
+}
+
+function startRefreshTimer() {
+  if (refreshTimer) return;
+  refreshTimer = setInterval(() => void refreshAll(), REFRESH_MS);
+}
+
+function stopRefreshTimer() {
+  if (!refreshTimer) return;
+  clearInterval(refreshTimer);
+  refreshTimer = null;
+}
+
+/**
+ * Go quiet while the machine is asleep or locked, and catch up on the way back.
+ *
+ * Nothing is lost by stopping: token totals are read from transcripts on disk,
+ * so a single refresh on wake sees everything that accrued meanwhile. The pet
+ * is told separately because its animations run in the renderer, where a
+ * composited lock-screen layer never receives a `visibilitychange`.
+ */
+function setIdle(next: boolean) {
+  if (idle === next) return;
+  idle = next;
+  pet?.webContents.send('idle', idle);
+  if (idle) {
+    stopRefreshTimer();
+    return;
+  }
+  startRefreshTimer();
+  void refreshAll(true);
+}
+
+/**
+ * How long the machine must have been untouched before a full rebuild may run.
+ *
+ * The rebuild costs a couple of seconds of CPU and re-reads the whole corpus,
+ * so the point is only to land it while nobody is typing. Short enough that a
+ * coffee break is plenty, long enough that a pause mid-sentence is not.
+ */
+const QUIET_SECONDS = 60;
+
+function watchPower() {
+  powerMonitor.on('suspend', () => setIdle(true));
+  powerMonitor.on('resume', () => setIdle(false));
+  // Locking without sleeping is the common case on a desktop, and on macOS a
+  // closed lid on external power locks without ever emitting `suspend`.
+  powerMonitor.on('lock-screen', () => setIdle(true));
+  powerMonitor.on('unlock-screen', () => setIdle(false));
 }
 
 // ---------------------------------------------------------------- lifecycle
@@ -625,9 +699,14 @@ if (!app.requestSingleInstanceLock()) {
     createPopover();
     if (prefs.petEnabled) createPet();
 
+    // Installed before the first scan so the very first rebuild — which is
+    // unconditional anyway — is the only one that can land on a busy machine.
+    setReconcileGate(() => powerMonitor.getSystemIdleTime() >= QUIET_SECONDS);
+
     const s = await refreshAll(true);
     await logStartup(s);
-    refreshTimer = setInterval(() => void refreshAll(), REFRESH_MS);
+    startRefreshTimer();
+    watchPower();
   });
 
   app.on('window-all-closed', () => {
@@ -635,7 +714,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('before-quit', () => {
-    if (refreshTimer) clearInterval(refreshTimer);
+    stopRefreshTimer();
   });
 }
 
@@ -648,6 +727,10 @@ ipcMain.handle('pet:shop', (_e, action: string, id: string, slot?: number | null
 // Static and ~116KB, so it is fetched once rather than riding along on every
 // pet:getState poll.
 ipcMain.handle('pet:dexIndex', () => dexIndex());
+// Paired with the 'idle' push for the same reason getPrefs is paired with
+// onPrefs: a window created while the screen is already locked has to be able
+// to ask, because it missed the push that announced it.
+ipcMain.handle('pet:isIdle', () => idle);
 // Per species and on demand, so it stays out of the 20s payload. Unlike
 // dexIndex it reads the save, so it is never cached at this layer.
 ipcMain.handle('pet:dexEntry', (_e, id: number, shiny?: boolean) =>

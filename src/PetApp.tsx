@@ -66,6 +66,44 @@ export default function PetApp() {
   }, []);
 
   /**
+   * Stop animating when nobody can see it.
+   *
+   * Two signals, because neither covers the other. `visibilitychange` catches
+   * the window being hidden and macOS reporting the layer fully occluded;
+   * `onIdle` catches sleep and the lock screen, which an always-on-top,
+   * `visibleOnFullScreen` window stays composited straight through without the
+   * page ever being marked hidden. Either one is enough to pause.
+   */
+  const [hidden, setHidden] = useState(false);
+  const [asleep, setAsleep] = useState(false);
+
+  useEffect(() => {
+    const onVisibility = () => setHidden(document.visibilityState === 'hidden');
+    onVisibility();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  useEffect(() => {
+    const b = bridge();
+    if (!b) return;
+    let alive = true;
+    b.isIdle().then((v) => alive && setAsleep(v)).catch(() => {});
+    const off = b.onIdle((v) => alive && setAsleep(v));
+    return () => {
+      alive = false;
+      off();
+    };
+  }, []);
+
+  // Two classes, not one: `paused` only stops the CSS animations, which is safe
+  // even if macOS reports occlusion wrongly, while `asleep` also drops the
+  // sprite out of rendering to stop the GIF decoding. The second is reserved
+  // for sleep and the lock screen, where "invisible" is a fact rather than a
+  // guess, so a bad occlusion report can never make the pet disappear.
+  const petClass = `pet-root${hidden || asleep ? ' paused' : ''}${asleep ? ' asleep' : ''}`;
+
+  /**
    * Newest encounter already reacted to.
    *
    * Armed silently on the first payload, like the panel's scene does — a launch
@@ -131,14 +169,14 @@ export default function PetApp() {
     bridge()?.stepSize(e.deltaY < 0 ? 1 : -1);
   };
 
-  if (!state) return <div className="pet-root" />;
+  if (!state) return <div className={petClass} />;
 
   const sprite = state.companion?.sprite ?? state.eggSprite;
   const isEgg = !state.companion;
   const pct = Math.round(state.progress.ratio * 100);
 
   return (
-    <div className="pet-root" style={battleUiVars() as React.CSSProperties}>
+    <div className={petClass} style={battleUiVars() as React.CSSProperties}>
       {/* The mouse target is the sprite, not the window. The window is created
           larger than any sprite needs (see MAX_PET_WINDOW) and only shrinks if
           the platform honours the resize, so binding these to the window would

@@ -374,3 +374,68 @@ describe('reconciliation', () => {
     expect(await s.scan()).toEqual(await scanAll(root));
   });
 });
+
+/**
+ * Waiting for a quiet machine.
+ *
+ * A rebuild re-reads the whole corpus, so the point of the gate is to land that
+ * cost while nobody is using the machine — never to skip it. Every test here is
+ * really asking one of two questions: does a `false` gate actually defer, and
+ * can a gate that never says yes stall the repair for ever.
+ */
+describe('canReconcile', () => {
+  it('runs the first scan whatever the gate says', async () => {
+    const f = path.join(root, 'proj', 'a.jsonl');
+    await write(f, [line({}, {}, 'msg_a')]);
+    const s = createScanner(root, 0, { canReconcile: () => false });
+    await s.scan();
+    // The maps start empty, so there is nothing to defer and nothing to save.
+    expect(s.stats.reconciled).toBe(true);
+  });
+
+  it('defers a due rebuild while the gate is closed', async () => {
+    const f = path.join(root, 'proj', 'a.jsonl');
+    await write(f, [line({}, {}, 'msg_a')]);
+    const s = createScanner(root, 0, { canReconcile: () => false });
+    await s.scan(); // the unconditional first one
+    await s.scan();
+    expect(s.stats.reconciled).toBe(false);
+    expect(s.stats.skipped).toBe(1); // still tracked incrementally, just not rebuilt
+  });
+
+  it('rebuilds as soon as the gate opens', async () => {
+    const f = path.join(root, 'proj', 'a.jsonl');
+    await write(f, [line({}, {}, 'msg_a')]);
+    let quiet = false;
+    const s = createScanner(root, 0, { canReconcile: () => quiet });
+    await s.scan();
+    await s.scan();
+    expect(s.stats.reconciled).toBe(false);
+    quiet = true;
+    await s.scan();
+    expect(s.stats.reconciled).toBe(true);
+  });
+
+  it('stops asking once maxDeferMs has passed', async () => {
+    const f = path.join(root, 'proj', 'a.jsonl');
+    await write(f, [line({}, {}, 'msg_a')]);
+    // Both windows zero: due immediately, and overdue immediately too, so a
+    // permanently busy machine still gets repaired.
+    const s = createScanner(root, 0, { canReconcile: () => false, maxDeferMs: 0 });
+    await s.scan();
+    await s.scan();
+    expect(s.stats.reconciled).toBe(true);
+  });
+
+  it('still agrees with a full scan across a deferred rebuild', async () => {
+    const f = path.join(root, 'proj', 'a.jsonl');
+    await write(f, [line({}, { output_tokens: 11 }, 'msg_a')]);
+    const s = createScanner(root, 0, { canReconcile: () => false });
+    await s.scan();
+    await append(f, [line({}, { output_tokens: 77 }, 'msg_b')]);
+    // Deferring only skips the rebuild. The incremental path still has to be
+    // right, which is the whole reason deferring is safe.
+    expect(await s.scan()).toEqual(await scanAll(root));
+    expect(s.stats.reconciled).toBe(false);
+  });
+});

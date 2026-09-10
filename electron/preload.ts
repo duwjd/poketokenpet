@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('pet', {
   dexEntry: (id: number, shiny?: boolean) => ipcRenderer.invoke('pet:dexEntry', id, shiny),
   getPrefs: () => ipcRenderer.invoke('pet:getPrefs'),
   setPrefs: (patch: Record<string, unknown>) => ipcRenderer.invoke('pet:setPrefs', patch),
+  isIdle: () => ipcRenderer.invoke('pet:isIdle'),
   sizes: () => ipcRenderer.invoke('pet:sizes'),
   stepSize: (delta: number) => ipcRenderer.invoke('pet:stepSize', delta),
   fitTo: (w: number, h: number) => ipcRenderer.send('pet:fitTo', w, h),
@@ -32,5 +33,10 @@ contextBridge.exposeInMainWorld('pet', {
     const h = (_e: unknown, p: unknown) => cb(p);
     ipcRenderer.on('prefs', h);
     return () => ipcRenderer.off('prefs', h);
+  },
+  onIdle: (cb: (v: boolean) => void) => {
+    const h = (_e: unknown, v: boolean) => cb(v);
+    ipcRenderer.on('idle', h);
+    return () => ipcRenderer.off('idle', h);
   },
 });

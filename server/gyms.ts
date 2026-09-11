@@ -235,6 +235,54 @@ export function regionSwept(region: RegionRow, badges: ReadonlySet<number>): boo
 }
 
 /**
+ * Which region's campaign the panel should open on.
+ *
+ * Server-side because it is a FACT about the save rather than a view: the badge
+ * case, the party board and the tray all have to agree, and the answer is a
+ * join across three things the renderer should not have to do — where the
+ * journey is, which badges are held, and which regions have a table at all.
+ * The renderer owns which region you are LOOKING at; this owns the default.
+ *
+ * Three rules, in order:
+ *
+ *  1. The region the pet is standing in, if it still owes badges. That is the
+ *     campaign actually in progress.
+ *  2. Otherwise the earliest-ordered region with badges still missing — the one
+ *     you are behind on. A leader follows you through his region; a region
+ *     follows you around the lap.
+ *  3. Otherwise the most recently cleared. Everything is swept, so show the
+ *     latest conquest rather than an arbitrary first row.
+ *
+ * Never null while any region has a table, which is what lets the payload treat
+ * it as "the live region" with no second branch.
+ */
+export function liveRegion(
+  badges: ReadonlySet<number>,
+  leagues: Readonly<Record<string, number>>,
+  seq: number,
+): RegionRow | null {
+  const withGyms = REGIONS.filter((r) => r.gyms.length > 0);
+  if (withGyms.length === 0) return null;
+
+  const here = regionAt(seq);
+  if (here && here.gyms.length > 0 && !regionSwept(here, badges)) return here;
+
+  const owed = withGyms.find((r) => !regionSwept(r, badges));
+  if (owed) return owed;
+
+  let best = withGyms[0];
+  let at = leagues[best.id] ?? 0;
+  for (const r of withGyms) {
+    const when = leagues[r.id] ?? 0;
+    if (when > at) {
+      best = r;
+      at = when;
+    }
+  }
+  return best;
+}
+
+/**
  * The leader standing in the way right now, or null.
  *
  * The lowest-order leader who is eligible, unbeaten, and whose city is at or

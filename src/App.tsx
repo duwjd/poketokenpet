@@ -110,6 +110,23 @@ type MoveCard = {
  */
 type PartyMove = Omit<MoveCard, 'sprite'>;
 
+/** One region's ladder. Named because the payload hands it over twice. */
+type League = {
+  region: string;
+  cityKo: string;
+  /** 사천왕 or 챔피언컵 — what this region calls its ladder. */
+  kindKo: string;
+  open: boolean;
+  /** Members already down in the run under way, or null when none is. */
+  at: number | null;
+  size: number;
+  best: number;
+  wins: number;
+  clearedAt: number | null;
+  until: number;
+  members: { id: string; ko: string; down: boolean; sprite: string | null }[];
+};
+
 type HuntLogEntry = {
   seq: number;
   wildId: number;
@@ -302,30 +319,40 @@ type State = {
       free: PartyMove[];
     }[];
   };
-  /** The badge case. All eight arrive, held or not — see server/state.ts. */
+  /**
+   * The badge case, every region's, region-tagged.
+   *
+   * `count`/`total` are the LIVE region's, not the sum — the party board's
+   * "배지 N개를 모으면…" sentence needs a region or it is false. The sum is in
+   * `regions`, where it reads as a sum.
+   */
   badges: {
     count: number;
     total: number;
-    wins: number;
-    league: {
-      cityKo: string;
-      open: boolean;
-      /** Members already down in the run under way, or null when none is. */
-      at: number | null;
-      size: number;
-      best: number;
-      wins: number;
+    /** The region the tab opens on. A `regions[].key`. */
+    now: string;
+    /** One row per region with a gym table. Drives the chip row. */
+    regions: {
+      key: string;
+      ko: string;
+      count: number;
+      total: number;
       clearedAt: number | null;
       until: number;
-      members: { id: string; ko: string; down: boolean; sprite: string | null }[];
-    };
+    }[];
+    /** The live region's ladder. The same object as `leagues.find(now)`. */
+    league: League;
+    /** One per region with a ladder. A region without one has no entry. */
+    leagues: League[];
     cases: {
+      /** Which region's case this slot belongs to. */
+      region: string;
       no: number;
       ko: string;
       leaderKo: string;
       cityKo: string;
       have: boolean;
-      /** 상록시티, and only it: shut until the other seven are held. */
+      /** Shut until the rest of that region is done. 상록시티, and its like. */
       locked: boolean;
       /** Encounters until the pet stands in that city. 0 means it is there. */
       until: number;
@@ -794,6 +821,18 @@ export default function App() {
   const [partySeat, setPartySeat] = useState<number | null>(null);
   /** Which achievement category is showing. Null is all of them. */
   const [awardCat, setAwardCat] = useState<string | null>(null);
+  /**
+   * Which region's badge case is on screen. Null means "follow the journey".
+   *
+   * Renderer-local, and null rather than a region id, for three reasons. The
+   * payload cache is one object shared by the panel, the pet window and the
+   * tray, so a region on `/api/state` would have each of them evicting the
+   * others. Saving it would make LOOKING a write to state.json, which two
+   * processes already race. And null-until-touched is what lets the default
+   * move as the journey walks into a new region while still staying put once
+   * the reader has chosen — a stored id would park somebody on 관동 for ever.
+   */
+  const [badgeRegion, setBadgeRegion] = useState<string | null>(null);
   /**
    * Fold away what is already finished.
    *
@@ -1333,6 +1372,21 @@ export default function App() {
   const legendPct = state.legends.gates.length
     ? Math.max(legendsOpen ? 1 : 0, (legendsOpen / state.legends.gates.length) * 100)
     : 0;
+
+  /**
+   * The region whose case is on screen, and its ladder.
+   *
+   * Falls back to `badges.now` when nothing has been picked, and to the first
+   * row if a stale selection names a region the payload no longer carries —
+   * which happens exactly once, when a region's table is added and the ids
+   * shift under a tab left open.
+   */
+  const badgeReg =
+    state.badges.regions.find((r) => r.key === (badgeRegion ?? state.badges.now)) ??
+    state.badges.regions[0];
+  const badgeCases = state.badges.cases.filter((b) => b.region === badgeReg?.key);
+  const badgeLeague =
+    state.badges.leagues.find((l) => l.region === badgeReg?.key) ?? null;
 
   const awardsDone = state.awards.filter((a) => a.at !== null).length;
   const awardPct = state.awards.length
@@ -3139,10 +3193,42 @@ export default function App() {
           go with the category chips and this one never does, so sharing a
           class would make "the headings are gone" untestable. */}
       <h3 className="shelf badgeshelf">
-        배지 <span className="muted">{state.badges.count} / {state.badges.total}</span>
+        {state.badges.regions.length > 1 ? `${badgeReg?.ko ?? ''} 배지` : '배지'}{' '}
+        <span className="muted">{badgeReg?.count ?? 0} / {badgeReg?.total ?? 0}</span>
       </h3>
+      {/* The region picker.
+ 
+          `.chips`, not a new idiom: this is the same "pick one view of one
+          list" the dex filters, the bag pockets and the award categories below
+          already use, and a second selector idiom in one panel would be one too
+          many — the argument the badge case itself makes for borrowing the dex
+          grid.
+ 
+          Rendered ONLY when there is more than one region, so a save with one
+          gym table sees exactly the tab it saw before. Same rule `awardCats`
+          follows: adding a region needs no edit here.
+ 
+          No 전체 chip. A badge case is a checklist for one region, and sixty-
+          eight slots is the thing this design exists to prevent — and the award
+          categories below already own the accessible name 전체, which
+          `getByRole` would find ambiguous. No counts on the chips either: ten
+          two-character chips already wrap at 420px, so the count rides on the
+          heading. */}
+      {state.badges.regions.length > 1 && (
+        <div className="chips badgeregions" role="group" aria-label="지방">
+          {state.badges.regions.map((r) => (
+            <button
+              key={r.key}
+              className={r.key === badgeReg?.key ? 'on' : ''}
+              onClick={() => setBadgeRegion(r.key)}
+            >
+              {r.ko}
+            </button>
+          ))}
+        </div>
+      )}
       <ul className="dex badgecase">
-        {state.badges.cases.map((b) => (
+        {badgeCases.map((b) => (
           <li key={b.no} className={b.have ? '' : 'unseen'}>
             <span className="card">
               <span className="art">
@@ -3155,7 +3241,7 @@ export default function App() {
                 {b.have
                   ? (b.prizeKo ?? b.leaderKo)
                   : b.locked
-                    ? '배지 7개 필요'
+                    ? `배지 ${Math.max(0, (badgeReg?.total ?? 1) - 1)}개 필요`
                     : b.until === 0
                       ? '지금 여기'
                       : `${compact(b.until)}조우`}
@@ -3164,48 +3250,72 @@ export default function App() {
           </li>
         ))}
       </ul>
-      {state.badges.count === 0 && (
+      {(badgeReg?.count ?? 0) === 0 && (
         <p className="muted sub note">
-          여정이 관동의 체육관 도시를 지날 때 관장이 승부를 걸어옵니다. 이기면 배지와 그 관장의
-          기술머신을 받습니다. 배지는 이 업데이트부터 셉니다.
+          여정이 {badgeReg?.ko}의 체육관 도시를 지날 때 관장이 승부를 걸어옵니다. 도전을 받아
+          이기면 배지와 그 관장의 기술머신을 받습니다.
         </p>
       )}
 
-      {/* The summit. Shown whether or not it is reachable — an eight-badge
-          requirement you cannot see is a requirement nobody works toward. */}
-      <h3 className="shelf badgeshelf">
-        포켓몬리그
-        {state.badges.league.wins > 0 && (
-          <span className="muted"> {state.badges.league.wins}회 제패</span>
-        )}
-      </h3>
-      <ul className="dex leagueline">
-        {state.badges.league.members.map((m, i) => (
-          <li key={m.id} className={m.down || state.badges.league.wins > 0 ? '' : 'unseen'}>
-            <span className="card">
-              <span className="art">
-                {m.sprite ? <DexSprite name={m.sprite} alt="" /> : '?'}
-              </span>
-              <span className="nm">{m.ko.replace('사천왕 ', '').replace('챔피언 ', '')}</span>
-              <span className="no">{i === 4 ? '챔피언' : `사천왕 ${i + 1}`}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
-      <p className="muted sub note">
-        {!state.badges.league.open
-          ? `배지 ${state.badges.total}개를 모으면 ${state.badges.league.cityKo}에서 도전할 수 있습니다.`
-          : !state.party.ready
-            ? '도감에서 파티 6마리를 짜야 도전할 수 있습니다.'
-            : state.badges.league.at !== null
-              ? `도전 중 — ${state.badges.league.at} / ${state.badges.league.size}명 격파.`
-              : state.badges.league.until === 0
-                ? `${state.badges.league.cityKo}에 있습니다. 도전이 곧 시작됩니다.`
-                : `${state.badges.league.cityKo}까지 ${compact(state.badges.league.until)}조우.`}
-        {state.badges.league.best > 0 && state.badges.league.wins === 0 && (
-          <> 최고 기록 {state.badges.league.best} / {state.badges.league.size}명.</>
-        )}
-      </p>
+      {/* The summit.
+ 
+          The HEADING and the sentence are unconditional, because a badge
+          requirement nobody can see is a requirement nobody works toward. The
+          PORTRAITS are not: five faces tell a player with two badges nothing
+          they can act on, and at nine regions they would be the largest block
+          on the tab. They arrive once the ladder is reachable, or once it has
+          been walked even part of the way. */}
+      {badgeLeague ? (
+        <>
+          <h3 className="shelf badgeshelf">
+            {badgeLeague.kindKo === '챔피언컵' ? '챔피언컵' : '포켓몬리그'}
+            {badgeLeague.wins > 0 && (
+              <span className="muted"> {badgeLeague.wins}회 제패</span>
+            )}
+          </h3>
+          {(badgeLeague.open || badgeLeague.best > 0 || badgeLeague.wins > 0) && (
+            <ul className="dex leagueline">
+              {badgeLeague.members.map((m, i) => (
+                <li key={m.id} className={m.down || badgeLeague.wins > 0 ? '' : 'unseen'}>
+                  <span className="card">
+                    <span className="art">
+                      {m.sprite ? <DexSprite name={m.sprite} alt="" /> : '?'}
+                    </span>
+                    <span className="nm">
+                      {m.ko.replace('사천왕 ', '').replace('챔피언 ', '')}
+                    </span>
+                    {/* Positional on the LAST row, not on index 4: 가라르's
+                        Champion Cup and 알로라's ladder are not four-plus-one,
+                        and `RegionRow.league`'s contract is that the champion
+                        is last. */}
+                    <span className="no">
+                      {i === badgeLeague.members.length - 1
+                        ? '챔피언'
+                        : `${badgeLeague.kindKo} ${i + 1}`}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="muted sub note">
+            {!badgeLeague.open
+              ? `배지 ${badgeReg?.total ?? 0}개를 모으면 ${badgeLeague.cityKo}에서 도전할 수 있습니다.`
+              : !state.party.ready
+                ? `도감에서 파티 ${state.party.size}마리를 짜야 도전할 수 있습니다.`
+                : badgeLeague.at !== null
+                  ? `도전 중 — ${badgeLeague.at} / ${badgeLeague.size}명 격파.`
+                  : badgeLeague.until === 0
+                    ? `${badgeLeague.cityKo}에 있습니다. 도전을 받으면 시작됩니다.`
+                    : `${badgeLeague.cityKo}까지 ${compact(badgeLeague.until)}조우.`}
+            {badgeLeague.best > 0 && badgeLeague.wins === 0 && (
+              <> 최고 기록 {badgeLeague.best} / {badgeLeague.size}명.</>
+            )}
+          </p>
+        </>
+      ) : (
+        <p className="muted sub note">{badgeReg?.ko}에는 포켓몬리그가 없습니다.</p>
+      )}
 
       <div className="chips awardcats" role="group" aria-label="업적 분야">
         <button className={awardCat === null ? 'on' : ''} onClick={() => setAwardCat(null)}>

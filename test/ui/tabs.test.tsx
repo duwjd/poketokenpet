@@ -1807,3 +1807,119 @@ describe('a leader waiting for an answer', () => {
     expect(posted.some((b) => b.includes('"decline"'))).toBe(true);
   });
 });
+
+/**
+ * The badge case with more than one region.
+ *
+ * The whole design goal is that the tab's LENGTH does not grow with the
+ * roster: one case and one ladder on screen, scoped by a chip row. These pin
+ * that, and they pin the two things that would silently break it — a chip row
+ * appearing when there is nothing to pick, and an accessible name colliding
+ * with the award-category chips below.
+ */
+describe('the badge case across regions', () => {
+  const JOHTO_LEAGUE = {
+    region: 'johto',
+    cityKo: '석영고원',
+    kindKo: '사천왕',
+    open: false,
+    at: null,
+    size: 5,
+    best: 0,
+    wins: 0,
+    clearedAt: null,
+    until: 900,
+    members: [
+      { id: 'will', ko: '사천왕 일목', down: false, sprite: 'npc-will.png' },
+      { id: 'koga-e4', ko: '사천왕 독수', down: false, sprite: 'npc-koga.png' },
+      { id: 'bruno-e4', ko: '사천왕 시바', down: false, sprite: 'npc-bruno.png' },
+      { id: 'karen', ko: '사천왕 카렌', down: false, sprite: 'npc-karen.png' },
+      { id: 'lance-c', ko: '챔피언 목호', down: false, sprite: 'npc-lance.png' },
+    ],
+  };
+  /** Two regions, and the pet is walking in the second one. */
+  const twoRegions = {
+    ...STATE,
+    badges: {
+      ...STATE.badges,
+      now: 'johto',
+      regions: [
+        ...STATE.badges.regions,
+        { key: 'johto', ko: '성도', count: 0, total: 8, clearedAt: null, until: 900 },
+      ],
+      league: JOHTO_LEAGUE,
+      leagues: [...STATE.badges.leagues, JOHTO_LEAGUE],
+      cases: [
+        ...STATE.badges.cases,
+        {
+          region: 'johto',
+          no: 9,
+          ko: '윙배지',
+          leaderKo: '비상',
+          cityKo: '도라지시티',
+          have: false,
+          locked: false,
+          until: 900,
+          prizeKo: '깃털댄스',
+          sprite: 'badge-9.png',
+        },
+      ],
+    },
+  };
+
+  it('draws no chip row while there is only one region', async () => {
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    await userEvent.click(screen.getByRole('tab', { name: /업적/ }));
+    expect(document.querySelectorAll('.badgeregions button')).toHaveLength(0);
+  });
+
+  it('opens on the region the journey is in, not the first row', async () => {
+    payload = twoRegions;
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    await userEvent.click(screen.getByRole('tab', { name: /업적/ }));
+    // `now` is 성도, so 성도's one slot is on screen and 관동's eight are not.
+    expect(document.querySelectorAll('.badgecase li')).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 3, name: /성도 배지\s*0 \/ 8/ })).toBeTruthy();
+  });
+
+  it('shows one region at a time, and switches on a chip', async () => {
+    payload = twoRegions;
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    await userEvent.click(screen.getByRole('tab', { name: /업적/ }));
+    expect(screen.getByText('도라지시티')).toBeTruthy();
+    expect(screen.queryByText('블루시티')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: '관동' }));
+    // 관동's whole case, and 성도's slot gone — the case never grows, it swaps.
+    expect(document.querySelectorAll('.badgecase li')).toHaveLength(8);
+    expect(screen.getByText('블루시티')).toBeTruthy();
+    expect(screen.queryByText('도라지시티')).toBeNull();
+  });
+
+  it('keeps 전체 unambiguous for the category chips', async () => {
+    payload = twoRegions;
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    await userEvent.click(screen.getByRole('tab', { name: /업적/ }));
+    // A 전체 chip in the region row would make this throw, and would break
+    // every category test below it.
+    expect(screen.getAllByRole('button', { name: '전체' })).toHaveLength(1);
+  });
+
+  it('points the ladder at that region\'s own plateau and badge count', async () => {
+    payload = twoRegions;
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    await userEvent.click(screen.getByRole('tab', { name: /업적/ }));
+    // 성도's ladder is shut, so the sentence names 성도's eight and 성도's
+    // plateau — which happens to be 관동's stop, and is exactly why the field
+    // is a resolved index rather than a name.
+    expect(screen.getByText(/배지 8개를 모으면 석영고원에서/)).toBeTruthy();
+    // Shut and never walked, so the portraits stay off: five faces tell a
+    // player with no badges nothing they can act on.
+    expect(document.querySelectorAll('.leagueline li')).toHaveLength(0);
+  });
+});

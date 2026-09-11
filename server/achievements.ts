@@ -1,5 +1,6 @@
 import { lifetimeOf, type GameState } from './game.ts';
 import { generationOf, rarityOfSpecies } from './dex.ts';
+import { REGIONS } from './gymdata.ts';
 import { LEGENDS } from './legenddata.ts';
 import type { ItemId } from './shop.ts';
 
@@ -167,6 +168,14 @@ const genSpread = (s: GameState) => new Set(s.dex.map((d) => generationOf(d.spec
 /** TM KINDS in the bag, as opposed to `tmsFound` which is a lifetime tally. */
 const tmKinds = (s: GameState) => Object.keys(s.tms).length;
 const one = (yes: boolean) => ({ have: yes ? 1 : 0, need: 1 });
+/** Regions whose whole gym table is held. */
+const regionsSwept = (s: GameState) => {
+  const held = new Set(s.badges ?? []);
+  return REGIONS.filter((r) => r.gyms.length > 0 && r.gyms.every((g) => held.has(g.badge)))
+    .length;
+};
+/** Regions that have a gym table at all. `gym-rematch` scales its step on this. */
+const GYM_REGIONS = REGIONS.filter((r) => r.gyms.length > 0).length;
 /** Legendaries raised to graduation. The dex is still the only record. */
 const legendsRaised = (s: GameState) =>
   s.dex.filter((d) => LEGENDS.some((l) => l.id === d.speciesId)).length;
@@ -505,15 +514,15 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'badge-4',
     cat: 'trainer',
     ko: '배지 4개',
-    desc: '관동의 체육관을 절반 돌았다.',
+    desc: '체육관 배지를 네 개 모았다.',
     metric: (s) => ({ have: s.badges?.length ?? 0, need: 4 }),
     money: 3,
   },
   {
     id: 'badge-8',
     cat: 'trainer',
-    ko: '관동 제패',
-    desc: '관동의 배지 여덟 개를 전부 모았다.',
+    ko: '배지 8개',
+    desc: '체육관 배지를 여덟 개 모았다. 한 지방이 여덟 개다.',
     metric: (s) => ({ have: s.badges?.length ?? 0, need: 8 }),
     money: 8,
   },
@@ -549,17 +558,65 @@ export const ACHIEVEMENTS: Achievement[] = [
     repeat: true,
   },
   {
+    id: 'badge-region',
+    cat: 'trainer',
+    ko: '지방 제패',
+    desc: '한 지방의 배지를 전부 모을 때마다.',
+    /**
+     * One row for ten regions, rather than ten rows.
+     *
+     * Nine `badge-johto`-shaped ids would be nine rows in a category that
+     * already holds twelve, and eight of them would be UNREACHABLE until their
+     * tables exist — which breaks the invariant that `maxed()` clears every
+     * one-shot. A repeater is reachable the day it ships, pays exactly once per
+     * region for ever, and needs no edit when 성도 lands. The same shape
+     * `travel-repeat` and `legend-repeat` already have.
+     *
+     * Priced as the increment over `badge-8` rather than as a second conquest:
+     * with one table the two fire together for the same eight badges. From the
+     * second region on they are different rows, and this is the one that still
+     * means it.
+     */
+    metric: (s) => ({ have: regionsSwept(s), need: 1 }),
+    money: 6,
+    repeat: true,
+  },
+  {
+    id: 'league-region',
+    cat: 'trainer',
+    ko: '지방의 챔피언',
+    desc: '새로운 지방의 명예의 전당에 올랐다.',
+    /**
+     * The row `state.leagues` never had.
+     *
+     * `league-repeat` counts `leagueWins`, which pays again for the SAME
+     * ladder — nothing in this table could tell a fifth 석영고원 clear from a
+     * first 성도 one. This is that distinction, and it reads the region-keyed
+     * map `hunt.ts` has been writing since the league shipped.
+     */
+    metric: (s) => ({ have: Object.keys(s.leagues ?? {}).length, need: 1 }),
+    money: 8,
+    repeat: true,
+  },
+  {
     id: 'gym-rematch',
     cat: 'trainer',
     ko: '도장깨기',
     /**
-     * Not `badges`, which stops at eight and then measures nothing. A beaten
-     * leader spars once per visit, so this grows by at most eight a lap and
-     * every step needs a won fight — an idle machine with a bare companion
-     * earns none of it.
+     * Not `badges`, which stops at a region's eight and then measures nothing.
+     * A beaten leader spars once per visit, so a lap yields at most eight wins
+     * per region that HAS a table, and every step needs a won fight — an idle
+     * machine with a bare companion earns none of it.
+     *
+     * The step scales with the roster rather than being a literal ten: eight a
+     * lap when only 관동 exists, sixty-eight when all of them do, so the row
+     * keeps paying about once per swept region per lap whatever the table grows
+     * to. Ten against one region is today's value exactly, so nothing moves on
+     * this ship — and raising it later revokes nothing, because
+     * `settleAchievements` guards with `times <= paid`.
      */
-    desc: '관장을 10번 이길 때마다.',
-    metric: (s) => ({ have: s.gymWins ?? 0, need: 10 }),
+    desc: `관장을 ${10 * GYM_REGIONS}번 이길 때마다.`,
+    metric: (s) => ({ have: s.gymWins ?? 0, need: 10 * GYM_REGIONS }),
     money: 2,
     repeat: true,
   },

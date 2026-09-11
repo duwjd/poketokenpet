@@ -1478,6 +1478,20 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
 
 /* The gauge above sits directly on the chips without this. */
 .chips.awardcats { margin-top: var(--s4); }
+
+/*
+ * The region picker, between the badge case's heading and the case.
+ *
+ * `.chips` already carries the height (`var(--ctl)`) and every other control
+ * rule, so this is one margin and nothing else. The selector contains both
+ * `badge` and, through `.chips`, `button` — which puts it inside
+ * test/panel-css.test.ts's control-height sweep. There is nothing to declare
+ * there, and there must not be.
+ *
+ * Ten two-character region names wrap to two rows at 420px. That is why the
+ * count lives on the heading and not on the chip.
+ */
+.chips.badgeregions { margin: var(--s3) 0; }
 /* The per-category count on a shelf heading. Tabular so the headings line up. */
 .awardshelf span { font-variant-numeric: tabular-nums; font-weight: 400; }
 /*

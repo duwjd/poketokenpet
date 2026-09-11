@@ -49,6 +49,15 @@ const maxed = () =>
     // The league cleared, so its one-shots and its repeat have both paid.
     leagueBest: 5,
     leagueWins: 3,
+    /**
+     * A Hall of Fame entry, which the rest of this fixture already implies:
+     * `hunt.ts` stamps `leagues[region]` on the same win that increments
+     * `leagueWins`, so `leagueWins: 3` with an empty map is a state the game
+     * cannot produce. `league-region` reads that map, so without this it pays
+     * zero tiers and the two "every repeater paid" invariants fail. A fixture
+     * correction, not a fixture bend.
+     */
+    leagues: { kanto: 1 },
     // Twenty legendaries met — the counter the shrine rooms and the 조우
     // rungs both read. Distinct from having RAISED any of them.
     metLegends: [144, 145, 146, 150, 151, 243, 244, 245, 249, 250, 380, 381, 382, 383, 384, 480, 481, 482, 483, 484],

@@ -57,6 +57,10 @@ import { generationOf, rarityOfSpecies } from './dex.ts';
 import { trainerAt, trainerBattleAt } from './trainer.ts';
 import {
   KANTO,
+  REGIONS,
+  liveRegion,
+  regionByKo,
+  type RegionRow,
   encountersUntilGym,
   encountersUntilLeague,
   gymById,
@@ -978,7 +982,11 @@ export async function buildState(mode: CountMode = 'activity') {
     party: {
       size: PARTY_SIZE,
       ready: (state.party ?? []).length === PARTY_SIZE,
-      cityKo: KANTO.leagueCity ?? '',
+      cityKo:
+        liveRegion(new Set(state.badges ?? []), state.leagues ?? {}, state.huntCount)
+          ?.leagueCity ??
+        KANTO.leagueCity ??
+        '',
       members: await Promise.all(
         (state.party ?? []).map(async (m) => {
           const options = assignable(state, (state.party ?? []).indexOf(m));
@@ -1007,43 +1015,100 @@ export async function buildState(mode: CountMode = 'activity') {
      */
     badges: await (async () => {
       const held = new Set(state.badges ?? []);
+      const leagues = state.leagues ?? {};
+      const live = liveRegion(held, leagues, state.huntCount) ?? KANTO;
+
+      /** One region's ladder, resolved for the screen. */
+      const ladder = async (r: RegionRow) => ({
+        region: r.id,
+        cityKo: r.leagueCity ?? '',
+        kindKo: r.leagueKind,
+        open: regionSwept(r, held),
+        /** Members of the current run already down. Null when none is running. */
+        at: state.leagueRun?.region === r.id ? (state.leagueRun?.at ?? null) : null,
+        size: r.league.length,
+        best: state.leagueBest ?? 0,
+        wins: state.leagueWins ?? 0,
+        clearedAt: leagues[r.id] ?? null,
+        until: encountersUntilLeague(state.huntCount, r),
+        members: await Promise.all(
+          r.league.map(async (m, i) => ({
+            id: m.id,
+            ko: m.ko,
+            /** Beaten in the run under way, or in a run already cleared. */
+            down: (state.leagueRun?.region === r.id ? (state.leagueRun?.at ?? 0) : 0) > i,
+            sprite: await ensureNpcSprite(m.sprite),
+          })),
+        ),
+      });
+
       return {
-        count: held.size,
-        total: KANTO.gyms.length,
-        wins: state.gymWins ?? 0,
-        /** The road's summit, and how far along it this save has come. */
-        league: {
-          cityKo: KANTO.leagueCity ?? '',
-          open: regionSwept(KANTO, held),
-          /** Members of the current run already down, 0..5. Null when none is running. */
-          at: state.leagueRun?.at ?? null,
-          size: KANTO.league.length,
-          best: state.leagueBest ?? 0,
-          wins: state.leagueWins ?? 0,
-          clearedAt: state.leagues?.[KANTO.id] ?? null,
-          until: encountersUntilLeague(state.huntCount, KANTO),
-          members: await Promise.all(
-            KANTO.league.map(async (m) => ({
-              id: m.id,
-              ko: m.ko,
-              /** Beaten in the run that is under way, or in a run already cleared. */
-              down: (state.leagueRun?.at ?? 0) > KANTO.league.indexOf(m),
-              sprite: await ensureNpcSprite(m.sprite),
-            })),
-          ),
-        },
+        /**
+         * The LIVE region's badges, not every badge ever.
+         *
+         * The definition narrows here and the numbers do not move: with one
+         * table, "the live region's" and "all" are the same eight. It has to
+         * narrow, because both readers want a region — the party board prints
+         * "배지 8개를 모으면 석영고원에서" and that sentence is false the moment
+         * this counts sixty-eight gyms across ten regions. The cross-region sum
+         * lives in `regions` below, where a reader can see that it is a sum.
+         */
+        count: live.gyms.filter((g) => held.has(g.badge)).length,
+        total: live.gyms.length,
+        /** The region the panel opens on, as a `leagues` key. See `liveRegion`. */
+        now: live.id,
+        /**
+         * One row per region that HAS a table. Sprite-free, so the chip row
+         * costs nothing — at most nine rows of short strings.
+         */
+        regions: REGIONS.filter((r) => r.gyms.length > 0).map((r) => ({
+          key: r.id,
+          ko: r.ko,
+          count: r.gyms.filter((g) => held.has(g.badge)).length,
+          total: r.gyms.length,
+          clearedAt: leagues[r.id] ?? null,
+          until: encountersUntilLeague(state.huntCount, r),
+        })),
+        /**
+         * The live region's ladder. Literally `leagues.find(now)` — the same
+         * object under a second name, so no caller has to handle "this region
+         * has no league" for the one region it is certainly not true of.
+         */
+        league: await ladder(live),
+        /** One per region with a ladder. 히스이 simply has no entry. */
+        leagues: await Promise.all(
+          REGIONS.filter((r) => r.league.length > 0).map((r) => ladder(r)),
+        ),
+        /**
+         * Every gym of every region, FLAT and region-tagged.
+         *
+         * Flat for three reasons, strongest first. `test/payload-shape.test.ts`
+         * requires the literal `payload.badges.cases.map` in `keepSprites`, and
+         * keeping it keeps it TRUE: every badge the chips can reach is pinned,
+         * so a purge can never blank a region one click away. It is also what
+         * lets the region switcher be renderer-local — the renderer can only
+         * read the sprite cache, so a payload carrying one region would show
+         * locks until the next poll. And nesting would buy nothing.
+         *
+         * The cost is size: nine regions is ~68 rows. When a THIRD table lands
+         * and this crosses two dozen, move the static half — `leaderKo`,
+         * `cityKo`, `prizeKo`, `sprite`, none of which ever change with the
+         * save — behind a fetched-once route the way `dexIndex` is, and leave
+         * `have`/`locked`/`until` on the poll.
+         */
         cases: await Promise.all(
-          [...KANTO.gyms]
+          REGIONS.flatMap((r) => r.gyms)
             // Displayed by badge NUMBER, which is the games' own order and the
             // order the case is printed in. `order` is when you meet them.
             .sort((a, b) => a.badge - b.badge)
             .map(async (g) => ({
+              region: regionByKo(g.region)?.id ?? '',
               no: g.badge,
               ko: g.badgeKo,
               leaderKo: g.ko,
               cityKo: g.city,
               have: held.has(g.badge),
-              /** 상록시티, and only it: shut until the other seven are held. */
+              /** Shut until the rest of the region is done. 상록시티, and its like. */
               locked: gymLocked(g, held),
               /** Encounters until the pet stands there. 0 means it is there now. */
               until: encountersUntilGym(state.huntCount, g),
@@ -1197,8 +1262,10 @@ export async function buildState(mode: CountMode = 'activity') {
     // card shows as the stake. Both are on screen for as long as he stands.
     payload.hunt.challenge?.sprite ?? null,
     payload.hunt.challenge?.badgeSprite ?? null,
-    // The Elite Four's portraits, on the same screen.
-    ...payload.badges.league.members.map((m) => m.sprite),
+    // Every ladder's portraits, not just the live region's — the chip row is
+    // one click from any of them, and a purge between the click and the next
+    // poll would blank the line it just switched to.
+    ...payload.badges.leagues.flatMap((l) => l.members.map((m) => m.sprite)),
     // The league party, drawn in the dex tab whenever it is being built, and
     // one of them stands in the battle scene through a whole run.
     ...payload.party.members.map((m) => m.sprite),

@@ -5,6 +5,35 @@
  * drift, and a payload that no longer matches the real shape makes every test
  * built on it quietly meaningless.
  */
+/**
+ * 관동's ladder, hoisted.
+ *
+ * The payload hands the live ladder over twice — once as `badges.league` and
+ * once inside `badges.leagues` — and builds them from one object. Declared once
+ * here for the same reason: built separately the two could disagree, and two
+ * different leagues on one screen is a bug no assertion in this directory would
+ * catch.
+ */
+const KANTO_LEAGUE = {
+  region: 'kanto',
+  cityKo: '석영고원',
+  kindKo: '사천왕',
+  open: false,
+  at: null as number | null,
+  size: 5,
+  best: 2,
+  wins: 0,
+  clearedAt: null as number | null,
+  until: 5972,
+  members: [
+    { id: 'lorelei', ko: '사천왕 칸나', down: false, sprite: 'npc-lorelei-gen1.png' },
+    { id: 'bruno', ko: '사천왕 시바', down: false, sprite: 'npc-bruno.png' },
+    { id: 'agatha', ko: '사천왕 국화', down: false, sprite: 'npc-agatha-gen1.png' },
+    { id: 'lance', ko: '사천왕 목호', down: false, sprite: 'npc-lance.png' },
+    { id: 'blue', ko: '챔피언 그린', down: false, sprite: 'npc-blue.png' },
+  ],
+};
+
 export const STATE = {
   tokens: {
     total: 1_700_000_000,
@@ -287,33 +316,27 @@ export const STATE = {
   badges: {
     count: 1,
     total: 8,
-    wins: 3,
-    league: {
-      cityKo: '석영고원',
-      open: false,
-      at: null,
-      size: 5,
-      best: 2,
-      wins: 0,
-      clearedAt: null,
-      until: 5972,
-      members: [
-        { id: 'lorelei', ko: '사천왕 칸나', down: false, sprite: 'npc-lorelei-gen1.png' },
-        { id: 'bruno', ko: '사천왕 시바', down: false, sprite: 'npc-bruno.png' },
-        { id: 'agatha', ko: '사천왕 국화', down: false, sprite: 'npc-agatha-gen1.png' },
-        { id: 'lance', ko: '사천왕 목호', down: false, sprite: 'npc-lance.png' },
-        { id: 'blue', ko: '챔피언 그린', down: false, sprite: 'npc-blue.png' },
-      ],
-    },
+    /**
+     * ONE region, deliberately.
+     *
+     * The chip row renders only above one, so with a single entry this tab is
+     * byte-for-byte what it was before the case grew a region dimension — which
+     * is what lets every count assertion in tabs.test.tsx stand unchanged. A
+     * second entry is what a multi-region test adds for itself.
+     */
+    now: 'kanto',
+    regions: [{ key: 'kanto', ko: '관동', count: 1, total: 8, clearedAt: null, until: 5972 }],
+    league: KANTO_LEAGUE,
+    leagues: [KANTO_LEAGUE],
     cases: [
-      { no: 1, ko: '회색배지', leaderKo: '웅', cityKo: '회색시티', have: true, locked: false, until: 0, prizeKo: '암석봉인', sprite: 'badge-1.png' },
-      { no: 2, ko: '블루배지', leaderKo: '이슬', cityKo: '블루시티', have: false, locked: false, until: 47, prizeKo: '물의파동', sprite: 'badge-2.png' },
-      { no: 3, ko: '오렌지배지', leaderKo: '마티스', cityKo: '갈색시티', have: false, locked: false, until: 72, prizeKo: '전격파', sprite: 'badge-3.png' },
-      { no: 4, ko: '무지개배지', leaderKo: '민화', cityKo: '무지개시티', have: false, locked: false, until: 197, prizeKo: '기가드레인', sprite: 'badge-4.png' },
-      { no: 5, ko: '핑크배지', leaderKo: '독수', cityKo: '연분홍시티', have: false, locked: false, until: 272, prizeKo: '맹독', sprite: 'badge-5.png' },
-      { no: 6, ko: '골드배지', leaderKo: '초련', cityKo: '노랑시티', have: false, locked: false, until: 247, prizeKo: '명상', sprite: 'badge-6.png' },
-      { no: 7, ko: '진홍색배지', leaderKo: '강연', cityKo: '홍련섬', have: false, locked: false, until: 322, prizeKo: '불대문자', sprite: 'badge-7.png' },
-      { no: 8, ko: '그린배지', leaderKo: '비주기', cityKo: '상록시티', have: false, locked: true, until: 5947, prizeKo: '지진', sprite: 'badge-8.png' },
+      { region: 'kanto', no: 1, ko: '회색배지', leaderKo: '웅', cityKo: '회색시티', have: true, locked: false, until: 0, prizeKo: '암석봉인', sprite: 'badge-1.png' },
+      { region: 'kanto', no: 2, ko: '블루배지', leaderKo: '이슬', cityKo: '블루시티', have: false, locked: false, until: 47, prizeKo: '물의파동', sprite: 'badge-2.png' },
+      { region: 'kanto', no: 3, ko: '오렌지배지', leaderKo: '마티스', cityKo: '갈색시티', have: false, locked: false, until: 72, prizeKo: '전격파', sprite: 'badge-3.png' },
+      { region: 'kanto', no: 4, ko: '무지개배지', leaderKo: '민화', cityKo: '무지개시티', have: false, locked: false, until: 197, prizeKo: '기가드레인', sprite: 'badge-4.png' },
+      { region: 'kanto', no: 5, ko: '핑크배지', leaderKo: '독수', cityKo: '연분홍시티', have: false, locked: false, until: 272, prizeKo: '맹독', sprite: 'badge-5.png' },
+      { region: 'kanto', no: 6, ko: '골드배지', leaderKo: '초련', cityKo: '노랑시티', have: false, locked: false, until: 247, prizeKo: '명상', sprite: 'badge-6.png' },
+      { region: 'kanto', no: 7, ko: '진홍색배지', leaderKo: '강연', cityKo: '홍련섬', have: false, locked: false, until: 322, prizeKo: '불대문자', sprite: 'badge-7.png' },
+      { region: 'kanto', no: 8, ko: '그린배지', leaderKo: '비주기', cityKo: '상록시티', have: false, locked: true, until: 5947, prizeKo: '지진', sprite: 'badge-8.png' },
     ],
   },
   awards: [

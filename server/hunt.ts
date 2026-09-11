@@ -1330,6 +1330,14 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
   const droppable = droppableItems(state);
   const shardable = shardableItems(state);
   const reserved = state.forcedNext ?? null;
+  /**
+   * Whether a named battle waits for an answer, and what is already waiting.
+   *
+   * Read here, once, for the same reason `reserved` and `form` are: two
+   * processes settle the same range against one file and can only agree if both
+   * read this from the saved state rather than from what the loop is writing.
+   */
+  const asks = state.askChallenge ?? true;
 
   const tms = { ...state.tms };
   const stones = { ...state.stones };
@@ -1413,8 +1421,19 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
      */
     const standing = leagueAt(seq, badges, leagues);
     if (standing && party.length === PARTY_SIZE) {
+      /**
+       * Starting is asked about; the run itself is not.
+       *
+       * A challenge is one encounter per ladder member and it is the shape of
+       * the thing that it runs to its end — so the question is asked once, at
+       * the door, and the five that follow settle as they always have. Asking
+       * per member would turn one climb into five prompts and make a lost run
+       * feel like five separate refusals.
+       */
       if (!leagueRun && leagueStartAt(seq)) {
-        leagueRun = { at: 0, hp: party.map(() => BATTLE_MAX_HP), region: standing.id };
+        if (!asks) {
+          leagueRun = { at: 0, hp: party.map(() => BATTLE_MAX_HP), region: standing.id };
+        }
       }
       const lg = (leagueRun?.region ? regionById(leagueRun.region) : null) ?? standing;
       if (leagueRun) {
@@ -1479,7 +1498,32 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
      * cannot shift it. See server/gyms.ts.
      */
     const gym = gymAt(seq, badges);
-    if (gym) {
+    /**
+     * Ask rather than decide, when the rule says so and a badge is at stake.
+     *
+     * Nothing is WRITTEN here. The offer the panel shows is computed from
+     * `(huntCount, badges, leagues)` by `pendingChallenge`, so this branch only
+     * has to decline to fight — no bookkeeping, no refresh, nothing that can
+     * drift. That is the whole reason the offer is derived rather than stored.
+     *
+     * It FALLS THROUGH rather than `continue`-ing: the encounter still happens,
+     * so walking past a leader spends those five minutes on whatever else was
+     * on that road rather than on nothing. The route trainer below may
+     * therefore stand where a leader was standing, which is the honest reading
+     * — you did not fight 관장 웅, so you did what you would have done anyway.
+     * Skipping instead would tax three encounters a leg for being away.
+     *
+     * Only a FIRST win is asked about, and that is load-bearing. `gymAt`
+     * returns a beaten leader at `REMATCH_OFFSET` for a spar that hands nothing
+     * over, and that spar is the only thing that still moves `gymWins` once a
+     * region is swept — which is what 도장깨기 measures. Gating it would make
+     * that row unreachable for ever. `!badges.has` is the same condition the
+     * branch below already uses to decide whether a badge changes hands, so
+     * this adds no new concept.
+     */
+    if (gym && asks && !badges.has(gym.badge)) {
+      // Deliberately empty: fall through to the roll below.
+    } else if (gym) {
       const g = gymTrainer(gym);
       const fight = trainerBattleAt(seq, g, active.moves, speciesId, boosts);
       /** A rematch pays, but the badge and its TM are handed over only once. */

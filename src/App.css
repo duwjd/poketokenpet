@@ -1582,3 +1582,61 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
 .partyseats li.empty { border-style: dashed; opacity: .6; }
 /* The same box the award icons use, so the two lists line up down the page. */
 .partyseats .icon img { width: var(--ctl-lg); height: var(--ctl-lg); image-rendering: pixelated; object-fit: contain; }
+
+/*
+ * The challenge on offer, on 파트너, directly under the battle scene.
+ *
+ * Borrowed from `.items li` rather than invented: it is a row with a picture,
+ * a label and a control, which is what that shape already is. The frame comes
+ * from the same drawn panel, so this declares neither a border nor a fill.
+ *
+ * `min-height` is not set here even though `.items li` sets one — the portrait
+ * is taller than a control and would fight it. The selector also ends in
+ * `.offer`, which is clear of the `button|chip|input|tabs|rowbtn|badge` sweep
+ * in test/panel-css.test.ts, but there is nothing to declare anyway.
+ */
+.offer {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--pad-box);
+  margin: var(--s3) 0;
+  border: 3px solid transparent;
+  border-image-source: var(--ui-panel);
+  border-image-slice: 3 fill;
+  border-image-repeat: stretch;
+}
+
+/* Sized to the trainer portraits the scene uses, so the same art reads as the
+   same person in both places. */
+.offer .art {
+  flex: none;
+  width: var(--ctl-lg);
+  display: grid;
+  place-items: center;
+}
+
+.offer .art img {
+  image-rendering: pixelated;
+  max-width: 100%;
+  height: auto;
+}
+
+.offer .lbl {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+/* Stacked, not side by side: 도전 is the answer being asked for, so it gets the
+   button and 나중에 gets the quiet link — the same weighting the shop rows use
+   between a purchase and its explanation. */
+.offer .acts {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s2);
+}

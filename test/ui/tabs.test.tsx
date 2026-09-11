@@ -1719,3 +1719,91 @@ describe('the legendaries', () => {
     expect(screen.getByRole('heading', { level: 3, name: /1세대/ })).toBeTruthy();
   });
 });
+
+/**
+ * The challenge card.
+ *
+ * It lives under <Scene> on 파트너 and nowhere else, because that is the only
+ * place the battle it starts can be seen. These tests pin that placement and
+ * the signalling around it — a card nobody notices is the same as not being
+ * asked, which is the failure this whole feature exists to fix.
+ */
+describe('a leader waiting for an answer', () => {
+  const offered = {
+    ...STATE,
+    hunt: {
+      ...STATE.hunt,
+      challenge: {
+        kind: 'gym' as const,
+        id: 'brock',
+        ko: '관장 웅',
+        left: 3,
+        cityKo: '회색시티',
+        size: 2,
+        sprite: 'npc-brock.png',
+        badgeKo: '회색배지',
+        badgeSprite: 'badge-1.png',
+        prizeKo: '암석봉인',
+      },
+    },
+  };
+
+  it('draws nothing at all while nobody is standing', async () => {
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    expect(document.querySelector('.offer')).toBeNull();
+    expect(screen.queryByRole('button', { name: '도전' })).toBeNull();
+  });
+
+  it('names the leader, the city, the stake and the tries left', async () => {
+    payload = offered;
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    const card = document.querySelector('.offer');
+    expect(card).not.toBeNull();
+    expect(card!.textContent).toContain('관장 웅');
+    expect(card!.textContent).toContain('회색시티');
+    expect(card!.textContent).toContain('회색배지');
+    expect(card!.textContent).toContain('기회 3번 남음');
+  });
+
+  it('sits on 파트너, where the battle will play', async () => {
+    payload = offered;
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    // The card and the scene share a tab, and it is the one open by default.
+    expect(document.querySelector('.offer')).not.toBeNull();
+    await userEvent.click(screen.getByRole('tab', { name: /도감/ }));
+    expect(document.querySelector('.offer')).toBeNull();
+  });
+
+  it('marks the tab so the card can be found with the panel on another one', async () => {
+    payload = offered;
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    const pet = screen.getByRole('tab', { name: /파트너/ });
+    expect(pet.querySelector('.dot')).not.toBeNull();
+  });
+
+  it('sends the leader back by name when 도전 is pressed', async () => {
+    payload = offered;
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    await userEvent.click(screen.getByRole('button', { name: '도전' }));
+    // Named back so a poll landing between the render and the click cannot
+    // silently fight somebody else — the offer is derived, not stored.
+    const calls = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const posted = calls.map((c) => String((c[1] as RequestInit | undefined)?.body ?? ''));
+    expect(posted.some((b) => b.includes('"accept:brock"'))).toBe(true);
+  });
+
+  it('sends a refusal when 나중에 is pressed', async () => {
+    payload = offered;
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    await userEvent.click(screen.getByRole('button', { name: '나중에' }));
+    const calls = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const posted = calls.map((c) => String((c[1] as RequestInit | undefined)?.body ?? ''));
+    expect(posted.some((b) => b.includes('"decline"'))).toBe(true);
+  });
+});

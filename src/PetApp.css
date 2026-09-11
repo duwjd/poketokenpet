@@ -172,3 +172,16 @@ html[data-window='pet'] body:active {
   opacity: 0.8;
   font-variant-numeric: tabular-nums;
 }
+
+/*
+ * The standing mark: somebody is waiting for an answer.
+ *
+ * Shares the drawn glyph with the startle above and drops its animation — a
+ * pop-in belongs to something that just happened, and this is a question that
+ * stays open until it is answered. It is the one thing on the desktop that
+ * persists, and the reason an offer can be noticed without the panel open.
+ */
+.pet-bang.waiting {
+  animation: none;
+  opacity: .85;
+}

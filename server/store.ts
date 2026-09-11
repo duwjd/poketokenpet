@@ -260,6 +260,32 @@ export function migrate(parsed: StoredState | null): GameState {
       ]),
     ].sort((a, b) => a - b),
     leagues: { ...(parsed.leagues ?? {}) },
+    /**
+     * The ask-first rule, and this leg's answer to it.
+     *
+     * Same allow-list rule as every block above. Unlike most of them, dropping
+     * this one is cheap: a lost `challenge` only re-offers a battle the player
+     * had waved away, and the record expires by arithmetic anyway.
+     *
+     * `askChallenge` defaults to TRUE rather than to `base`, so a save written
+     * before this existed starts asking. See the field's note in game.ts for
+     * why that was safe to choose.
+     *
+     * `used` is deliberately NOT clamped against `GYM_OFFSETS.length`: this
+     * module keeps out of `gyms.ts` to stay clear of its import cycle, and an
+     * over-large `used` only silences one leg, which passes on its own.
+     */
+    askChallenge: parsed.askChallenge ?? true,
+    challenge:
+      parsed.challenge &&
+      Number.isInteger(parsed.challenge.leg) &&
+      Number.isInteger(parsed.challenge.used)
+        ? {
+            leg: Math.max(0, parsed.challenge.leg),
+            used: Math.max(0, parsed.challenge.used),
+            ...(parsed.challenge.declined ? { declined: true as const } : {}),
+          }
+        : null,
     leagueWins: parsed.leagueWins ?? 0,
     /**
      * Floored at what the save can prove.

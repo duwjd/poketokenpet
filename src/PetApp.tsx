@@ -14,6 +14,8 @@ type PetState = {
   hunt: {
     idleReason: 'off' | 'everstone' | 'egg' | null;
     log: { seq: number; wildName: string }[];
+    /** A named battle waiting for an answer, so the pet can say so. */
+    challenge: { ko: string } | null;
   };
 };
 
@@ -171,6 +173,7 @@ export default function PetApp() {
 
   if (!state) return <div className={petClass} />;
 
+  const waiting = state.hunt?.challenge?.ko ?? null;
   const sprite = state.companion?.sprite ?? state.eggSprite;
   const isEgg = !state.companion;
   const pct = Math.round(state.progress.ratio * 100);
@@ -192,6 +195,16 @@ export default function PetApp() {
       >
         {/* key: a new species has a different canvas, so start measuring afresh. */}
         {startled && <span className="pet-bang" aria-label={`${startled} 조우`} />}
+        {/* Somebody is standing in the road, and will keep standing there.
+ 
+            Deliberately NOT the startle: that one is a 2.2-second reaction to
+            something that already happened, and a challenge is a question that
+            stays open. This is the only mark on the desktop that persists, which
+            is what makes an offer findable without the panel open. The startle
+            wins while it lasts — a fresh encounter is the more urgent news. */}
+        {!startled && waiting && (
+          <span className="pet-bang waiting" aria-label={`${waiting} 대기 중`} />
+        )}
         {sprite && (
           <Sprite key={sprite} name={sprite} isEgg={isEgg} ratio={state.progress.ratio} size={size} />
         )}

@@ -38,7 +38,18 @@ const base = (over: Partial<GameState> = {}): GameState => ({
 
 const hunting = (over: Partial<GameState> = {}): GameState => {
   const hatched = advance(base({ lifetimeEarned: H }), H, mulberry32(1)).state;
-  return { ...hatched, lifetimeEarned: 1_000_000_000, huntedAt: T0, ...over };
+  /**
+   * `askChallenge: false` — these tests are about how a league run RESOLVES,
+   * which is unchanged by who started it. Asking is the default now, and the
+   * tests for the door live in test/challenge.test.ts rather than in here.
+   */
+  return {
+    ...hatched,
+    lifetimeEarned: 1_000_000_000,
+    huntedAt: T0,
+    askChallenge: false,
+    ...over,
+  };
 };
 
 /** Four strong machine moves each, drawn from what that species can learn. */

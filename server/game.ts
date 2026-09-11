@@ -224,6 +224,22 @@ export type HuntEntry = {
    */
   form?: { id: number; kind: 'mega' | 'gmax' };
   /**
+   * Which companion fought, and with what.
+   *
+   * Recorded for the same reason `form` is, and for a sharper case: a battle
+   * accepted from the panel can pay enough progress to EVOLVE the companion
+   * inside the very `buildState` pass that first replays it — `hunt` runs, then
+   * `advance`, then the payload — while `trainerFor` re-derives the fight from
+   * whatever the companion is by then. Without this the scene would narrate a
+   * different battle than the one that handed over the badge, possibly a loss
+   * under a badge line.
+   *
+   * Only set on an accepted challenge. An automatic fight settles and replays
+   * inside one pass with nothing in between, and every entry written before
+   * this existed simply has none.
+   */
+  mine?: { speciesId: number; moves: number[] };
+  /**
    * Set when this encounter was a trainer rather than a wild Pokemon.
    *
    * Optional, so no schema bump: `migrate` passes `huntLog` through and an older
@@ -451,6 +467,73 @@ export type GameState = {
   leagueRun?: { at: number; hp: number[]; region?: string } | null;
   /** Region -> when its Hall of Fame was first reached, in ms. */
   leagues?: Record<string, number>;
+  /**
+   * What the player already did with THIS leg's challenge. NOT the offer.
+   *
+   * ## Why this exists at all
+   *
+   * A gym fight used to be decided inside `hunt()`, which settles while the app
+   * is closed — so the one fight in this game with a badge on it was the one
+   * fight nobody could watch. The panel replays only `huntLog[0]`, the log keeps
+   * twenty of up to ninety-six settled encounters, and the scene arms silently
+   * on the first payload. Three conditions had to coincide before a leader's
+   * battle could reach the screen, and usually they did not.
+   *
+   * ## Why the OFFER is not stored
+   *
+   * Who is standing, which badge is at stake and where he is are pure functions
+   * of `(huntCount, badges, leagues)` — `standingGym` and `leagueAt` take no
+   * draw. Storing them would only make copies that can drift, and keeping them
+   * true would mean refresh logic. `forcedNext` is the cautionary tale: an
+   * absolute `seq` with no expiry and no withdrawal, never claimed and never
+   * cleared once the cursor passes it, which then refuses every later
+   * reservation for ever. So the offer is computed on demand by
+   * `pendingChallenge`, and only the player's answer is written down.
+   *
+   * ## Why `leg` rather than a stop index
+   *
+   * `leg` is `floor(seq / LEG_LENGTH)` and is MONOTONE. A stop index is not — it
+   * wraps every `STOPS.length` legs, so a refusal recorded against a stop would
+   * come back to life one lap later and silence a leader who had earned the
+   * right to ask again. Being monotone also means this record expires by
+   * arithmetic instead of by cleanup code: a leg that has gone by can never
+   * match again, so nothing has to remember to clear it — including the idle
+   * branch of `hunt()`, which returns early and would otherwise leave a dead
+   * refusal alive with hunting switched off.
+   *
+   * ## Why `used`
+   *
+   * Auto-hunting gets `GYM_OFFSETS.length` attempts at a leader per leg.
+   * Choosing to watch a fight must not also mean retrying it until it is won —
+   * every gym is meant to be losable, and the grit column is measured on that.
+   * So accepting spends an attempt and the offer goes quiet once they are gone.
+   *
+   * Optional, so old saves need no migration — but it MUST be named in
+   * `migrate`; see the allow-list warning there.
+   */
+  challenge?: { leg: number; used: number; declined?: true } | null;
+  /**
+   * Ask before a named battle, rather than settling it unattended.
+   *
+   * A game rule rather than a window preference, so it lives here beside
+   * `huntEnabled` and not in Prefs — `buildState` has no access to Prefs, and
+   * Prefs is invisible on the web build.
+   *
+   * Defaults to ON, including for saves written before it existed. That does
+   * change what an existing save does: badges stop arriving while nobody is
+   * looking. Nothing STALLS on it, which is what made the default safe to
+   * choose — the league gate and the badge achievements only slow down, and the
+   * one legendary gate that mentions a league clear offers a second path
+   * (`either` in server/legends.ts).
+   *
+   * A REMATCH is never asked about, and that is load-bearing rather than a
+   * courtesy: `gymAt` returns a beaten leader at `REMATCH_OFFSET` for a spar
+   * with no badge at stake, and that spar is the only thing that still moves
+   * `gymWins` once a region is swept — which is exactly what the 도장깨기 row
+   * measures. Gating it would make that achievement unreachable for ever,
+   * silently. So the question is asked only when `!badges.has(gym.badge)`.
+   */
+  askChallenge?: boolean;
   /** League runs cleared, ever. */
   leagueWins?: number;
   /**

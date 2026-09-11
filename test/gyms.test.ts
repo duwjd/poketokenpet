@@ -571,7 +571,13 @@ describe('gyms inside hunt()', () => {
   });
   const hunting = (over: Partial<GameState> = {}): GameState => {
     const hatched = advance(base({ lifetimeEarned: H }), H, mulberry32(1)).state;
-    return { ...hatched, lifetimeEarned: 1_000_000_000, huntedAt: T0, ...over };
+    /**
+     * These tests are about how a named battle RESOLVES, and that is unchanged
+     * by who started it — so they keep exercising the automatic path. The
+     * ask-first rule is the default now, and the tests for it live beside
+     * these rather than inside them.
+     */
+    return { ...hatched, lifetimeEarned: 1_000_000_000, huntedAt: T0, askChallenge: false, ...over };
   };
   const settle = (s: GameState, n: number) => hunt(s, T0 + n * HUNT_INTERVAL_MS).state;
 

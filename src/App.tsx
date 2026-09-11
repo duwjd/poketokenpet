@@ -231,6 +231,22 @@ type State = {
     slots: number;
     nextInMs: number | null;
     speed: number;
+    /** Whether a named battle is asked about rather than settled unattended. */
+    asking: boolean;
+    /** The named battle waiting for an answer. Derived server-side every build. */
+    challenge: {
+      kind: 'gym' | 'league';
+      id: string;
+      ko: string;
+      /** Attempts left in this leg. */
+      left: number;
+      cityKo: string | null;
+      size: number;
+      sprite: string | null;
+      badgeKo: string | null;
+      badgeSprite: string | null;
+      prizeKo: string | null;
+    } | null;
     idleReason: 'off' | 'everstone' | 'egg' | null;
     log: HuntLogEntry[];
   };
@@ -744,6 +760,12 @@ export default function App() {
    * toasts. After that, anything new gets one.
    */
   const seenAwards = useRef<Set<string> | null>(null);
+  /**
+   * The challenger already announced. `undefined` means not yet armed, which is
+   * distinct from `null` — "nobody is standing" is a real value the arming pass
+   * has to be able to record without it counting as a change.
+   */
+  const seenOffer = useRef<string | null | undefined>(undefined);
   /** Tab buttons, so arrow keys can move focus as well as selection. */
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const refresh = useRef<(force?: boolean) => Promise<void>>(async () => {});
@@ -950,6 +972,26 @@ export default function App() {
           setTimeout(() => setFlash(null), 4000);
         }
         prevSpecies.current = id;
+
+        /**
+         * A leader stepping into the road.
+         *
+         * Armed on the first payload like the rest, and keyed on the offer's
+         * id so it fires once per challenger rather than every poll. Without
+         * this the feature is invisible: nothing else in the app has ever
+         * announced an encounter, so a card appearing quietly on a tab nobody
+         * is looking at would be the same as not asking at all.
+         */
+        const offer = data.hunt.challenge?.id ?? null;
+        if (seenOffer.current === undefined) {
+          seenOffer.current = offer;
+        } else if (offer && offer !== seenOffer.current) {
+          setFlash(`${data.hunt.challenge!.ko} · 승부를 걸어왔습니다`);
+          setTimeout(() => setFlash(null), 4000);
+          seenOffer.current = offer;
+        } else {
+          seenOffer.current = offer;
+        }
 
         // Same shape as the two above, and armed the same way: the first
         // payload only records what is already unlocked.
@@ -1375,6 +1417,10 @@ export default function App() {
             {t.id === 'shop' && affordable > 0 && <i className="dot" />}
             {t.id === 'bag' && bagCount > 0 && <i className="dot" />}
             {t.id === 'awards' && unseenAwards > 0 && <i className="dot" />}
+            {/* A leader waiting for an answer. The one dot that is not "there
+                is something to spend" but "somebody is standing there", which
+                is why it goes on the tab the battle will play on. */}
+            {t.id === 'pet' && state?.hunt.challenge && <i className="dot" />}
           </button>
         ))}
       </div>
@@ -1436,6 +1482,47 @@ export default function App() {
         fx={state.fx}
         capped={huntCapped}
       />
+
+      {/* The challenge on offer.
+
+          Directly under <Scene> ON PURPOSE: <Scene> is mounted only on this
+          tab, so pressing 도전 anywhere else would resolve the fight with
+          nothing on screen to show it — which is the entire problem this
+          feature exists to fix. The button has to live where the battle will
+          appear. */}
+      {state.hunt.challenge && (
+        <div className="offer">
+          <span className="art">
+            {state.hunt.challenge.sprite ? (
+              <DexSprite name={state.hunt.challenge.sprite} alt="" />
+            ) : (
+              '!'
+            )}
+          </span>
+          <span className="lbl">
+            <b>{state.hunt.challenge.ko}</b>
+            <em>
+              {state.hunt.challenge.kind === 'gym'
+                ? `${state.hunt.challenge.cityKo} · ${state.hunt.challenge.size}마리${
+                    state.hunt.challenge.badgeKo ? ` · ${state.hunt.challenge.badgeKo}` : ''
+                  }`
+                : `${state.hunt.challenge.cityKo} · ${state.hunt.challenge.size}명 연속`}
+            </em>
+            <em className="muted">기회 {state.hunt.challenge.left}번 남음</em>
+          </span>
+          <span className="acts">
+            <button
+              onClick={() => act('challenge', `accept:${state.hunt.challenge!.id}`)}
+              disabled={busy}
+            >
+              도전
+            </button>
+            <button className="linky" onClick={() => act('challenge', 'decline')} disabled={busy}>
+              나중에
+            </button>
+          </span>
+        </div>
+      )}
 
       {/* The portrait: a picture with a caption, so it is the one thing that
           stays centred while the rest of the panel shares a left edge. */}
@@ -3406,6 +3493,19 @@ export default function App() {
               `적용 중` sends 'off', which lifts it. Reads backwards, is right. */}
           <button disabled={busy} onClick={() => act('huntcap', state.hunt.uncapped ? 'on' : 'off')}>
             {state.hunt.uncapped ? '해제됨' : '적용 중'}
+          </button>
+        </li>
+        <li>
+          <span className="lbl">
+            승부 확인
+            <em>
+              관장과 포켓몬리그는 물어본 뒤에 싸웁니다. 끄면 자리를 비운 동안에도 알아서
+              싸우는데, 그러면 배지가 걸린 승부를 볼 수 없습니다. 재대결은 어느 쪽이든 알아서
+              합니다.
+            </em>
+          </span>
+          <button disabled={busy} onClick={() => act('askchallenge', state.hunt.asking ? 'off' : 'on')}>
+            {state.hunt.asking ? '물어봄' : '자동'}
           </button>
         </li>
       </ul>

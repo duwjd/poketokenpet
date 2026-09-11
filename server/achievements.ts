@@ -481,6 +481,18 @@ export const ACHIEVEMENTS: Achievement[] = [
   // a gym leader IS a trainer, which is also why a gym win increments
   // `trainerWins` in hunt.ts. These rows measure the badges rather than the
   // wins, because the badges are the thing the road is for.
+  /**
+   * Accepting a challenge earns NO row here, and that is the written reason.
+   *
+   * The standing rule above says a new system either earns a row or says why
+   * not. `server/challenge.ts` created no durable counter: `askChallenge` is a
+   * setting and `state.challenge` is one leg's answer, which expires by
+   * arithmetic. What an accepted battle produces — a badge, a machine, a gym
+   * win, a league clear — is counted by the rows immediately below, and counted
+   * identically whether the fight was accepted or settled unattended. A row for
+   * "fought one yourself" would measure the setting rather than the game, and
+   * would quietly punish anyone who turned asking off.
+   */
   {
     id: 'badge-1',
     cat: 'trainer',

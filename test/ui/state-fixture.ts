@@ -149,6 +149,28 @@ export const STATE = {
     slots: 4,
     nextInMs: 92_000,
     speed: 1.25,
+    /**
+     * Asking is on, and nobody is standing.
+     *
+     * Null rather than absent: the file's whole point is that the fixture
+     * matches the real payload, and a challenge suite that had to build its own
+     * copy would be the drift this comment warns about. The card, the tab dot
+     * and the toast all read this, so every existing test here is asserting
+     * that they stay OFF while it is null.
+     */
+    asking: true,
+    challenge: null as null | {
+      kind: 'gym' | 'league';
+      id: string;
+      ko: string;
+      left: number;
+      cityKo: string | null;
+      size: number;
+      sprite: string | null;
+      badgeKo: string | null;
+      badgeSprite: string | null;
+      prizeKo: string | null;
+    },
     idleReason: null,
     log: [
       {

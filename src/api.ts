@@ -18,6 +18,16 @@ export type PetActionKind =
   | 'rename'
   /** Draw the battle form outside battle. 'on' shows it. */
   | 'form'
+  /**
+   * Answer the named battle on offer. `accept:<id>` or `decline`.
+   *
+   * The id is named back so a poll landing between the render and the click
+   * cannot silently fight somebody else — the offer is derived from the save,
+   * not stored, so it can change underneath the panel.
+   */
+  | 'challenge'
+  /** Ask before a named battle, or settle it unattended. 'on' asks. */
+  | 'askchallenge'
   /** Use a signature item: reserve the next encounter for its legendary. */
   | 'legend'
   /** Use a legendary egg: the current companion graduates and it takes over. */

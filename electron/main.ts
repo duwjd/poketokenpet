@@ -19,6 +19,7 @@ import { buy, consumeItem, type ItemId, type ProductId } from '../server/shop.ts
 import { partyAction } from '../server/party.ts';
 import { forget, setHuntEnabled, setHuntUncapped, teach } from '../server/hunt.ts';
 import { rename, setShowBattleForm } from '../server/game.ts';
+import { challengeAction, setAskChallenge } from '../server/challenge.ts';
 import { fuseShards, hatchLegendEgg, spendLegendItem } from '../server/legends.ts';
 import {
   REFRESH_MS, buildState, dexIndex, setReconcileGate, type PetState } from '../server/state.ts';
@@ -97,6 +98,10 @@ async function runShopAction(action: string, id: string, slot: number | null = n
                   ? rename(state, id)
                   : action === 'form'
                     ? setShowBattleForm(state, id === 'on')
+                    : action === 'challenge'
+                      ? challengeAction(state, id, Date.now())
+                      : action === 'askchallenge'
+                        ? setAskChallenge(state, id === 'on')
                     : action === 'legend'
                       ? spendLegendItem(state, id)
                       : action === 'legendegg'
@@ -253,7 +258,12 @@ async function refreshTray() {
       tray.setTitle('');
     }
     // Windows has no tray text at all, so the number lives in the tooltip.
-    tray.setToolTip(`PokeTokenPet — ${label} ${pct}% · 오늘 ${tokens}`);
+    //
+    // A waiting challenger is named here too. The tooltip is the only surface
+    // that reaches someone who has the panel shut and the desktop pet off, and
+    // an offer nobody notices is the same as not being asked.
+    const waiting = s.hunt.challenge ? ` · ${s.hunt.challenge.ko} 대기 중` : '';
+    tray.setToolTip(`PokeTokenPet — ${label} ${pct}% · 오늘 ${tokens}${waiting}`);
   } catch {
     tray.setToolTip('PokeTokenPet');
   }

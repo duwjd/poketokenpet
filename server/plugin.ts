@@ -7,6 +7,7 @@ import { buy, consumeItem, type ItemId, type ProductId } from './shop.ts';
 import { partyAction } from './party.ts';
 import { forget, setHuntEnabled, setHuntUncapped, teach } from './hunt.ts';
 import { rename, setShowBattleForm } from './game.ts';
+import { challengeAction, setAskChallenge } from './challenge.ts';
 import { contentTypeFor, pruneCache, readSprite } from './sprites.ts';
 import { REFRESH_MS, buildState, dexIndex } from './state.ts';
 import { dexEntry } from './dexentry.ts';
@@ -77,6 +78,10 @@ async function runShopAction(body: PetAction) {
     result = setHuntUncapped(state, body.id === 'off');
   } else if (body.action === 'rename') {
     result = rename(state, body.id ?? '');
+  } else if (body.action === 'challenge') {
+    result = challengeAction(state, body.id ?? '', Date.now());
+  } else if (body.action === 'askchallenge') {
+    result = setAskChallenge(state, body.id === 'on');
   } else if (body.action === 'form') {
     result = setShowBattleForm(state, body.id === 'on');
   } else if (body.action === 'legend') {

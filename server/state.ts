@@ -67,6 +67,7 @@ import {
   regionSwept,
 } from './gyms.ts';
 import { PARTY_SIZE, assignable } from './party.ts';
+import { pendingChallenge, pendingId, pendingKo } from './challenge.ts';
 import { shrinesOpen, stopFor } from './shrines.ts';
 import { appDataDir } from './paths.ts';
 
@@ -670,6 +671,43 @@ export async function buildState(mode: CountMode = 'activity') {
           ? null
           : Math.max(0, state.huntedAt + HUNT_INTERVAL_MS - Date.now()),
       speed: moveMult(active?.moves ?? []),
+      /** Whether a named battle is asked about rather than settled unattended. */
+      asking: state.askChallenge ?? true,
+      /**
+       * The named battle waiting for an answer, resolved for the screen.
+       *
+       * Derived every build rather than stored — see server/challenge.ts. It
+       * rides under `hunt` rather than at the top level so the desktop pet gets
+       * it too: that window reads this same payload and shows a standing mark
+       * while one waits, which is half of what makes the offer findable at all.
+       */
+      challenge: await (async () => {
+        const p = pendingChallenge(state);
+        if (!p) return null;
+        const shared = { id: pendingId(p), ko: pendingKo(p), left: p.left };
+        if (p.kind === 'league') {
+          return {
+            ...shared,
+            kind: 'league' as const,
+            cityKo: p.region.leagueCity,
+            size: p.region.league.length,
+            sprite: await ensureNpcSprite(p.region.league[0].sprite),
+            badgeKo: null,
+            badgeSprite: null,
+            prizeKo: null,
+          };
+        }
+        return {
+          ...shared,
+          kind: 'gym' as const,
+          cityKo: p.row.city,
+          size: p.row.team.length,
+          sprite: await ensureNpcSprite(p.row.sprite),
+          badgeKo: p.row.badgeKo,
+          badgeSprite: await ensureBadgeSprite(p.row.badge),
+          prizeKo: moveById(p.row.prize)?.ko ?? null,
+        };
+      })(),
       /** Why hunting is idle right now, for the panel to explain itself. */
       idleReason: !state.huntEnabled
         ? ('off' as const)
@@ -1155,6 +1193,10 @@ export async function buildState(mode: CountMode = 'activity') {
     // The badge case sits in that same tab, and all eight are drawn whether
     // held or not — so all eight are pinned.
     ...payload.badges.cases.map((b) => b.sprite),
+    // The challenger waiting for an answer: his portrait, and the badge the
+    // card shows as the stake. Both are on screen for as long as he stands.
+    payload.hunt.challenge?.sprite ?? null,
+    payload.hunt.challenge?.badgeSprite ?? null,
     // The Elite Four's portraits, on the same screen.
     ...payload.badges.league.members.map((m) => m.sprite),
     // The league party, drawn in the dex tab whenever it is being built, and

@@ -4,7 +4,7 @@ import { migrate } from '../server/store.ts';
 import { LEGENDS } from '../server/legenddata.ts';
 import { SHRINES, hasMet, shrinesOpen, stopFor, stopOpen } from '../server/shrines.ts';
 import { LEG_LENGTH, STOPS, journeyFor } from '../src/journey.ts';
-import { GYMS } from '../server/gyms.ts';
+import { ALL_GYMS, REGIONS } from '../server/gyms.ts';
 
 const at = (ko: string) => STOPS.findIndex((s) => s.ko === ko);
 const base = (over: Partial<GameState> = {}): GameState => ({ ...initialState(), ...over });
@@ -24,8 +24,16 @@ describe('the shrine table', () => {
   it('never shuts a gym town or the league', () => {
     // A shut gym city would move a leader somewhere he does not live, and the
     // whole campaign resolves cities by name.
-    for (const g of GYMS) expect(SHRINES[g.city], g.city).toBeUndefined();
-    expect(SHRINES['석영고원']).toBeUndefined();
+    //
+    // Checked on the BARE name, not on (region, city), and that is exact
+    // rather than sloppy: `stopOpen` is keyed by bare name too, which is what
+    // lets one shrine row lock 바위산의 유적 in both 신오 and 가라르. So a gym
+    // town sharing a name with a shrine in another region really would be
+    // shut. Do not "fix" this into a region-scoped lookup.
+    for (const g of ALL_GYMS) expect(SHRINES[g.city], `${g.region} ${g.city}`).toBeUndefined();
+    for (const r of REGIONS) {
+      if (r.leagueCity !== null) expect(SHRINES[r.leagueCity], r.ko).toBeUndefined();
+    }
   });
 });
 

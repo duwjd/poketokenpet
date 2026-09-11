@@ -27,8 +27,8 @@ import {
 import type { ShopResult } from './shop.ts';
 import { trainerAt, trainerBattleAt, trainerReward } from './trainer.ts';
 import {
-  GYMS,
-  LEAGUE,
+  leagueAt,
+  regionById,
   LEAGUE_REWARD,
   atLeague,
   gymAt,
@@ -1391,33 +1391,44 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
     const room = () => Math.max(0, cap - (state.huntTokens + gained));
 
     /**
-     * The Pokemon League, at 석영고원 and nowhere else.
+     * The Pokemon League, wherever this region holds it.
      *
-     * Above the gym branch because the two cannot both apply — 석영고원 is not
-     * a gym city, so the only leader who could stand here is one still being
-     * pursued, and that pursuit is only possible below eight badges, which is
-     * exactly when the league is shut.
+     * Above the gym branch because the two cannot both apply — a plateau is
+     * not a gym city, so the only leader who could stand here is one still
+     * being pursued, and that pursuit is only possible below a full badge set,
+     * which is exactly when the league is shut. `server/gyms.ts` asserts that
+     * invariant at module load rather than leaving it as an argument.
      *
-     * A run is FIVE encounters. It begins only at the three offsets, and once
-     * begun every encounter of the leg is its next member — so a visit holds
-     * about three attempts, and a loss costs the run rather than the lap.
+     * A run is one encounter per ladder member. It begins only at the three
+     * offsets, and once begun every encounter of the leg is its next member —
+     * so a visit holds about three attempts, and a loss costs the run rather
+     * than the lap.
+     *
+     * `leagueAt` is what decides WHOSE ladder: a stop can hold two (석영고원
+     * will hold Kanto's and Johto's) and only the badges held tell them apart.
+     * A run already under way reads the region it RECORDED instead, for the
+     * same reason the gym branch reads the id off the log entry — clearing one
+     * league mid-batch flips what `leagueAt` answers, and a run must not
+     * change ladders underneath itself.
      */
-    if (atLeague(seq) && badges.size === GYMS.length && party.length === PARTY_SIZE) {
+    const standing = leagueAt(seq, badges, leagues);
+    if (standing && party.length === PARTY_SIZE) {
       if (!leagueRun && leagueStartAt(seq)) {
-        leagueRun = { at: 0, hp: party.map(() => BATTLE_MAX_HP) };
+        leagueRun = { at: 0, hp: party.map(() => BATTLE_MAX_HP), region: standing.id };
       }
+      const lg = (leagueRun?.region ? regionById(leagueRun.region) : null) ?? standing;
       if (leagueRun) {
-        const member = LEAGUE[leagueRun.at];
+        const member = lg.league[leagueRun.at];
         /** Snapshotted before the fight, so the panel can replay from it. */
         const startedFrom = [...leagueRun.hp];
         // No `boosts`: a mega belongs to the companion, and the companion is
         // not in this fight.
         const round = leagueRoundAt(seq, member, party, startedFrom);
         const at = leagueRun.at;
-        const cleared = round.won && at + 1 === LEAGUE.length;
+        const cleared = round.won && at + 1 === lg.league.length;
         // Per member, so a run that gets three deep is not worth nothing —
         // and a bonus on the clear, which is what the whole thing is for.
-        const mult2 = (round.won ? 4 : 0) + (cleared ? LEAGUE_REWARD - 4 * LEAGUE.length : 0);
+        const mult2 = (round.won ? 4 : 0) + (cleared ? LEAGUE_REWARD - 4 * lg.league.length : 0);
         const tokens = mult2 > 0 ? Math.min(room(), Math.round(e.reward * mult * mult2)) : 0;
         gained += tokens;
         if (round.won) {
@@ -1426,7 +1437,7 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
           leagueBest = Math.max(leagueBest, at + 1);
         }
         if (cleared) {
-          leagues.kanto ??= now;
+          leagues[lg.id] ??= now;
           leagueWins += 1;
           // The one item the league hands over. Outside huntCap, like every
           // other item, because an item is not progress.
@@ -1434,7 +1445,7 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
         }
         // A loss ends the challenge; so does clearing it. Either way the next
         // start slot in this leg opens a fresh run at full HP.
-        leagueRun = cleared || !round.won ? null : { at: at + 1, hp: round.hp };
+        leagueRun = cleared || !round.won ? null : { at: at + 1, hp: round.hp, region: lg.id };
         fresh.push({
           seq,
           wildId: member.team[0],
@@ -1444,6 +1455,7 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
           league: {
             id: member.id,
             at,
+            region: lg.id,
             won: round.won,
             cleared,
             party: round.outFor.map((i) => party[i].speciesId),

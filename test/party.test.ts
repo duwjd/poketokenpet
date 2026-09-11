@@ -10,14 +10,14 @@ import {
 } from '../server/game.ts';
 import { migrate } from '../server/store.ts';
 import { hasMet } from '../server/shrines.ts';
-import { LEAGUE, LEAGUE_OFFSETS, leagueRoundAt } from '../server/gyms.ts';
+import { KANTO, LEAGUE_OFFSETS, leagueRoundAt } from '../server/gyms.ts';
 import { PARTY_SIZE, assign, assignable, clearMember, partyCandidates, setMember } from '../server/party.ts';
 import { canLearn, learnableMoves, moveById } from '../server/moves.ts';
 import { LEG_LENGTH, STOPS } from '../src/journey.ts';
 
 const H = 10_000_000;
 const T0 = 1_700_000_000_000;
-const ALL_BADGES = [1, 2, 3, 4, 5, 6, 7, 8];
+const ALL_BADGES = KANTO.gyms.map((g) => g.badge).sort((a, b) => a - b);
 /** 석영고원's leg. The league lives here and nowhere else. */
 const PLATEAU = STOPS.findIndex((s) => s.ko === '석영고원') * LEG_LENGTH;
 
@@ -147,7 +147,7 @@ describe('leagueRoundAt', () => {
   it('carries HP from bar to bar and hands over when one falls', () => {
     const party = armed(SIX);
     const hp = party.map(() => 100);
-    const r = leagueRoundAt(1, LEAGUE[0], party, hp);
+    const r = leagueRoundAt(1, KANTO.league[0], party, hp);
     expect(r.rounds.length).toBeGreaterThan(0);
     expect(r.hp).toHaveLength(PARTY_SIZE);
     // Rounds are fought by whoever is still standing, in order.
@@ -158,7 +158,7 @@ describe('leagueRoundAt', () => {
 
   it('loses when every bar is down', () => {
     const party = SIX.map((speciesId) => ({ speciesId, shiny: false, moves: [] }));
-    const r = leagueRoundAt(1, LEAGUE[4], party, party.map(() => 1));
+    const r = leagueRoundAt(1, KANTO.league[4], party, party.map(() => 1));
     expect(r.won).toBe(false);
     expect(r.hp.every((h) => h <= 0)).toBe(true);
   });
@@ -166,8 +166,8 @@ describe('leagueRoundAt', () => {
   it('is pure in its inputs and never mutates the HP it was handed', () => {
     const party = armed(SIX);
     const hp = party.map(() => 100);
-    const a = leagueRoundAt(7, LEAGUE[1], party, hp);
-    const b = leagueRoundAt(7, LEAGUE[1], party, hp);
+    const a = leagueRoundAt(7, KANTO.league[1], party, hp);
+    const b = leagueRoundAt(7, KANTO.league[1], party, hp);
     expect(a).toEqual(b);
     expect(hp).toEqual(party.map(() => 100));
   });
@@ -207,7 +207,7 @@ describe('the league inside hunt()', () => {
       .map((e) => e.league!)
       .reverse();
     expect(run.length).toBeGreaterThan(0);
-    for (const r of run) expect(LEAGUE[r.at].id).toBe(r.id);
+    for (const r of run) expect(KANTO.league[r.at].id).toBe(r.id);
     // Every entry names which party members actually stood.
     for (const r of run) expect(r.party.length).toBeGreaterThan(0);
   });
@@ -236,14 +236,14 @@ describe('the league inside hunt()', () => {
     for (let i = 1; i <= 6 && !(s.leagueWins ?? 0); i++) s = settle(s, i * 4);
     if (!(s.leagueWins ?? 0)) return; // an unlucky seed; the envelope test covers the rate
     expect(s.leagues?.kanto).toBeGreaterThan(0);
-    expect(s.leagueBest).toBe(LEAGUE.length);
+    expect(s.leagueBest).toBe(KANTO.league.length);
     expect(s.inventory['shiny-charm']).toBeGreaterThanOrEqual(1);
     expect(s.huntLog.some((e) => e.league?.cleared)).toBe(true);
     // `leagueRun` is NOT asserted null here: clearing ends that run, but a
     // later start slot in the same leg opens a fresh one, and the league is
     // meant to be re-runnable. What must be true is that the run in progress,
     // if any, started over.
-    expect(s.leagueRun?.at ?? 0).toBeLessThan(LEAGUE.length);
+    expect(s.leagueRun?.at ?? 0).toBeLessThan(KANTO.league.length);
   });
 
   it('never lets the best-ever mark go backwards', () => {
@@ -294,8 +294,8 @@ describe('league difficulty', () => {
       });
       let hp = party.map(() => 100);
       let ok = true;
-      for (let i = 0; i < LEAGUE.length && ok; i++) {
-        const r = leagueRoundAt(k * 8 + i, LEAGUE[i], party, hp);
+      for (let i = 0; i < KANTO.league.length && ok; i++) {
+        const r = leagueRoundAt(k * 8 + i, KANTO.league[i], party, hp);
         hp = r.hp;
         ok = r.won;
       }

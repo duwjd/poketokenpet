@@ -271,8 +271,17 @@ export type HuntEntry = {
   league?: {
     /** `LeagueRow.id`. */
     id: string;
-    /** Which member, 0..4. */
+    /** Which member, 0-based. */
     at: number;
+    /**
+     * Whose ladder, as a `RegionRow.id`.
+     *
+     * Optional, so no schema bump: an entry written before this existed can
+     * only have been Kanto's. Recorded rather than re-derived from `seq`,
+     * because one stop can hold two leagues and which one was open depended on
+     * the badges held at the time.
+     */
+    region?: string;
     won: boolean;
     /** True on the encounter that finished the whole run. */
     cleared: boolean;
@@ -375,13 +384,26 @@ export type GameState = {
    */
   trainerWins?: number;
   /**
-   * Gym badges earned, by badge number. 1..8 is Kanto.
+   * Gym badges earned, by badge number in PokeAPI's GLOBAL numbering.
    *
    * A sorted array rather than a Set because state.json is JSON, and keyed by
    * NUMBER rather than by leader id for the same reason `stones` is keyed by
-   * form id: the number IS the upstream sprite's filename, and every region
-   * numbers its badges 1..8 in gym order. One number is the save key, the
-   * sprite and the display order at once.
+   * form id: the number IS the upstream sprite's filename. One number is the
+   * save key, the sprite and the display order at once.
+   *
+   * The numbering is global and allocated by `REGIONS` — Kanto is 1..8, 성도
+   * is 9..16, and so on; `server/gymdata.ts` carries the whole verified map and
+   * the two regions whose numbers are not contiguous. **Kanto being 1..8 is why
+   * expanding past it needs no migration at all**, and why `schemaVersion`
+   * stays where it is.
+   *
+   * The legal set is `BADGE_IDS`, not a numeric range: a number the table does
+   * not allocate is not a badge. `migrate` clamps against it rather than
+   * against a literal, so the clamp widens by a region landing.
+   *
+   * `order` is a SEPARATE column and does not track this one — it is the route
+   * position of the leader's city, which is why 초련 is met fifth holding badge
+   * six.
    *
    * Nothing else in the save can re-derive a badge, so `migrate` dedupes,
    * sorts and clamps it rather than passing it through.
@@ -396,8 +418,8 @@ export type GameState = {
    * Separate from `trainerWins`, which a gym win also increments — a leader IS
    * a trainer, and a board that did not count the biggest trainer battles in
    * the game would start lying the day they shipped. This one exists because
-   * `badges` caps at eight and stops moving, so it cannot measure the habit
-   * the way a repeating achievement needs to.
+   * `badges` caps at what the roster allocates and stops moving, so it cannot
+   * measure the habit the way a repeating achievement needs to.
    */
   gymWins?: number;
   /**
@@ -414,12 +436,19 @@ export type GameState = {
   /**
    * A league challenge in progress.
    *
-   * `at` is which Elite Four member comes next (0..4) and `hp` is the party's
-   * six bars as they stand. Cleared by a loss, by clearing the fifth, and by
-   * walking out of 석영고원 — a challenge is something you finish where you
-   * started it.
+   * `at` is which ladder member comes next and `hp` is the party's six bars as
+   * they stand. Cleared by a loss, by clearing the last, and by walking out of
+   * the plateau — a challenge is something you finish where you started it.
+   *
+   * `region` is which ladder it is, and it is recorded rather than re-derived
+   * for the same reason `HuntEntry.gym` is: one stop can hold two leagues
+   * (석영고원 will hold Kanto's and Johto's), clearing one mid-batch changes
+   * which one `leagueAt` answers with, and a run must not swap ladders
+   * underneath itself. Optional, so no schema bump — a run stored before this
+   * field existed can only ever have been Kanto's, which is what `migrate`
+   * defaults it to.
    */
-  leagueRun?: { at: number; hp: number[] } | null;
+  leagueRun?: { at: number; hp: number[]; region?: string } | null;
   /** Region -> when its Hall of Fame was first reached, in ms. */
   leagues?: Record<string, number>;
   /** League runs cleared, ever. */

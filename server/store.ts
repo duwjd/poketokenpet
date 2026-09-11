@@ -6,6 +6,20 @@ import { hasDamaging, initialState, starterMove, type GameState } from './game.t
 import { LEGENDS } from './legenddata.ts';
 import { MOVE_SLOTS } from './hunt.ts';
 import { backfillPreEvolutions, departedCount } from './dex.ts';
+import { BADGE_IDS, MIN_LEAGUE_SIZE, REGIONS } from './gymdata.ts';
+
+/**
+ * The badges a stored save can prove it holds.
+ *
+ * One helper because two fields need the same answer — the array itself and
+ * the `gymWins` floor below it — and writing the predicate twice is how the
+ * two drift apart.
+ */
+const heldBadges = (parsed: { badges?: number[] }): number[] =>
+  [...new Set(parsed.badges ?? [])].filter((n) => BADGE_IDS.has(n));
+
+/** `regionById` without importing `gyms.ts`, which would join its import cycle. */
+const regionById = (id: string) => REGIONS.find((r) => r.id === id) ?? null;
 
 const STATE_FILE = () => path.join(appDataDir(), 'state.json');
 
@@ -174,10 +188,15 @@ export function migrate(parsed: StoredState | null): GameState {
      * the save can re-derive a badge, so a corrupt array has no second source
      * to heal from — which is the opposite of `retiredCount` below and exactly
      * why this one has to defend itself here.
+     *
+     * Clamped against `BADGE_IDS` — what the roster actually allocates —
+     * rather than against a numeric range. A number no gym hands over is not a
+     * badge, so the legal set widens by a region landing and there is no
+     * second place to remember. A range would also leave a window where the
+     * clamp is wider than the table, and a badge in that window would render
+     * as a blank slot no row can explain.
      */
-    badges: [...new Set(parsed.badges ?? [])]
-      .filter((n) => Number.isInteger(n) && n >= 1 && n <= 8)
-      .sort((a, b) => a - b),
+    badges: heldBadges(parsed).sort((a, b) => a - b),
     /**
      * Floored at the number of badges held, the same self-healing trick
      * `tmsFound` gets from the bag: a badge is proof of a gym win, so a save
@@ -211,7 +230,13 @@ export function migrate(parsed: StoredState | null): GameState {
       Number.isInteger(parsed.leagueRun.at) &&
       Array.isArray(parsed.leagueRun.hp) &&
       parsed.leagueRun.hp.length === (parsed.party?.length ?? 0)
-        ? { at: parsed.leagueRun.at, hp: parsed.leagueRun.hp.map((n) => Math.max(0, Number(n) || 0)) }
+        ? {
+            at: parsed.leagueRun.at,
+            hp: parsed.leagueRun.hp.map((n) => Math.max(0, Number(n) || 0)),
+            // A run stored before leagues were region-keyed can only have been
+            // Kanto's: it is the one id `hunt.ts` has ever written.
+            region: typeof parsed.leagueRun.region === 'string' ? parsed.leagueRun.region : 'kanto',
+          }
         : null,
     /**
      * Floored at everything the save can already prove was met.
@@ -236,12 +261,25 @@ export function migrate(parsed: StoredState | null): GameState {
     ].sort((a, b) => a - b),
     leagues: { ...(parsed.leagues ?? {}) },
     leagueWins: parsed.leagueWins ?? 0,
-    /** Floored at "cleared once" — a Hall of Fame entry proves the full run. */
-    leagueBest: Math.max(parsed.leagueBest ?? 0, (parsed.leagueWins ?? 0) > 0 ? 5 : 0),
-    gymWins: Math.max(
-      parsed.gymWins ?? 0,
-      new Set((parsed.badges ?? []).filter((n) => Number.isInteger(n) && n >= 1 && n <= 8)).size,
+    /**
+     * Floored at what the save can prove.
+     *
+     * A Hall of Fame entry for a region proves that region's whole ladder was
+     * walked, and ladders are not all the same length — Galar's Champion Cup
+     * is shorter than an Elite Four. `state.leagues` records WHICH regions
+     * were cleared, so the floor is read off them. The `leagueWins` term is
+     * belt and braces for a save that counted a clear without recording where,
+     * and the weakest claim that evidence supports is the shortest ladder in
+     * the table. The old floor was a literal 5, which was the right answer
+     * while Kanto was the only league and is a lie the day a shorter one
+     * lands.
+     */
+    leagueBest: Math.max(
+      parsed.leagueBest ?? 0,
+      ...Object.keys(parsed.leagues ?? {}).map((id) => regionById(id)?.league.length ?? 0),
+      (parsed.leagueWins ?? 0) > 0 ? MIN_LEAGUE_SIZE : 0,
     ),
+    gymWins: Math.max(parsed.gymWins ?? 0, heldBadges(parsed).length),
     /**
      * Floored at what is currently held, the way `retiredCount` is floored at
      * `departedCount(dex)`: TMs in the bag are TMs that were certainly found,

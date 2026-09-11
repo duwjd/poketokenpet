@@ -1,8 +1,20 @@
 import { LEG_LENGTH, STOPS } from '../src/journey.ts';
 import { rarityOfSpecies } from './dex.ts';
 import type { PartyMember } from './game.ts';
+import {
+  BADGE_IDS,
+  MIN_LEAGUE_SIZE,
+  REGIONS,
+  type GymRow,
+  type LeagueRow,
+  type RegionKo,
+  type RegionRow,
+} from './gymdata.ts';
 import { BATTLE_MAX_HP, TACKLE, battleAt, type Battle, type BattleOpts } from './hunt.ts';
-import { TRAINER_ROUND_TURNS, type Gender, type Trainer } from './trainer.ts';
+import { TRAINER_ROUND_TURNS, type Trainer } from './trainer.ts';
+
+export { BADGE_IDS, MIN_LEAGUE_SIZE, REGIONS };
+export type { GymRow, LeagueRow, RegionKo, RegionRow };
 
 /**
  * Counter damage per turn in a league round, as a share of one party bar.
@@ -13,132 +25,6 @@ import { TRAINER_ROUND_TURNS, type Gender, type Trainer } from './trainer.ts';
  * one, and they will not stay balanced by the same number for ever.
  */
 const LEAGUE_COUNTER_SHARE = 0.085;
-
-/**
- * The Kanto gym leaders, their badges, and when they stand in the way.
- *
- * ── What this file is ─────────────────────────────────────────────────────
- * The third hand-written table in this project, beside `server/trainer.ts`'s
- * classes and `server/legends.ts`'s gates. PokeAPI carries no trainer data and
- * no badge text at all, so every row below was transcribed by hand.
- *
- * Pure in `seq` AND in the table, exactly as `trainerAt` is — and unlike it,
- * pure without taking a single draw. A leader's team is literal, so nothing
- * here is rolled; the only randomness in a gym fight lives inside `battleAt`,
- * on the salt it already had. That is why adding this file cannot shift the
- * wild encounter stream, and why `test/gyms.test.ts` proves it structurally
- * rather than hopefully.
- * ──────────────────────────────────────────────────────────────────────────
- *
- * ## The names are not ours
- *
- * `server/trainer.ts` says its class names are "ours, not the official
- * localisations", the way `부자 아저씨` always was. **That licence does not
- * extend to this file.** 웅, 이슬, 회색배지 are localised names for real
- * characters and real objects, and inventing one prints a factual error in the
- * message box every couple of hours.
- *
- * So every Korean string below was checked against a source, and three of the
- * first guesses were wrong: the badges are 회색배지 and 무지개배지 and
- * 진홍색배지, not 그레이배지, 레인보우배지, 카멜리아배지. The teams are the
- * Red/Green/Blue rosters, checked one at a time — including Giovanni's, which
- * is his THIRD battle (상록체육관); his first two are the Rocket Hideout and
- * Silph Co. and field a different team.
- *
- * One trap for whoever adds Johto: **독수 is a Kanto gym leader here and a
- * Johto Elite Four member in the games.** It is the same person, not a name
- * free to reuse.
- *
- * ## The art
- *
- * Each row carries a Showdown trainer slug that `ensureNpcSprite` resolves and
- * a badge NUMBER that `ensureBadgeSprite` resolves — the same host, the same
- * fetch-and-cache rule, and the same absolute rule as everything else here:
- * never committed, never bundled. See NOTICE.md.
- */
-
-export type GymRow = {
-  /**
-   * Permanent key. Written onto the log entry, so renaming one severs every
-   * past record that mentions it.
-   */
-  id: string;
-  /**
-   * The badge, 1..8 in the games' own numbering — which is also its index in
-   * PokeAPI's `sprites/badges/`, so this one number is the sprite, the save
-   * key and the display order all at once.
-   */
-  badge: number;
-  /**
-   * Challenge order, 1..8. NOT the same as `badge`.
-   *
-   * The journey walks Kanto geographically and 노랑시티 (stop 13) comes before
-   * 연분홍시티 (stop 14), so 초련 is met fifth and 독수 sixth while their
-   * badges stay numbered 6 and 5. The games permit exactly this — Soul and
-   * Marsh may be taken in either order — and the numbering is a listing
-   * convention, not a sequence.
-   */
-  order: number;
-  /** Official localisation. See the header. */
-  ko: string;
-  badgeKo: string;
-  /**
-   * The city, by the Korean name `src/journey.ts` spells it with.
-   *
-   * A NAME, not an index. journey.ts is generated from PokeAPI, and a
-   * regenerated route that inserts one stop would silently move every gym in
-   * the region. Resolved to an index once at module load; a name the route no
-   * longer carries throws there rather than quietly pointing at 달맞이산.
-   */
-  city: string;
-  /** Showdown trainer slug, i.e. what `ensureNpcSprite` takes. Never a filename. */
-  sprite: string;
-  gender: Gender;
-  /** The Red/Green/Blue team, entire. Nothing is trimmed for balance. */
-  team: number[];
-  /**
-   * Toughness PER POKEMON, which is why the column is not sorted.
-   *
-   * `battleAt` multiplies this onto one opponent's HP pool and onto one
-   * counter-attack, so a four-Pokemon team at a given grit is more than twice
-   * the fight a two-Pokemon team is. The original teams run from two to five,
-   * so holding grit flat would make 웅 a formality and 비주기 impossible.
-   * These numbers are measured, not derived: they put every first-pass win
-   * rate between 51% and 78%, so every gym can actually be lost.
-   */
-  grit: number;
-  /**
-   * The TM the badge comes with, as a move id.
-   *
-   * The FireRed/LeafGreen list, not Red/Blue's. R/B hands out 참기,
-   * 사이코웨이브 and 땅가르기, which carry `power: 0` here and fall through to
-   * FIXED_POWER — and 땅가르기 at 30 accuracy misses seven times in ten.
-   * Awarding a move the battle cannot use is a worse infidelity than taking
-   * the remake's list.
-   *
-   * The list is itself a ladder — 60, 60, 60, 75, status, status, 110, 100 —
-   * so the badge that is hardest to win is the one that most changes the next
-   * fight. That is what makes losing self-correcting rather than a spiral.
-   */
-  prize: number;
-};
-
-/**
- * The roster, in challenge order.
- *
- * Levels are dropped on purpose: this game has none. What survives from the
- * source is WHICH Pokemon, which is the half the type chart reads.
- */
-export const GYMS: GymRow[] = [
-  { id: 'brock',    badge: 1, order: 1, ko: '웅',     badgeKo: '회색배지',   city: '회색시티',   sprite: 'brock',    gender: 'm', grit: 1.95, prize: 317, team: [74, 95] },
-  { id: 'misty',    badge: 2, order: 2, ko: '이슬',   badgeKo: '블루배지',   city: '블루시티',   sprite: 'misty',    gender: 'f', grit: 2.15, prize: 352, team: [120, 121] },
-  { id: 'surge',    badge: 3, order: 3, ko: '마티스', badgeKo: '오렌지배지', city: '갈색시티',   sprite: 'ltsurge',  gender: 'm', grit: 1.50, prize: 351, team: [100, 25, 26] },
-  { id: 'erika',    badge: 4, order: 4, ko: '민화',   badgeKo: '무지개배지', city: '무지개시티', sprite: 'erika',    gender: 'f', grit: 1.75, prize: 202, team: [71, 114, 45] },
-  { id: 'sabrina',  badge: 6, order: 5, ko: '초련',   badgeKo: '골드배지',   city: '노랑시티',   sprite: 'sabrina',  gender: 'f', grit: 1.56, prize: 347, team: [64, 122, 49, 65] },
-  { id: 'koga',     badge: 5, order: 6, ko: '독수',   badgeKo: '핑크배지',   city: '연분홍시티', sprite: 'koga',     gender: 'm', grit: 1.62, prize: 92,  team: [109, 89, 109, 110] },
-  { id: 'blaine',   badge: 7, order: 7, ko: '강연',   badgeKo: '진홍색배지', city: '홍련섬',     sprite: 'blaine',   gender: 'm', grit: 1.82, prize: 126, team: [58, 77, 78, 59] },
-  { id: 'giovanni', badge: 8, order: 8, ko: '비주기', badgeKo: '그린배지',   city: '상록시티',   sprite: 'giovanni', gender: 'm', grit: 1.72, prize: 89,  team: [111, 51, 31, 34, 112] },
-];
 
 /**
  * Where in a leg a challenge falls. Three of them, twenty-five minutes apart.
@@ -161,31 +47,191 @@ export const REMATCH_OFFSET = 2;
 /** What a gym win pays, over the ordinary trainer formula. */
 export const GYM_BONUS = 2;
 
-/** Resolved once, from the name. A city the route no longer carries is a bug, not a fallback. */
-const STOP_OF = new Map<string, number>(
-  GYMS.map((g) => {
-    const i = STOPS.findIndex((s) => s.ko === g.city);
-    if (i < 0) throw new Error(`gyms.ts: ${g.city} is not on the journey`);
-    return [g.id, i];
-  }),
-);
+/**
+ * Kanto, by name.
+ *
+ * Named rather than reached for through `regionById('kanto')!` at each call
+ * site, because a Kanto-specific reference is legitimate in two places and
+ * nowhere else: the payload, until it grows a region dimension of its own, and
+ * the tests that assert facts about the Red/Green/Blue rosters. Everything that
+ * is about "the region the pet is in" uses `regionAt` instead, and the
+ * difference between the two is exactly what this name makes visible.
+ */
+export const KANTO: RegionRow = REGIONS.find((r) => r.id === 'kanto')!;
 
-/** The Kanto stretch of the route, derived rather than written down. */
-const KANTO_FIRST = STOPS.findIndex((s) => s.region === '관동');
-const KANTO_LAST = STOPS.reduce((last, s, i) => (s.region === '관동' ? i : last), -1);
+/** Every gym of every region, flat. What a table test wants to sweep. */
+export const ALL_GYMS: readonly GymRow[] = REGIONS.flatMap((r) => r.gyms);
 
-const BY_ORDER = [...GYMS].sort((a, b) => a.order - b.order);
-const BY_ID = new Map(GYMS.map((g) => [g.id, g]));
-const BY_STOP = new Map(GYMS.map((g) => [STOP_OF.get(g.id)!, g]));
+/** Every league member of every region, flat. */
+export const ALL_LEAGUE: readonly LeagueRow[] = REGIONS.flatMap((r) => r.league);
 
-export function gymById(id: string): GymRow | null {
-  return BY_ID.get(id) ?? null;
+/** One region's contiguous stretch of the route. */
+export type Block = { ko: string; first: number; last: number };
+
+/**
+ * The route's region blocks, in route order, derived from `STOPS`.
+ *
+ * ALL TEN, including 히스이 — it is on the route even though it has no
+ * campaign, and `regionOfStop` has to be able to say "this stop has a region,
+ * and that region has no campaign" rather than confusing the two.
+ *
+ * Contiguity is ASSERTED below, not assumed. `src/journey.ts` is generated, and
+ * a generator change that interleaved two regions would silently make a block
+ * span stops it does not contain — which is the exact class of failure this
+ * file's resolve-by-name-inside-a-region discipline exists to prevent, so it is
+ * checked loudly in the same place.
+ */
+export const BLOCKS: readonly Block[] = (() => {
+  const out: Block[] = [];
+  STOPS.forEach((s, i) => {
+    const open = out.at(-1);
+    if (open && open.ko === s.region) {
+      open.last = i;
+      return;
+    }
+    if (out.some((b) => b.ko === s.region)) {
+      throw new Error(`journey.ts: ${s.region} is not contiguous — stop ${i} reopens it`);
+    }
+    out.push({ ko: s.region, first: i, last: i });
+  });
+  return out;
+})();
+
+/**
+ * The stop index of `city` INSIDE `regionKo`'s block, or -1.
+ *
+ * The whole reason this exists rather than a bare `findIndex`: stop names are
+ * not unique. Seventeen names repeat across the route, including every league
+ * plateau but Kanto's — `포켓몬리그` is stops 143 (호연), 382 (칼로스) and 450
+ * (알로라), and `포켓몬 리그`, with a space, is 175 (신오), 276 (하나) and 650
+ * (팔데아). `STOPS.findIndex((s) => s.ko === city)` answers 143 for all six.
+ */
+export function stopInRegion(regionKo: string, city: string): number {
+  return STOPS.findIndex((s) => s.ko === city && s.region === regionKo);
 }
 
 /** The stop INDEX, where `journeyFor` answers with the Stop itself. */
 export function stopIndexOf(seq: number): number {
   const n = Number.isFinite(seq) ? Math.max(0, Math.floor(seq)) : 0;
   return Math.floor(n / LEG_LENGTH) % STOPS.length;
+}
+
+/** Per-region indexes, resolved once. A city the route does not carry is a bug, not a fallback. */
+type RegionIndex = {
+  region: RegionRow;
+  first: number;
+  last: number;
+  byOrder: GymRow[];
+  stopOf: Map<string, number>;
+  byStop: Map<number, GymRow>;
+  leagueStop: number | null;
+};
+
+const INDEX: Map<string, RegionIndex> = new Map(
+  REGIONS.map((region) => {
+    const first = STOPS.findIndex((s) => s.region === region.ko);
+    const last = STOPS.reduce((acc, s, i) => (s.region === region.ko ? i : acc), -1);
+    if (first < 0) throw new Error(`gymdata.ts: ${region.ko} is not a region on the journey`);
+
+    const stopOf = new Map<string, number>();
+    for (const g of region.gyms) {
+      if (g.region !== region.ko) {
+        throw new Error(`gymdata.ts: ${g.id} says ${g.region} but sits in ${region.ko}`);
+      }
+      const i = stopInRegion(region.ko, g.city);
+      if (i < 0) throw new Error(`gymdata.ts: ${g.city} is not in ${region.ko} on the journey`);
+      stopOf.set(g.id, i);
+    }
+
+    let leagueStop: number | null = null;
+    if (region.leagueCity !== null) {
+      const i = stopInRegion(region.leagueIn, region.leagueCity);
+      if (i < 0) {
+        throw new Error(`gymdata.ts: ${region.leagueCity} is not in ${region.leagueIn} on the journey`);
+      }
+      leagueStop = i;
+    }
+
+    return [
+      region.ko,
+      {
+        region,
+        first,
+        last,
+        byOrder: [...region.gyms].sort((a, b) => a.order - b.order),
+        stopOf,
+        byStop: new Map(region.gyms.map((g) => [stopOf.get(g.id)!, g])),
+        leagueStop,
+      },
+    ];
+  }),
+);
+
+/**
+ * No region's league city may be any region's gym city.
+ *
+ * `server/hunt.ts` checks the league branch ABOVE the gym branch, and argues
+ * that is safe because a plateau is not a gym city, so the only leader who
+ * could stand there is one still being pursued — and pursuit is only possible
+ * below a full badge set, which is exactly when the league is shut. That
+ * argument generalises only under this invariant. Without it a leader pursuing
+ * you through region B could stand at region A's plateau while A's league
+ * runs, and the gym would be silently swallowed: a lost badge with nothing on
+ * screen to explain it.
+ */
+(() => {
+  const gymCities = new Set(ALL_GYMS.map((g) => g.city));
+  for (const r of REGIONS) {
+    if (r.leagueCity !== null && gymCities.has(r.leagueCity)) {
+      throw new Error(`gymdata.ts: ${r.leagueCity} is both a league city and a gym city`);
+    }
+  }
+})();
+
+const BY_ID = new Map(ALL_GYMS.map((g) => [g.id, g]));
+
+export function gymById(id: string): GymRow | null {
+  return BY_ID.get(id) ?? null;
+}
+
+export function regionById(id: string): RegionRow | null {
+  return REGIONS.find((r) => r.id === id) ?? null;
+}
+
+export function regionByKo(ko: string): RegionRow | null {
+  return REGIONS.find((r) => r.ko === ko) ?? null;
+}
+
+/**
+ * The campaign region containing this stop, or null.
+ *
+ * Null for 히스이, and for nothing else while every other region has a row —
+ * which is what makes the staged rollout a data edit: a region whose table is
+ * not written yet simply answers null here, and every query below goes quiet
+ * for it without a single branch of its own.
+ */
+export function regionOfStop(stop: number): RegionRow | null {
+  for (const ix of INDEX.values()) {
+    if (stop >= ix.first && stop <= ix.last) return ix.region;
+  }
+  return null;
+}
+
+/** `regionOfStop(stopIndexOf(seq))`. The form the hunt loop wants. */
+export function regionAt(seq: number): RegionRow | null {
+  return regionOfStop(stopIndexOf(seq));
+}
+
+/** How many of `region`'s badges this save holds. */
+export function badgesInRegion(region: RegionRow, badges: ReadonlySet<number>): number {
+  let held = 0;
+  for (const g of region.gyms) if (badges.has(g.badge)) held++;
+  return held;
+}
+
+/** Does this save hold every badge `region` can hand over? */
+export function regionSwept(region: RegionRow, badges: ReadonlySet<number>): boolean {
+  return region.gyms.length > 0 && region.gyms.every((g) => badges.has(g.badge));
 }
 
 /**
@@ -198,19 +244,29 @@ export function stopIndexOf(seq: number): number {
  * catches up instead, which is what the games have him do anyway — 상록체육관
  * is shut while you walk past it and opens once you hold the other seven.
  *
- * Eligibility is one rule, not eight: a leader of order N wants N-1 badges.
- * That is the games' Viridian lock generalised, and it costs nothing on the
- * other seven because the standing leader is by construction the lowest
- * unbeaten one.
+ * Eligibility is one rule, not eight: a leader of order N wants N-1 badges
+ * FROM HIS OWN REGION. That is the games' Viridian lock generalised, and it
+ * costs nothing on the other seven because the standing leader is by
+ * construction the lowest unbeaten one.
+ *
+ * The per-region count is the one semantic change the region work makes here,
+ * and it is the one that matters. This read the GLOBAL count, which is the same
+ * number while Kanto is the only region and becomes a ladder that collapses the
+ * moment a second one lands: a player carrying Kanto's eight into 성도 would
+ * satisfy `held < order - 1` for all eight Johto leaders at once and be handed
+ * the whole region's eligibility on arrival.
  */
 export function standingGym(seq: number, badges: ReadonlySet<number>): GymRow | null {
   const stop = stopIndexOf(seq);
-  if (stop < KANTO_FIRST || stop > KANTO_LAST) return null;
-  for (const g of BY_ORDER) {
+  const region = regionOfStop(stop);
+  if (!region) return null;
+  const ix = INDEX.get(region.ko)!;
+  const held = badgesInRegion(region, badges);
+  for (const g of ix.byOrder) {
     if (badges.has(g.badge)) continue;
     // Not enough badges for this one, and everyone before is beaten: nobody stands.
-    if (badges.size < g.order - 1) return null;
-    return STOP_OF.get(g.id)! <= stop ? g : null;
+    if (held < g.order - 1) return null;
+    return ix.stopOf.get(g.id)! <= stop ? g : null;
   }
   return null;
 }
@@ -226,14 +282,16 @@ export function standingGym(seq: number, badges: ReadonlySet<number>): GymRow | 
 export function gymAt(seq: number, badges: ReadonlySet<number>): GymRow | null {
   const off = ((Math.max(0, Math.floor(seq)) % LEG_LENGTH) + LEG_LENGTH) % LEG_LENGTH;
   const stop = stopIndexOf(seq);
-  if (stop < KANTO_FIRST || stop > KANTO_LAST) return null;
+  const region = regionOfStop(stop);
+  if (!region) return null;
+  const ix = INDEX.get(region.ko)!;
 
   const standing = standingGym(seq, badges);
   if (standing) return GYM_OFFSETS.includes(off as (typeof GYM_OFFSETS)[number]) ? standing : null;
 
   // Nobody is pending, so a leader whose badge is already held will spar.
   if (off !== REMATCH_OFFSET) return null;
-  const home = BY_STOP.get(stop);
+  const home = ix.byStop.get(stop);
   return home && badges.has(home.badge) ? home : null;
 }
 
@@ -245,11 +303,15 @@ export function gymAt(seq: number, badges: ReadonlySet<number>): GymRow | null {
  * and `test/trainer.test.ts` caps names at eleven because `rewardPages` builds
  * one-row lines on it. Sitting on the boundary is not a margin. The city has
  * room on the badge case and the log row instead.
+ *
+ * The title comes off the row rather than being a constant, because Alola's
+ * four are 섬킹 and 섬퀸 and are not interchangeable with each other.
  */
 export function gymTrainer(row: GymRow): Trainer {
+  const title = row.title ?? '관장';
   return {
-    className: '관장',
-    name: `관장 ${row.ko}`,
+    className: title,
+    name: `${title} ${row.ko}`,
     gender: row.gender,
     sprite: row.sprite,
     team: row.team,
@@ -261,28 +323,47 @@ export function gymTrainer(row: GymRow): Trainer {
  * Is this gym shut for want of badges?
  *
  * True for 비주기 until the other seven are held, and never for anyone else —
- * the eligibility rule is `order - 1` badges and the standing leader is always
- * the lowest unbeaten one, so nobody but the eighth can ever be short.
- * The badge case says so rather than leaving a blank slot unexplained.
+ * the eligibility rule is `order - 1` badges from the same region and the
+ * standing leader is always the lowest unbeaten one, so nobody but a region's
+ * last can ever be short. The badge case says so rather than leaving a blank
+ * slot unexplained.
  */
 export function gymLocked(row: GymRow, badges: ReadonlySet<number>): boolean {
-  return !badges.has(row.badge) && badges.size < row.order - 1;
+  const region = regionByKo(row.region);
+  if (!region) return false;
+  return !badges.has(row.badge) && badgesInRegion(region, badges) < row.order - 1;
 }
 
 /**
- * Encounters until the pet next stands in `city`, or 0 if it is there now.
+ * Encounters until the pet next stands at stop `target`, or 0 if it is there now.
  *
  * What turns waiting into something to read. The badge case draws "연분홍시티
  * 까지 40조우" from this, which is the same job the egg gauge and every
  * achievement bar already do — and the honest answer for someone who installed
  * this update while walking through 칼로스 is a number, not a blank.
+ *
+ * Takes an INDEX, not a city name. The name-shaped version of this function was
+ * the duplicate-name bug in exported form: six regions' plateaux share two
+ * names between them, and a bare `findIndex` gave all six to 호연. The two
+ * callers both hold a row, so the fix is to make the wrong call impossible to
+ * write rather than to document it.
  */
-export function encountersUntilStop(huntCount: number, city: string): number {
-  const target = STOPS.findIndex((s) => s.ko === city);
+export function encountersUntilStop(huntCount: number, target: number): number {
   if (target < 0) return 0;
   const n = Number.isFinite(huntCount) ? Math.max(0, Math.floor(huntCount)) : 0;
   const legs = (target - stopIndexOf(n) + STOPS.length) % STOPS.length;
   return legs === 0 ? 0 : legs * LEG_LENGTH - (n % LEG_LENGTH);
+}
+
+/** Encounters until the pet stands in this leader's city. */
+export function encountersUntilGym(huntCount: number, row: GymRow): number {
+  const ix = INDEX.get(row.region);
+  return encountersUntilStop(huntCount, ix?.stopOf.get(row.id) ?? -1);
+}
+
+/** Encounters until the pet stands where this region's league is held. */
+export function encountersUntilLeague(huntCount: number, region: RegionRow): number {
+  return encountersUntilStop(huntCount, INDEX.get(region.ko)?.leagueStop ?? -1);
 }
 
 /**
@@ -301,58 +382,6 @@ export function gymReward(row: Pick<GymRow, 'team' | 'grit'>): number {
 // ── 포켓몬리그 ─────────────────────────────────────────────────────────────
 
 /**
- * The Elite Four and the Champion, at 석영고원.
- *
- * The Red/Green/Blue rosters, entire. Four of five and one of six — **no
- * version of Kanto gives the Elite Four six each.** Red/Blue, FireRed's first
- * run and its rematch, and Let's Go's first run are all five; only Let's Go's
- * rematch reaches six, and it does it with 알로라 고지, 알로라 딱구리 and
- * 메가리자몽X. This app has no regional-form data at all (server/forms.ts is
- * megas, gigantamaxes and fusions), so that version would have to be faked in
- * two places to be used at all. Twenty-six real Pokemon beat thirty invented
- * ones.
- *
- * 그린's last three vary with the starter in the games. Fixed here, and said
- * out loud rather than pretended away.
- */
-export type LeagueRow = {
-  /** Permanent key, written onto the log entry. */
-  id: string;
-  /** Display name, `관장 웅`-shaped and under the eleven-character cap. */
-  ko: string;
-  sprite: string;
-  gender: Gender;
-  team: number[];
-  /**
-   * Rising, unlike the gym column.
-   *
-   * The gyms' grit falls as their teams grow because the party there is one
-   * Pokemon on one bar. Here six bars face twenty-six opponents in a row, so
-   * team size is nearly constant across the five and grit is free to say what
-   * it means: 그린 at 1.80 sits between 프리져 (sub, 1.6) and 뮤츠 (box, 2.0),
-   * which is exactly where a champion belongs.
-   *
-   * Measured, not derived. A party armed out of a ~47-machine bag — what
-   * INTERNALS records in a real save — clears the run about 40% of the time,
-   * so a three-start visit opens the Hall of Fame roughly four times in five.
-   * A party armed out of eight machines clears about 4%: eight badges do not
-   * by themselves make a league team.
-   */
-  grit: number;
-};
-
-export const LEAGUE: LeagueRow[] = [
-  { id: 'lorelei', ko: '사천왕 칸나', sprite: 'lorelei-gen1', gender: 'f', grit: 1.57, team: [87, 91, 80, 124, 131] },
-  { id: 'bruno',   ko: '사천왕 시바', sprite: 'bruno',        gender: 'm', grit: 1.62, team: [95, 107, 106, 95, 68] },
-  { id: 'agatha',  ko: '사천왕 국화', sprite: 'agatha-gen1',  gender: 'f', grit: 1.67, team: [94, 42, 93, 24, 94] },
-  { id: 'lance',   ko: '사천왕 목호', sprite: 'lance',        gender: 'm', grit: 1.73, team: [130, 148, 148, 142, 149] },
-  { id: 'blue',    ko: '챔피언 그린', sprite: 'blue',         gender: 'm', grit: 1.80, team: [18, 65, 112, 130, 103, 59] },
-];
-
-/** Where the league is. A name, for the same reason a gym's city is. */
-export const LEAGUE_CITY = '석영고원';
-
-/**
  * Where in the leg a CHALLENGE MAY START. Three, twenty-five minutes apart.
  *
  * Once a run is under way every encounter in the leg is its next member, so
@@ -367,22 +396,65 @@ export const LEAGUE_OFFSETS = [0, 5, 10] as const;
  *
  * Wild encounters use `seq`, trainer rounds `1e9`, legendary fights `2e9`.
  * Far past any of them, and past 26 rounds' worth of room per encounter.
+ *
+ * Deliberately NOT offset per region. Two leagues can share a stop — 석영고원
+ * holds Kanto's and Johto's — but `leagueAt` returns exactly one of them for
+ * any given save, so there is nothing to collide. A per-region offset would
+ * buy nothing and reshape every existing player's league history.
  */
 const LEAGUE_SEED_BASE = 3_000_000_000;
 
-const LEAGUE_STOP = (() => {
-  const i = STOPS.findIndex((s) => s.ko === LEAGUE_CITY);
-  if (i < 0) throw new Error(`gyms.ts: ${LEAGUE_CITY} is not on the journey`);
-  return i;
-})();
+const BY_LEAGUE_ID = new Map(ALL_LEAGUE.map((m) => [m.id, m]));
 
 export function leagueById(id: string): LeagueRow | null {
-  return LEAGUE.find((m) => m.id === id) ?? null;
+  return BY_LEAGUE_ID.get(id) ?? null;
 }
 
-/** Is the pet standing at 석영고원 right now? */
+/**
+ * Is the pet standing where SOME league is held?
+ *
+ * Kept boolean and kept badge-free, because that is the exact question
+ * `server/hunt.ts` asks when it decides whether a run in progress survives the
+ * batch. A run is something you finish where you started it; whether you were
+ * ever ELIGIBLE is a different question with a different answer.
+ */
 export function atLeague(seq: number): boolean {
-  return stopIndexOf(seq) === LEAGUE_STOP;
+  const stop = stopIndexOf(seq);
+  for (const ix of INDEX.values()) if (ix.leagueStop === stop) return true;
+  return false;
+}
+
+/** Every league standing at this stop, in `REGIONS` order. 0 or 1, except 석영고원's 2. */
+export function leaguesAt(seq: number): RegionRow[] {
+  const stop = stopIndexOf(seq);
+  return REGIONS.filter((r) => INDEX.get(r.ko)?.leagueStop === stop);
+}
+
+/**
+ * The league a save may challenge here, or null.
+ *
+ * Pure in its three arguments and takes no draw, exactly as `gymAt` is.
+ *
+ * The rule at a shared stop is one rule, not a table: the first ELIGIBLE league
+ * in `REGIONS` order that has not been cleared, and if every eligible one has
+ * been cleared, the LAST eligible one.
+ *
+ * 석영고원 will hold Kanto's Elite Four and Johto's, and the only thing that
+ * tells them apart is which region's badges the save holds. Route order means
+ * Kanto is always eligible first, so "first uncleared" hands Kanto's league to
+ * a save that has never won it and Johto's to one that has. Falling back to the
+ * last eligible keeps the league re-runnable once both are in the Hall of Fame
+ * — a cleared league has to re-open, and the harder of the two is the honest
+ * one to re-offer.
+ */
+export function leagueAt(
+  seq: number,
+  badges: ReadonlySet<number>,
+  leagues: Readonly<Record<string, number>>,
+): RegionRow | null {
+  const here = leaguesAt(seq).filter((r) => r.league.length > 0 && regionSwept(r, badges));
+  if (here.length === 0) return null;
+  return here.find((r) => leagues[r.id] === undefined) ?? here[here.length - 1];
 }
 
 /** May a fresh challenge begin at this encounter? */

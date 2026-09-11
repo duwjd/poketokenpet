@@ -56,15 +56,15 @@ import { biomeFor } from './biome.ts';
 import { generationOf, rarityOfSpecies } from './dex.ts';
 import { trainerAt, trainerBattleAt } from './trainer.ts';
 import {
-  GYMS,
-  LEAGUE,
-  LEAGUE_CITY,
-  encountersUntilStop,
+  KANTO,
+  encountersUntilGym,
+  encountersUntilLeague,
   gymById,
   gymLocked,
   gymTrainer,
   leagueById,
   leagueRoundAt,
+  regionSwept,
 } from './gyms.ts';
 import { PARTY_SIZE, assignable } from './party.ts';
 import { shrinesOpen, stopFor } from './shrines.ts';
@@ -940,7 +940,7 @@ export async function buildState(mode: CountMode = 'activity') {
     party: {
       size: PARTY_SIZE,
       ready: (state.party ?? []).length === PARTY_SIZE,
-      cityKo: LEAGUE_CITY,
+      cityKo: KANTO.leagueCity ?? '',
       members: await Promise.all(
         (state.party ?? []).map(async (m) => {
           const options = assignable(state, (state.party ?? []).indexOf(m));
@@ -971,31 +971,31 @@ export async function buildState(mode: CountMode = 'activity') {
       const held = new Set(state.badges ?? []);
       return {
         count: held.size,
-        total: GYMS.length,
+        total: KANTO.gyms.length,
         wins: state.gymWins ?? 0,
         /** The road's summit, and how far along it this save has come. */
         league: {
-          cityKo: LEAGUE_CITY,
-          open: held.size === GYMS.length,
+          cityKo: KANTO.leagueCity ?? '',
+          open: regionSwept(KANTO, held),
           /** Members of the current run already down, 0..5. Null when none is running. */
           at: state.leagueRun?.at ?? null,
-          size: LEAGUE.length,
+          size: KANTO.league.length,
           best: state.leagueBest ?? 0,
           wins: state.leagueWins ?? 0,
-          clearedAt: state.leagues?.kanto ?? null,
-          until: encountersUntilStop(state.huntCount, LEAGUE_CITY),
+          clearedAt: state.leagues?.[KANTO.id] ?? null,
+          until: encountersUntilLeague(state.huntCount, KANTO),
           members: await Promise.all(
-            LEAGUE.map(async (m) => ({
+            KANTO.league.map(async (m) => ({
               id: m.id,
               ko: m.ko,
               /** Beaten in the run that is under way, or in a run already cleared. */
-              down: (state.leagueRun?.at ?? 0) > LEAGUE.indexOf(m),
+              down: (state.leagueRun?.at ?? 0) > KANTO.league.indexOf(m),
               sprite: await ensureNpcSprite(m.sprite),
             })),
           ),
         },
         cases: await Promise.all(
-          [...GYMS]
+          [...KANTO.gyms]
             // Displayed by badge NUMBER, which is the games' own order and the
             // order the case is printed in. `order` is when you meet them.
             .sort((a, b) => a.badge - b.badge)
@@ -1008,7 +1008,7 @@ export async function buildState(mode: CountMode = 'activity') {
               /** 상록시티, and only it: shut until the other seven are held. */
               locked: gymLocked(g, held),
               /** Encounters until the pet stands there. 0 means it is there now. */
-              until: encountersUntilStop(state.huntCount, g.city),
+              until: encountersUntilGym(state.huntCount, g),
               /** The TM the badge comes with, for the card's second line. */
               prizeKo: moveById(g.prize)?.ko ?? null,
               sprite: await ensureBadgeSprite(g.badge),

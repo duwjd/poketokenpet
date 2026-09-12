@@ -99,8 +99,8 @@ const step = async (ms: number) => {
 };
 
 const HOLDS = {
-  alert: 700, wipe: 600, meet: 1400, enter: 500, intro: 1200, form: 1400,
-  turn: 750, counter: 700, faint: 1100, send: 900, reward: 1600,
+  alert: 700, wipe: 600, vs: 1800, meet: 1400, enter: 500, intro: 1200, form: 1400,
+  turn: 750, counter: 700, faint: 1100, send: 900, badge: 2000, reward: 1600,
 };
 
 /**
@@ -127,9 +127,16 @@ const playRound = async (n: number) => {
  * encounter, so it is opt-in — stepping its 1.4s on a wild fight would land
  * three beats further along than the caller asked for.
  */
-const advanceTo = async (target: keyof typeof HOLDS, turns = 4, trainer = false) => {
-  for (const p of ['alert', 'wipe', 'meet', 'enter', 'intro', 'turn', 'faint', 'send', 'reward'] as const) {
+const advanceTo = async (
+  target: keyof typeof HOLDS,
+  turns = 4,
+  trainer = false,
+  /** A gym leader or a league member, who gets the stare-down first. */
+  named = false,
+) => {
+  for (const p of ['alert', 'wipe', 'vs', 'meet', 'enter', 'intro', 'turn', 'faint', 'send', 'reward'] as const) {
     if (p === target) return;
+    if (p === 'vs' && !named) continue;
     if (p === 'meet' && !trainer) continue;
     if (p === 'turn') {
       for (let i = 0; i < turns; i++) await exchange(i === turns - 1);
@@ -738,6 +745,9 @@ describe('Scene — trainer battles', () => {
   });
 
   const fight = (over: Partial<SceneTrainerFight> = {}): SceneTrainerFight => ({
+    // A route trainer by default: these tests are about how a trainer fight
+    // RUNS, and the named-battle staging has its own describe below.
+    kind: 'route',
     name: '낚시꾼 동현',
     won: true,
     lostAt: null,
@@ -1018,5 +1028,125 @@ describe('Scene — trainer battles', () => {
     // The second Pokemon comes in on a fresh bar of its own; mine does not.
     expect(bars()[0]).toBe('65%');
     expect(Number(bars()[1].replace('%', ''))).toBeLessThan(100);
+  });
+});
+
+/**
+ * Named battles — a gym leader, a kahuna, an Elite Four member, a champion.
+ *
+ * These get two beats a route trainer does not: a stare-down before the
+ * challenge, and the prize afterwards. Both exist because the portraits and the
+ * badge art were being wasted — the person was on screen for 1.4 seconds and
+ * the badge was drawn at 17px on a text baseline, which was the only place in
+ * this scene that ever scaled art down.
+ */
+describe('a named battle', () => {
+  const named = (over: Partial<SceneTrainerFight> = {}): SceneTrainerFight => ({
+    kind: 'gym',
+    name: '관장 웅',
+    won: true,
+    lostAt: null,
+    sprite: 'npc-brock.png',
+    team: [{ speciesId: 74, name: '꼬마돌', sprite: '74-a.gif' }],
+    rounds: [battle(3)],
+    ...over,
+  });
+
+  const won = (over: Partial<SceneTrainerFight> = {}) =>
+    named({ badgeKo: '회색배지', badgeSprite: 'badge-1.png', prizeKo: '암석봉인', ...over });
+
+  const namedEnc = (f: SceneTrainerFight) =>
+    enc({ seq: 2, battle: null, trainerFight: f });
+
+  it('opens on the stare-down, before the challenge is even spoken', async () => {
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([namedEnc(named())])} />);
+    await step(HOLDS.alert);
+    await step(HOLDS.wipe);
+    expect(document.querySelector('.scene-vs')).not.toBeNull();
+    // Both faces, and the team that is coming.
+    expect(document.querySelectorAll('.scene-vs-side')).toHaveLength(2);
+    expect(document.querySelectorAll('.scene-vs-team img').length).toBeGreaterThan(0);
+    // And it has NOT given the ending away: the badge only exists on a win, so
+    // putting it here would announce the result before the first send-out.
+    expect(document.querySelector('.scene-vs img[alt="회색배지"]')).toBeNull();
+  });
+
+  it('gives a route trainer no stare-down', async () => {
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([namedEnc(named({ kind: 'route', name: '낚시꾼 동현' }))])} />);
+    await step(HOLDS.alert);
+    await step(HOLDS.wipe);
+    // Straight to the challenge, as it always did. These happen several times a
+    // lap and a full-screen portrait for each would make the rare ones ordinary.
+    expect(document.querySelector('.scene-vs')).toBeNull();
+    expect(screen.getByText(/승부를 걸어왔다/)).toBeTruthy();
+  });
+
+  it('hands the badge over in a beat of its own, at the end', async () => {
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([namedEnc(won())])} />);
+    await advanceTo('faint', 3, true, true);
+    await step(HOLDS.faint);
+    const prize = document.querySelector('.scene-prize');
+    expect(prize).not.toBeNull();
+    expect(prize!.textContent).toContain('회색배지');
+    // The art, at size, in the drawn case — not 17px on a text baseline.
+    expect(document.querySelector('.scene-prize-case img')).not.toBeNull();
+    expect(document.querySelector('.scene-badge')).toBeNull();
+    // The machine is NOT here: 170px of badge plus its frame plus one caption
+    // already fills a 218px stage, so it stayed on the payout page, which pages.
+    expect(prize!.textContent).not.toContain('암석봉인');
+  });
+
+  it('says the badge once, not twice', async () => {
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([namedEnc(won())])} />);
+    await advanceTo('faint', 3, true, true);
+    await step(HOLDS.faint);
+    await step(HOLDS.badge);
+    // The payout follows, and no longer repeats what the beat just showed.
+    expect(document.querySelector('.scene-prize')).toBeNull();
+    expect(screen.getByText(/관장 웅을 이겼다/)).toBeTruthy();
+    expect(screen.queryByText(/회색배지를 받았다/)).toBeNull();
+    // The machine still gets said, on the same page as the win — PAGE_LINES is
+    // two, so "이겼다" and the machine share the first page and 진행도 takes
+    // the second.
+    expect(screen.getByText(/기술머신 암석봉인/)).toBeTruthy();
+  });
+
+  it('still shows the prize when motion is turned off', async () => {
+    /**
+     * Reduced motion drops every other beat and states the outcome — but the
+     * badge is information, not theatre, and the payout text no longer carries
+     * it. Someone who turned motion off did not ask to stop being told what
+     * they won.
+     */
+    vi.stubGlobal('matchMedia', () => ({
+      matches: true,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([namedEnc(won())])} />);
+    // No stare-down, no fight — straight to the thing that changed hands.
+    expect(document.querySelector('.scene-vs')).toBeNull();
+    const prize = document.querySelector('.scene-prize');
+    expect(prize).not.toBeNull();
+    expect(prize!.textContent).toContain('회색배지');
+    // Unstubbed here rather than in afterEach, the way the reduced-motion test
+    // above does: `motionQuery()` reads matchMedia at initialisation, so a stub
+    // left standing would silently put the next test in reduced motion too.
+    vi.unstubAllGlobals();
+  });
+
+  it('skips the prize beat when nothing changed hands', async () => {
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    // A rematch: won, but the badge is already held, so the server sends none.
+    rerender(<Scene {...props([namedEnc(named())])} />);
+    await advanceTo('faint', 3, true, true);
+    await step(HOLDS.faint);
+    expect(document.querySelector('.scene-prize')).toBeNull();
+    expect(screen.getByText(/관장 웅을 이겼다/)).toBeTruthy();
   });
 });

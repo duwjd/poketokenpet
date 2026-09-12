@@ -510,6 +510,148 @@
 }
 
 /*
+ * The stare-down, over the whole diorama.
+ *
+ * Two 80x80 canvases at 2x. That doubling is the whole reason this beat exists:
+ * there is no larger art of these people anywhere — the `-masters` variants are
+ * the same 80px — so scale and time are a portrait's only levers.
+ *
+ * Laid out on the DIAGONAL rather than side by side, which is both what the
+ * games do and the only thing that fits. The stage is about 394x218; two 160px
+ * figures in a row leave 74px for the gaps and the word between them, and their
+ * names underneath would have nowhere to go. Opposite corners give each figure
+ * its own half with room for a plate, and the two never overlap horizontally:
+ * the left one ends at 170px and the right one starts at 224px.
+ *
+ * Laid OVER `.scene-battle` rather than replacing it, so the backdrop and the
+ * platforms stay put underneath and the cut to `meet` is a layer lifting rather
+ * than a screen rebuilding.
+ */
+.scene-vs {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  animation: beat-in 0.28s ease-out;
+  background: color-mix(in srgb, var(--earth) 72%, transparent);
+}
+
+.scene-vs-side {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  max-width: 180px;
+}
+
+/* Theirs upper-right, mine lower-left — the reading order of a challenge. */
+.scene-vs-side.foe {
+  right: 8px;
+  top: 4px;
+}
+
+.scene-vs-side.mine {
+  left: 8px;
+  bottom: 4px;
+}
+
+/* Mirrored so the two look at each other. The foe art already faces left; my
+   back sprite faces away, which from behind is the same direction. */
+.scene-vs-side.mine img {
+  transform: scaleX(-1);
+}
+
+.scene-vs-side b {
+  font-family: 'Galmuri9';
+  font-size: 10px;
+  padding: 2px 5px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The team about to be sent, as the art. The five-pixel dots during the fight
+   stay dots — this is the one beat with room to show who is coming. */
+.scene-vs-team {
+  display: flex;
+  gap: 2px;
+  min-height: 24px;
+  align-items: flex-end;
+}
+
+.scene-vs-team i {
+  display: block;
+}
+
+.scene-vs-team img {
+  image-rendering: pixelated;
+  display: block;
+}
+
+/* Dead centre, where the diagonal crosses. */
+.scene-vs-mid {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Galmuri11';
+  font-size: 20px;
+  color: var(--ink-lit);
+}
+
+/*
+ * The prize beat.
+ *
+ * Badge art is 85x85 upstream and used to be drawn at 1.4em — about 17px — on
+ * a text baseline. This is that same picture at 2x inside a drawn case, which
+ * is the difference between a footnote and a moment.
+ */
+.scene-prize {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: color-mix(in srgb, var(--earth) 82%, transparent);
+}
+
+/*
+ * Sized by arithmetic, not by eye.
+ *
+ * The stage is 218px tall. The badge is 85x85 doubled = 170, the drawn frame
+ * adds 5px of border on each side, and the caption under it is a 12px line in
+ * a 218px box. 170 + 10 + 6 + 4 + 16 = 206, which leaves six pixels top and
+ * bottom. Anything more — a second text line, 8px of padding — overflows, which
+ * is why the machine the badge came with went back to the payout page where it
+ * has always been able to page.
+ */
+.scene-prize-case {
+  display: grid;
+  place-items: center;
+  padding: 3px;
+}
+
+/* 85x85 doubled. `width: auto` so a prize that is not a badge — the league
+   hands over the charm, an item icon — keeps its own proportions. */
+.scene-prize-case img {
+  height: 170px;
+  width: auto;
+  image-rendering: pixelated;
+  display: block;
+}
+
+.scene-prize b {
+  font-family: 'Galmuri11';
+  font-size: 12px;
+  color: var(--ink-lit);
+}
+
+
+/*
  * The send-out, and ONLY the send-out — the one motion in the battle.
  *
  * Scoped to a class rather than sitting on `.scene-foe` itself. The sprites are
@@ -957,6 +1099,11 @@
   .scene-foe.entering,
   .scene-mine.entering,
   .scene-trainer.entering,
+  /* Both full-screen beats. The PRIZE beat still RENDERS under reduced motion —
+     it is information, not theatre, and the payout text no longer carries the
+     badge — it simply stops fading in. */
+  .scene-vs,
+  .scene-prize,
   .scene-sign,
   .scene-foe.fainted,
   .scene-mine.fainted,

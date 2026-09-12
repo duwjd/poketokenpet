@@ -426,6 +426,12 @@ export async function buildState(mode: CountMode = 'activity') {
     if (!t || !active || t.name !== saved.name) return null;
     const fight = trainerBattleAt(seq, t, active.moves, speciesId ?? undefined, formOpts(form, activeForm));
     return {
+      /**
+       * A leader and a kid on a route are the same three facts, and the scene
+       * had no way to tell them apart once the badge was already held. The
+       * stare-down and the backdrop both key on this.
+       */
+      kind: (gym ? 'gym' : 'route') as 'gym' | 'route',
       name: t.name,
       won: fight.won,
       lostAt: fight.lostAt,
@@ -484,6 +490,7 @@ export async function buildState(mode: CountMode = 'activity') {
     if (!party.every((m, i) => m.speciesId === saved.team[i])) return null;
     const fight = leagueRoundAt(seq, member, party, saved.hp);
     return {
+      kind: 'league' as const,
       name: member.ko,
       won: fight.won,
       lostAt: fight.won ? null : fight.rounds.length - 1,
@@ -504,9 +511,27 @@ export async function buildState(mode: CountMode = 'activity') {
           sprite: await ensureSprite(party[i].speciesId, party[i].shiny, true),
         })),
       ),
-      badgeKo: null,
-      badgeSprite: null,
-      prizeKo: null,
+      /**
+       * The Hall of Fame, on the encounter that finished the climb.
+       *
+       * These three fields were hard-coded null, so beating four Elite Four
+       * members and a champion produced one line of text and no art at all —
+       * less of a moment than a rematch against a route trainer. The scene's
+       * badge beat is already a "something changed hands" beat, so the league
+       * reuses it rather than growing a second one.
+       *
+       * The art is the charm itself, because that is literally what the league
+       * hands over (`hunt.ts` adds a `shiny-charm` on a clear) and no trophy
+       * sprite exists anywhere upstream. Naming the real prize beats inventing
+       * a cup.
+       */
+      ...(saved.cleared
+        ? {
+            badgeKo: '명예의 전당',
+            badgeSprite: await ensureItemSprite('shiny-charm'),
+            prizeKo: PRODUCTS.find((x) => x.id === 'shiny-charm')?.name ?? null,
+          }
+        : { badgeKo: null, badgeSprite: null, prizeKo: null }),
     };
   };
 
@@ -764,9 +789,24 @@ export async function buildState(mode: CountMode = 'activity') {
            * as the plain gradient it always used.
            */
           battleBg:
-            e.seq === newestSeq
-              ? await ensureBackground(biomeFor(speciesInfo(e.wildId)?.types ?? []))
-              : null,
+            e.seq !== newestSeq
+              ? null
+              : /**
+                 * A named battle happens in a city, not wherever the leader's
+                 * lead Pokemon would be found.
+                 *
+                 * `biomeFor` answers "what did I just run into", which is the
+                 * right question for a wild encounter and an answered one for a
+                 * gym: you know exactly who is standing there, and he is
+                 * standing in a town. There is no gym interior upstream — the
+                 * backdrop shelf is fourteen outdoor scenes — so `city` is the
+                 * closest true thing rather than a compromise.
+                 */
+                await ensureBackground(
+                  e.gym || e.league
+                    ? 'city'
+                    : biomeFor(speciesInfo(e.wildId)?.types ?? []),
+                ),
           battle:
             e.seq === newestSeq && speciesId !== null && !e.trainer && !e.legend
               ? // Rarity is not stored on the log entry, but the species IS, and

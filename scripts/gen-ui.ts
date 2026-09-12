@@ -343,6 +343,19 @@ async function main() {
   await write('ui-plate.png', 12, 12, () => frame(12, 2));
   await write('ui-bang.png', 16, 20, () => balloon(0, 0));
 
+  /**
+   * The case a won badge sits in, on the scene's prize beat.
+   *
+   * A frame with a wider radius than the message box, so it reads as a display
+   * rather than a window — the badge is 85x85 drawn at 2x inside it, and a
+   * tight corner would fight the round badge art. Sliced at 5 like the plaque.
+   *
+   * No dark twin, for the same reason the plaque and the balloon have none: it
+   * only ever appears over the battle diorama, which App.css pins to the light
+   * frame at every hour.
+   */
+  await write('ui-case.png', 16, 16, () => frame(16, 4));
+
   // The travelling scene's location plaque. No dark twin: it only ever appears
   // over the battle diorama, which App.css keeps on the light frame at every
   // hour — the same reason the "!" balloon has none.

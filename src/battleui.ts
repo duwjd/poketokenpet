@@ -1,5 +1,6 @@
 import bang from './ui-bang.png';
 import sign from './ui-sign.png';
+import caseFrame from './ui-case.png';
 import btn from './ui-btn.png';
 import btnDark from './ui-btn-dark.png';
 import btnDown from './ui-btn-down.png';
@@ -30,6 +31,8 @@ export const UI_WINDOW = windowFrame;
 export const UI_PLATE = plate;
 export const UI_BANG = bang;
 export const UI_SIGN = sign;
+/** The display a won badge sits in, on the scene's prize beat. */
+export const UI_CASE = caseFrame;
 
 /**
  * The same two frames drawn for a dark background.
@@ -98,6 +101,7 @@ export const battleUiVars = (): Record<string, string> => ({
   '--ui-slice-small': `${UI_SLICE_SMALL}`,
   '--ui-bang': `url("${UI_BANG}")`,
   '--ui-sign': `url("${UI_SIGN}")`,
+  '--ui-case': `url("${UI_CASE}")`,
   '--ui-slice-sign': `${UI_SLICE_SIGN}`,
   '--ui-slice-window': `${UI_SLICE_WINDOW}`,
   '--ui-slice-plate': `${UI_SLICE_PLATE}`,

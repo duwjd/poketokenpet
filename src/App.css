@@ -577,6 +577,23 @@ p.muted.warn { color: var(--gold); }
 }
 
 /*
+ * The badge case on the scene's prize beat.
+ *
+ * Same drawn-frame shape as the plaque above and sliced the same, but a wider
+ * corner radius in the source so it reads as a display rather than a window —
+ * a tight corner fights the round badge art sitting inside it.
+ */
+.uicase {
+  border-style: solid;
+  border-color: transparent;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+  border-width: 5px;
+  border-image-source: var(--ui-case);
+  border-image-slice: var(--ui-slice-sign) fill;
+}
+
+/*
  * The same window at night.
  *
  * A bitmap cannot follow the colour scheme, so gen-ui.ts draws a second pair

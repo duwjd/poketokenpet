@@ -51,6 +51,19 @@ export type SceneBattle = {
 };
 
 export type SceneTrainerFight = {
+  /**
+   * What kind of fight this was.
+   *
+   * The scene could not tell a gym rematch from a route trainer: both are a
+   * portrait, a name and a team, and the only signals were `badgeKo` (a gym's
+   * FIRST win only) and `mine` (the league). The staging decisions — who gets
+   * the stare-down, which backdrop — need the distinction directly.
+   *
+   * `e.gym` and `e.league` already ride in the payload, spread from the log
+   * entry; they were simply never declared. This names the fact instead of
+   * making every reader re-derive it.
+   */
+  kind: 'route' | 'gym' | 'league';
   name: string;
   won: boolean;
   lostAt: number | null;
@@ -182,6 +195,20 @@ type Phase =
   | 'alert'
   | 'wipe'
   /**
+   * The stare-down, before the challenge is even spoken.
+   *
+   * NAMED battles only — a gym leader, a kahuna, an Elite Four member, a
+   * champion. A route trainer keeps the old opening: those happen several times
+   * a lap and a full-screen portrait for each would make the rare ones ordinary.
+   *
+   * This is the beat the portraits were always worth. Every Showdown trainer
+   * canvas is 80x80 and there is no larger art anywhere — the `-masters`
+   * variants are the same size — so the only way to make a person look like an
+   * event is to give them the whole stage at 2x for a moment, with what is at
+   * stake written beside them.
+   */
+  | 'vs'
+  /**
    * The trainer, before anyone's Pokemon is out.
    *
    * Trainers only. This is the beat the games open a trainer battle on, and
@@ -200,6 +227,19 @@ type Phase =
   | 'counter'
   | 'faint'
   | 'send'
+  /**
+   * The badge, handed over.
+   *
+   * Only when something actually changes hands — a first gym win, or a league
+   * cleared. The badge art is 85x85 and used to be scaled DOWN to 17px and sat
+   * on a text baseline for 1.6 seconds, which is the one place in this scene
+   * that shrank art. Eight of these exist per region and they are what the road
+   * is for, so they get a beat.
+   *
+   * Kept under reduced motion, unlike every other beat: this is information
+   * rather than motion, and the outcome text alone never showed the badge.
+   */
+  | 'badge'
   | 'reward';
 
 /**
@@ -213,6 +253,8 @@ type Phase =
 const HOLD: Record<Exclude<Phase, 'travel'>, number> = {
   alert: 700,
   wipe: 600,
+  /** Long enough to read two names and a stake, short enough not to be a wall. */
+  vs: 1800,
   /** A whole sentence and a sprite arriving. A shade longer than 'intro'. */
   meet: 1400,
   enter: 500,
@@ -225,10 +267,24 @@ const HOLD: Record<Exclude<Phase, 'travel'>, number> = {
   faint: 1100,
   /** The beat where a trainer reaches for the next Pokemon. */
   send: 900,
+  /** The one thing on the road worth stopping for. */
+  badge: 2000,
   reward: 1600,
 };
 
-const ORDER: Phase[] = ['alert', 'wipe', 'meet', 'enter', 'intro', 'form', 'turn', 'faint', 'reward'];
+const ORDER: Phase[] = [
+  'alert',
+  'wipe',
+  'vs',
+  'meet',
+  'enter',
+  'intro',
+  'form',
+  'turn',
+  'faint',
+  'badge',
+  'reward',
+];
 
 /**
  * Beats the ORDER walk steps straight over.
@@ -247,7 +303,14 @@ const ORDER: Phase[] = ['alert', 'wipe', 'meet', 'enter', 'intro', 'form', 'turn
  * fight.
  */
 function skippable(p: Phase, s: State): boolean {
-  if (s.round > 0) return p === 'meet' || p === 'form';
+  // The badge is the one beat that belongs at the END of the last round, so it
+  // is asked about before the round check below — that check exists to stop
+  // openings replaying, and this is not an opening.
+  if (p === 'badge') return !s.enc?.trainerFight?.badgeKo;
+  if (s.round > 0) return p === 'vs' || p === 'meet' || p === 'form';
+  // Named battles only. `kind` is what separates 관장 웅 from 낚시꾼 동현, which
+  // `trainerFight` alone cannot: both are trainers with a portrait and a team.
+  if (p === 'vs') return s.enc?.trainerFight?.kind !== 'gym' && s.enc?.trainerFight?.kind !== 'league';
   if (p === 'meet') return !s.enc?.trainerFight;
   if (p === 'form') return !s.enc?.formKind;
   return false;
@@ -283,9 +346,18 @@ const IDLE: State = { phase: 'travel', enc: null, round: 0, turn: 0, page: 0, st
 function reduce(s: State, a: Action): State {
   switch (a.type) {
     case 'encounter':
-      // Reduced motion skips the theatre and just states the outcome.
+      /**
+       * Reduced motion skips the theatre and just states the outcome — except
+       * for the badge, which is not theatre. It is the only art in the payout
+       * the text does not otherwise carry, and someone who turned motion off
+       * did not ask to stop being told what they won.
+       */
       return {
-        phase: a.reduced ? 'reward' : 'alert',
+        phase: a.reduced
+          ? a.enc?.trainerFight?.badgeKo
+            ? 'badge'
+            : 'reward'
+          : 'alert',
         enc: a.enc,
         round: 0,
         turn: 0,
@@ -451,20 +523,17 @@ function rewardPages(enc: Snapshot | null): React.ReactNode[][] {
       ? [`${fight.name}에게 지고 말았다…`, '다음엔 이기겠어!']
       : [
           ...(fight ? [`${fight.name}${josa(fight.name, '을', '를')} 이겼다!`] : []),
-          // The badge, then what came with it. Two lines rather than one
-          // because the box is a window frame, not a container — PAGE_LINES
-          // pages them, exactly as it pages a TM drop during a catch-up.
-          ...(fight?.badgeKo
-            ? [
-                <>
-                  {fight.badgeSprite && (
-                    <img className="scene-badge" src={spriteUrl(fight.badgeSprite)} alt="" />
-                  )}
-                  {fight.badgeKo}
-                  {josa(fight.badgeKo, '을', '를')} 받았다!
-                </>,
-              ]
-            : []),
+          /**
+           * The BADGE is not a line here any more — the `badge` beat before
+           * this one carries it, at 2x in a case rather than at 17px on a text
+           * baseline. Repeating it would have the payout say the same thing
+           * twice inside four seconds, and would put the picture back in the
+           * one place this scene ever shrank art to fit.
+           *
+           * The machine stayed, because it is text and the box pages text. The
+           * beat has no room for a second line: 170px of badge plus its frame
+           * plus one caption already fills a 218px stage.
+           */
           ...(fight?.prizeKo
             ? [`기술머신 ${fight.prizeKo}${josa(fight.prizeKo, '을', '를')} 함께 받았다!`]
             : []),
@@ -578,7 +647,9 @@ export default function Scene({
   const cls = ['scene', playing && 'playing', playing && 'frozen'].filter(Boolean).join(' ');
   const inBattle =
     enc &&
-    (st.phase === 'meet' ||
+    (st.phase === 'vs' ||
+      st.phase === 'badge' ||
+      st.phase === 'meet' ||
       st.phase === 'enter' ||
       st.phase === 'intro' ||
       st.phase === 'form' ||
@@ -826,13 +897,92 @@ export default function Scene({
 
               A miss is cosmetic, as with every other Showdown asset: the
               silhouette stands in, and the sentence beside it is unchanged. */}
-          {fight && st.phase === 'meet' && (
-            <div className="scene-trainer entering">
+          {fight && (st.phase === 'meet' || st.phase === 'send') && (
+            <div className={`scene-trainer${st.phase === 'meet' ? ' entering' : ''}`}>
               {fight.sprite ? (
                 <SceneSprite name={fight.sprite} target={TRAINER_TARGET} alt={fight.name} />
               ) : (
                 <span className="scene-silhouette" role="img" aria-label={fight.name} />
               )}
+            </div>
+          )}
+
+          {/* The stare-down.
+ 
+              The whole stage for a moment, which is the only way an 80x80
+              canvas can carry an event — there is no larger art of these people
+              anywhere, so scale and time are the only levers. Two faces, the
+              team they are about to send, and what is at stake.
+ 
+              Its own layer rather than a dressed-up `meet`: `meet` puts the
+              person where their Pokemon will stand, and this one is a split
+              screen. Sharing an element would mean two position rules fighting
+              over the same class. */}
+          {fight && st.phase === 'vs' && (
+            <div className="scene-vs">
+              <span className="scene-vs-side foe">
+                {fight.sprite ? (
+                  <SceneSprite name={fight.sprite} target={TRAINER_TARGET * 2} alt={fight.name} />
+                ) : (
+                  <span className="scene-silhouette" role="img" aria-label={fight.name} />
+                )}
+                <b className="uiplate">{fight.name}</b>
+                {/* The team, as the art rather than as five-pixel dots. The
+                    tray during the fight stays dots on purpose — this is the
+                    one beat with room to show who is coming. */}
+                <span className="scene-vs-team">
+                  {fight.team.map((m, i) => (
+                    <i key={`${m.speciesId}-${i}`}>
+                      {m.sprite ? <SceneSprite name={m.sprite} target={24} alt={m.name} /> : null}
+                    </i>
+                  ))}
+                </span>
+              </span>
+              <span className="scene-vs-mid" aria-hidden="true">
+                VS
+              </span>
+              <span className="scene-vs-side mine">
+                {myBack ? (
+                  <SceneSprite name={myBack} target={TRAINER_TARGET * 2} alt={myName} />
+                ) : (
+                  <span className="scene-silhouette" role="img" aria-label={myName} />
+                )}
+                <b className="uiplate">{myName}</b>
+                {/* Deliberately NOT the badge at stake.
+ 
+                    `badgeKo` is only populated when the fight was won, so
+                    putting it here would announce the result before the first
+                    Pokemon is out — the replay knows the ending and the viewer
+                    must not. The badge gets its own beat afterwards, which is
+                    where a prize belongs anyway. */}
+                <span className="scene-vs-team" />
+              </span>
+            </div>
+          )}
+
+          {/* The badge, handed over.
+ 
+              85x85 at 2x in a drawn case, instead of 17px on a text baseline
+              for 1.6 seconds. This was the only place in the scene that ever
+              scaled art DOWN, and what it shrank was the one picture the whole
+              road is for.
+ 
+              A league clear lands here too: the art is the charm the league
+              actually hands over, because no trophy sprite exists upstream and
+              naming the real prize beats inventing a cup. */}
+          {fight?.badgeKo && st.phase === 'badge' && (
+            <div className="scene-prize">
+              <span className="scene-prize-case uicase">
+                {fight.badgeSprite ? (
+                  <img src={spriteUrl(fight.badgeSprite)} alt="" />
+                ) : (
+                  <span className="scene-silhouette" role="img" aria-label={fight.badgeKo} />
+                )}
+              </span>
+              <b>
+                {fight.badgeKo}
+                {josa(fight.badgeKo, '을', '를')} 받았다!
+              </b>
             </div>
           )}
 

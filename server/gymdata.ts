@@ -603,6 +603,46 @@ const SINNOH_LEAGUE: LeagueRow[] = [
   { id: 'cynthia', region: '신오', ko: '챔피언 난천',   sprite: 'cynthia', gender: 'f', grit: 1.93, team: [442, 407, 423, 448, 350, 445] },
 ];
 
+/**
+ * 칼로스's eight, from X/Y.
+ *
+ * The one region where the badge Korean names are transparent rather than
+ * invented — 버그, 월, 파이트, 플랜트, 볼티지, 페어리, 사이킥, 아이스버그 — so
+ * the risk here was the leaders, not the badges. 우르프 in particular: a
+ * summarised source returned "Lysandre" for him once, which is a different
+ * character entirely, so his slug was checked against the sprite directory
+ * like every other.
+ */
+const KALOS_GYMS: GymRow[] = [
+  { id: 'viola',   region: '칼로스', badge: 43, order: 1, ko: '비올라', badgeKo: '버그배지',       city: '백단시티', sprite: 'viola',   gender: 'f', grit: 2.76, prize: 611, team: [283, 666] },
+  { id: 'clemont', region: '칼로스', badge: 47, order: 2, ko: '시트론', badgeKo: '볼티지배지',     city: '미르시티', sprite: 'clemont', gender: 'm', grit: 2.22, prize:  85, team: [587, 82, 695] },
+  { id: 'grant',   region: '칼로스', badge: 44, order: 3, ko: '자크로', badgeKo: '월배지',         city: '삼채시티', sprite: 'grant',   gender: 'm', grit: 2.41, prize: 317, team: [698, 696] },
+  { id: 'korrina', region: '칼로스', badge: 45, order: 4, ko: '코르니', badgeKo: '파이트배지',     city: '사라시티', sprite: 'korrina', gender: 'f', grit: 2.05, prize: 612, team: [619, 67, 701] },
+  { id: 'ramos',   region: '칼로스', badge: 46, order: 5, ko: '후쿠지', badgeKo: '플랜트배지',     city: '비익시티', sprite: 'ramos',   gender: 'm', grit: 2.29, prize: 447, team: [189, 70, 673] },
+  { id: 'valerie', region: '칼로스', badge: 48, order: 6, ko: '마슈',   badgeKo: '페어리배지',     city: '후늬시티', sprite: 'valerie', gender: 'f', grit: 1.81, prize: 605, team: [303, 122, 700] },
+  { id: 'olympia', region: '칼로스', badge: 49, order: 7, ko: '고지카', badgeKo: '사이킥배지',     city: '향전시티', sprite: 'olympia', gender: 'f', grit: 2.06, prize: 347, team: [561, 199, 678] },
+  { id: 'wulfric', region: '칼로스', badge: 50, order: 8, ko: '우르프', badgeKo: '아이스버그배지', city: '이설시티', sprite: 'wulfric', gender: 'm', grit: 2.29, prize:  58, team: [460, 615, 713] },
+];
+
+/**
+ * 칼로스's Elite Four and 카르네, from X/Y.
+ *
+ * The games let you fight the four in any order — the plateau opens all four
+ * doors at once. Fixed here in Bulbapedia's listing order, because a ladder
+ * this app settles has to be a sequence, and a rung that moved would move the
+ * seeds under it.
+ *
+ * Measured at 23% to 81% across four parties, against the ~230-machine bag
+ * this ladder is actually reached with.
+ */
+const KALOS_LEAGUE: LeagueRow[] = [
+  { id: 'malva',    region: '칼로스', ko: '사천왕 파키라',  sprite: 'malva',    gender: 'f', grit: 1.68, team: [668, 324, 609, 663] },
+  { id: 'siebold',  region: '칼로스', ko: '사천왕 즈미',    sprite: 'siebold',  gender: 'm', grit: 1.73, team: [693, 130, 121, 689] },
+  { id: 'wikstrom', region: '칼로스', ko: '사천왕 간피',    sprite: 'wikstrom', gender: 'm', grit: 1.79, team: [707, 476, 212, 681] },
+  { id: 'drasna',   region: '칼로스', ko: '사천왕 드라세나', sprite: 'drasna',   gender: 'f', grit: 1.84, team: [691, 621, 334, 715] },
+  { id: 'diantha',  region: '칼로스', ko: '챔피언 카르네',  sprite: 'diantha',  gender: 'f', grit: 1.89, team: [701, 697, 699, 711, 706, 282] },
+];
+
 export const REGIONS: RegionRow[] = [
   {
     id: 'kanto',
@@ -631,6 +671,16 @@ export const REGIONS: RegionRow[] = [
     league: SINNOH_LEAGUE,
     leagueCity: '포켓몬 리그',
     leagueIn: '신오',
+    leagueKind: '사천왕',
+    gymNoun: '체육관',
+  },
+  {
+    id: 'kalos',
+    ko: '칼로스',
+    gyms: KALOS_GYMS,
+    league: KALOS_LEAGUE,
+    leagueCity: '포켓몬리그',
+    leagueIn: '칼로스',
     leagueKind: '사천왕',
     gymNoun: '체육관',
   },

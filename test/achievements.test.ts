@@ -44,8 +44,13 @@ const maxed = () =>
     retiredCount: 200,
     trainerWins: 500,
     // Every Kanto badge, and enough gym wins for the rematch row to have paid.
+    //
+    // The count is deliberately far past any threshold rather than sized to
+    // one: `gym-rematch` steps on `10 x regions with a gym table`, so a literal
+    // that clears it today stops clearing it the next time a region lands. It
+    // was 40, and 칼로스 arriving as the fifth table moved the bar to 50.
     badges: [1, 2, 3, 4, 5, 6, 7, 8],
-    gymWins: 40,
+    gymWins: 1000,
     // The league cleared, so its one-shots and its repeat have both paid.
     leagueBest: 5,
     leagueWins: 3,

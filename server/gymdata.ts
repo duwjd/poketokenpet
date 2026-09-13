@@ -558,6 +558,51 @@ const JOHTO_LEAGUE: LeagueRow[] = [
   { id: 'lance-c',  region: '성도', ko: '챔피언 목호', sprite: 'lance', gender: 'm', grit: 1.85, team: [130, 149, 149, 142, 6, 149] },
 ];
 
+/**
+ * 신오's eight, from Diamond/Pearl.
+ *
+ * ## The Korean names, and why three of them were nearly wrong
+ *
+ * 신오's leaders are named after plants, and the Korean release keeps the
+ * joke: 유채 is rapeseed (ナタネ), 동관 is wax gourd (トウガン), 무청 is turnip
+ * greens (スズナ), and 자두 is a plum — which is 스모모, Maylene. A first pass
+ * had 자두 on Volkner, 맥실러 on Maylene and 전진 on Crasher Wake, all three
+ * shifted by the same column slip. Each was checked against its own
+ * Bulbapedia page in the end, and the plant etymology is what makes the
+ * corrected column self-evidently right.
+ *
+ * `badge` follows the games and `order` follows the road, and here they
+ * disagree five times out of eight — the generated route reaches 운하 and
+ * 들판 and 물가 early and leaves 연고, 장막 and 선단 for a later arc, while the
+ * games number them 3, 4, 5, 6, 7, 8 in a different sequence entirely.
+ */
+const SINNOH_GYMS: GymRow[] = [
+  { id: 'roark',       region: '신오', badge: 25, order: 1, ko: '강석',   badgeKo: '콜배지',       city: '무쇠시티', sprite: 'roark',       gender: 'm', grit: 2.00, prize: 446, team: [74, 95, 408] },
+  { id: 'gardenia',    region: '신오', badge: 26, order: 2, ko: '유채',   badgeKo: '포레스트배지', city: '영원시티', sprite: 'gardenia',    gender: 'f', grit: 2.18, prize: 447, team: [420, 387, 407] },
+  { id: 'byron',       region: '신오', badge: 30, order: 3, ko: '동관',   badgeKo: '마인배지',     city: '운하시티', sprite: 'byron',       gender: 'm', grit: 1.71, prize: 430, team: [82, 208, 411] },
+  { id: 'crasherwake', region: '신오', badge: 28, order: 4, ko: '맥실러', badgeKo: '펜배지',       city: '들판시티', sprite: 'crasherwake', gender: 'm', grit: 2.31, prize: 362, team: [130, 195, 419] },
+  { id: 'volkner',     region: '신오', badge: 32, order: 5, ko: '전진',   badgeKo: '비컨배지',     city: '물가시티', sprite: 'volkner',     gender: 'm', grit: 1.84, prize: 451, team: [26, 424, 224, 405] },
+  { id: 'fantina',     region: '신오', badge: 29, order: 6, ko: '멜리사', badgeKo: '레릭배지',     city: '연고시티', sprite: 'fantina',     gender: 'f', grit: 1.35, prize: 421, team: [355, 93, 429] },
+  { id: 'maylene',     region: '신오', badge: 27, order: 7, ko: '자두',   badgeKo: '코블배지',     city: '장막시티', sprite: 'maylene',     gender: 'f', grit: 1.98, prize: 409, team: [307, 67, 448] },
+  { id: 'candice',     region: '신오', badge: 31, order: 8, ko: '무청',   badgeKo: '글레이셔배지', city: '선단시티', sprite: 'candice',     gender: 'f', grit: 1.93, prize: 419, team: [215, 308, 459, 460] },
+];
+
+/**
+ * 신오's Elite Four and 난천, from Diamond/Pearl.
+ *
+ * Measured against a saturated bag for the same reason 성도's is: the route
+ * puts 신오's plateau at stop 175 and its last three gym cities at 204-206, so
+ * the eighth badge lands after the ladder has already gone past and the pet
+ * comes round again. 24% to 69% across four parties.
+ */
+const SINNOH_LEAGUE: LeagueRow[] = [
+  { id: 'aaron',   region: '신오', ko: '사천왕 충호',   sprite: 'aaron',   gender: 'm', grit: 1.71, team: [269, 267, 416, 214, 452] },
+  { id: 'bertha',  region: '신오', ko: '사천왕 들국화', sprite: 'bertha',  gender: 'f', grit: 1.77, team: [195, 185, 76, 340, 450] },
+  { id: 'flint',   region: '신오', ko: '사천왕 대엽',   sprite: 'flint',   gender: 'm', grit: 1.82, team: [78, 208, 426, 428, 392] },
+  { id: 'lucian',  region: '신오', ko: '사천왕 오엽',   sprite: 'lucian',  gender: 'm', grit: 1.87, team: [122, 203, 308, 65, 437] },
+  { id: 'cynthia', region: '신오', ko: '챔피언 난천',   sprite: 'cynthia', gender: 'f', grit: 1.93, team: [442, 407, 423, 448, 350, 445] },
+];
+
 export const REGIONS: RegionRow[] = [
   {
     id: 'kanto',
@@ -576,6 +621,16 @@ export const REGIONS: RegionRow[] = [
     league: JOHTO_LEAGUE,
     leagueCity: '석영고원',
     leagueIn: '관동',
+    leagueKind: '사천왕',
+    gymNoun: '체육관',
+  },
+  {
+    id: 'sinnoh',
+    ko: '신오',
+    gyms: SINNOH_GYMS,
+    league: SINNOH_LEAGUE,
+    leagueCity: '포켓몬 리그',
+    leagueIn: '신오',
     leagueKind: '사천왕',
     gymNoun: '체육관',
   },

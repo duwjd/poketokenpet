@@ -488,12 +488,92 @@ const UNOVA_LEAGUE: LeagueRow[] = [
   },
 ];
 
+/**
+ * 성도's eight, from Gold/Silver.
+ *
+ * ## 담청 and 진청, which is which
+ *
+ * The pair that the badge tables and the gym tables disagree about, so it is
+ * settled here off the route rather than off a wiki: stop 96 is 담청등대, and
+ * the lighthouse with the sick Ampharos in it is Olivine's. 담청시티 is
+ * therefore Olivine, 규리 is its steel leader, and 진청시티 is Cianwood with
+ * 사도 in it. The two Korean names are near-homographs and every secondary
+ * source this was checked against had them one way or the other, so the
+ * tiebreak is a stop nobody had a reason to get wrong.
+ *
+ * They also swap the way 관동's 초련 and 독수 do — 담청 is stop 70 and 진청 is
+ * 71, while the games number 사도's badge before 규리's. `badge` keeps the
+ * games' numbering and `order` follows the road, which is exactly the pair
+ * those two fields exist for.
+ *
+ * In the games 규리's gym is shut until 사도 is beaten, because she is at the
+ * lighthouse. Not modelled: `lateLock` means "shut until the rest of the
+ * region is done", which is 비주기's shape and not hers, and a one-gym
+ * exception would cost more than the flavour is worth.
+ */
+const JOHTO_GYMS: GymRow[] = [
+  { id: 'falkner', region: '성도', badge:  9, order: 1, ko: '비상', badgeKo: '윙배지',     city: '도라지시티', sprite: 'falkner', gender: 'm', grit: 2.67, prize: 189, team: [16, 17] },
+  { id: 'bugsy',   region: '성도', badge: 10, order: 2, ko: '호일', badgeKo: '인섹트배지', city: '고동마을',   sprite: 'bugsy',   gender: 'm', grit: 1.96, prize: 210, team: [11, 14, 123] },
+  { id: 'whitney', region: '성도', badge: 11, order: 3, ko: '꼭두', badgeKo: '레귤러배지', city: '금빛시티',   sprite: 'whitney', gender: 'f', grit: 2.24, prize: 213, team: [35, 241] },
+  { id: 'morty',   region: '성도', badge: 12, order: 4, ko: '유빈', badgeKo: '팬텀배지',   city: '인주시티',   sprite: 'morty',   gender: 'm', grit: 1.35, prize: 247, team: [92, 93, 93, 94] },
+  { id: 'jasmine', region: '성도', badge: 14, order: 5, ko: '규리', badgeKo: '스틸배지',   city: '담청시티',   sprite: 'jasmine', gender: 'f', grit: 1.78, prize: 231, team: [81, 81, 208] },
+  { id: 'chuck',   region: '성도', badge: 13, order: 6, ko: '사도', badgeKo: '쇼크배지',   city: '진청시티',   sprite: 'chuck',   gender: 'm', grit: 2.65, prize: 223, team: [57, 62] },
+  { id: 'pryce',   region: '성도', badge: 15, order: 7, ko: '류옹', badgeKo: '아이스배지', city: '황토마을',   sprite: 'pryce',   gender: 'm', grit: 2.34, prize: 196, team: [86, 87, 221] },
+  { id: 'clair',   region: '성도', badge: 16, order: 8, ko: '이향', badgeKo: '라이징배지', city: '검은먹시티', sprite: 'clair',   gender: 'f', grit: 1.59, prize: 225, team: [148, 148, 148, 230] },
+];
+
+/**
+ * 성도's Elite Four and its Champion — at 관동's 석영고원, which is the point.
+ *
+ * Johto's league is Indigo Plateau. Not a lookalike and not a second building:
+ * the same plateau 관동's four sit in, which is why `leagueIn` exists as a
+ * field separate from `ko`. Two regions' ladders stand at stop 19 and
+ * `leagueAt` already picks between them — first eligible and uncleared, so
+ * 관동's is fought first and 성도's on a later pass.
+ *
+ * The cost is a long walk, and it is worth stating rather than discovering.
+ * 검은먹시티 is stop 75 and the plateau is stop 19, so the eighth badge and the
+ * ladder are most of a lap apart — the pet walks 호연 through 팔데아 and comes
+ * back round. That is not dead time, it is the other regions' gyms, but the
+ * badge case will read "8 / 8" for a long while before the ladder opens.
+ *
+ * 독수 is 관동's 연분홍 leader and 시바 is 관동's Elite Four, so both take the
+ * `-e4` suffix the header describes, and 목호 takes `-c` for the same reason —
+ * he is 관동's fourth and 성도's Champion. They keep their 관동 sprite slugs:
+ * one person, one face.
+ *
+ * The walk is also what the grit column is measured against. By the time the
+ * pet is back at the plateau its bag has saturated — every draw is a repeat —
+ * so this ladder is faced with a party holding its four best moves outright,
+ * not the ~47 machines 관동's column was sized for. Four parties of six, 300
+ * runs each: 24% to 75%, which puts it between 관동's ladder and 하나's. The
+ * response to grit here is steep — a 6% raise across the column takes the
+ * whole band under 25% — because twenty-six opponents compound.
+ */
+const JOHTO_LEAGUE: LeagueRow[] = [
+  { id: 'will',     region: '성도', ko: '사천왕 일목', sprite: 'will',  gender: 'm', grit: 1.65, team: [178, 124, 103, 80, 178] },
+  { id: 'koga-e4',  region: '성도', ko: '사천왕 독수', sprite: 'koga',  gender: 'm', grit: 1.70, team: [168, 49, 205, 89, 169] },
+  { id: 'bruno-e4', region: '성도', ko: '사천왕 시바', sprite: 'bruno', gender: 'm', grit: 1.75, team: [237, 106, 107, 95, 68] },
+  { id: 'karen',    region: '성도', ko: '사천왕 카렌', sprite: 'karen', gender: 'f', grit: 1.80, team: [197, 45, 94, 198, 229] },
+  { id: 'lance-c',  region: '성도', ko: '챔피언 목호', sprite: 'lance', gender: 'm', grit: 1.85, team: [130, 149, 149, 142, 6, 149] },
+];
+
 export const REGIONS: RegionRow[] = [
   {
     id: 'kanto',
     ko: '관동',
     gyms: KANTO_GYMS,
     league: KANTO_LEAGUE,
+    leagueCity: '석영고원',
+    leagueIn: '관동',
+    leagueKind: '사천왕',
+    gymNoun: '체육관',
+  },
+  {
+    id: 'johto',
+    ko: '성도',
+    gyms: JOHTO_GYMS,
+    league: JOHTO_LEAGUE,
     leagueCity: '석영고원',
     leagueIn: '관동',
     leagueKind: '사천왕',

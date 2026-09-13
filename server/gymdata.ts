@@ -695,6 +695,58 @@ const HOENN_LEAGUE: LeagueRow[] = [
   { id: 'steven', region: '호연', ko: '챔피언 성호', sprite: 'steven-gen3', gender: 'm', grit: 1.89, team: [227, 344, 306, 346, 348, 376] },
 ];
 
+/**
+ * 팔데아's eight, from Scarlet/Violet.
+ *
+ * ## The badges have no names
+ *
+ * Every other region's `badgeKo` is a proper noun the games invented. 팔데아's
+ * are not: the games give eight badges and call them by type, so 벌레배지 and
+ * 노말배지 are not a shorthand this table made up for want of a real name —
+ * they are the name. Said here because a reader who knows 관동's 회색배지 will
+ * assume the opposite.
+ *
+ * ## 청목 is here twice
+ *
+ * He is 참푸르's normal leader AND 팔데아's flying Elite Four, which is the
+ * first time one person holds both jobs in the same region. The league row
+ * takes the `-e4` suffix the header describes and both rows carry the same
+ * sprite slug, because Showdown has exactly one 청목 and one face is correct.
+ *
+ * The games let the eight be taken in any order. `order` follows the road, as
+ * everywhere else.
+ */
+const PALDEA_GYMS: GymRow[] = [
+  { id: 'katy',     region: '팔데아', badge: 70, order: 1, ko: '단풍',   badgeKo: '벌레배지',   city: '세르클마을', sprite: 'katy',     gender: 'f', grit: 2.41, prize: 884, team: [915, 917, 216] },
+  { id: 'tulip',    region: '팔데아', badge: 76, order: 2, ko: '리파',   badgeKo: '에스퍼배지', city: '베이크마을', sprite: 'tulip',    gender: 'f', grit: 1.82, prize:  94, team: [981, 282, 956, 671] },
+  { id: 'brassius', region: '팔데아', badge: 71, order: 3, ko: '콜사',   badgeKo: '풀배지',     city: '보울마을',   sprite: 'brassius', gender: 'm', grit: 2.53, prize: 885, team: [548, 928, 185] },
+  { id: 'iono',     region: '팔데아', badge: 72, order: 4, ko: '모야모', badgeKo: '전기배지',   city: '누룩스시티', sprite: 'iono',     gender: 'f', grit: 1.59, prize: 521, team: [940, 939, 404, 429] },
+  { id: 'kofu',     region: '팔데아', badge: 73, order: 5, ko: '곤포',   badgeKo: '물배지',     city: '카라프시티', sprite: 'kofu',     gender: 'm', grit: 2.29, prize: 886, team: [976, 961, 740] },
+  { id: 'larry',    region: '팔데아', badge: 74, order: 6, ko: '청목',   badgeKo: '노말배지',   city: '참푸르마을', sprite: 'larry',    gender: 'm', grit: 2.36, prize: 263, team: [775, 982, 398] },
+  { id: 'ryme',     region: '팔데아', badge: 75, order: 7, ko: '라임',   badgeKo: '고스트배지', city: '프리지마을', sprite: 'ryme',     gender: 'f', grit: 1.12, prize: 247, team: [778, 354, 972, 849] },
+  { id: 'grusha',   region: '팔데아', badge: 77, order: 8, ko: '그루샤', badgeKo: '얼음배지',   city: '나페산',     sprite: 'grusha',   gender: 'm', grit: 2.08, prize: 861, team: [873, 614, 975, 334] },
+];
+
+/**
+ * 팔데아's Elite Four and 테사, from Scarlet/Violet.
+ *
+ * 청목 fights his ladder round with a flying team and his gym round with a
+ * normal one, which is the games' own joke and needs no note beyond the two
+ * rows sharing a face.
+ *
+ * The grit column is the highest on the roster, and 팔데아's position on the
+ * route is why. 나페산 is stop 689 and the plateau is 650, so the eighth badge
+ * lands after the ladder has already gone past and the pet comes round with a
+ * bag that saturated long ago. Measured at 25% to 79% across four parties.
+ */
+const PALDEA_LEAGUE: LeagueRow[] = [
+  { id: 'rika',      region: '팔데아', ko: '사천왕 칠리',  sprite: 'rika',   gender: 'f', grit: 1.81, team: [340, 323, 232, 51, 980] },
+  { id: 'poppy',     region: '팔데아', ko: '사천왕 뽀삐',  sprite: 'poppy',  gender: 'f', grit: 1.86, team: [879, 437, 823, 958, 959] },
+  { id: 'larry-e4',  region: '팔데아', ko: '사천왕 청목',  sprite: 'larry',  gender: 'm', grit: 1.92, team: [357, 398, 334, 741, 973] },
+  { id: 'hassel',    region: '팔데아', ko: '사천왕 팔자크', sprite: 'hassel', gender: 'm', grit: 1.98, team: [715, 691, 841, 612, 998] },
+  { id: 'geeta',     region: '팔데아', ko: '챔피언 테사',  sprite: 'geeta',  gender: 'f', grit: 2.03, team: [956, 713, 983, 976, 673, 970] },
+];
+
 export const REGIONS: RegionRow[] = [
   {
     id: 'kanto',
@@ -743,6 +795,16 @@ export const REGIONS: RegionRow[] = [
     league: HOENN_LEAGUE,
     leagueCity: '포켓몬리그',
     leagueIn: '호연',
+    leagueKind: '사천왕',
+    gymNoun: '체육관',
+  },
+  {
+    id: 'paldea',
+    ko: '팔데아',
+    gyms: PALDEA_GYMS,
+    league: PALDEA_LEAGUE,
+    leagueCity: '포켓몬 리그',
+    leagueIn: '팔데아',
     leagueKind: '사천왕',
     gymNoun: '체육관',
   },

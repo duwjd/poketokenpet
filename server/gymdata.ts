@@ -177,6 +177,14 @@ export type GymRow = {
    * MET, which is a different number in every region. A grit column copied
    * from Kanto's would be wrong twice over — different team sizes, different
    * bag by the time you arrive.
+   *
+   * How different: 관동's eight are met between encounters 47 and 411, against
+   * a bag of two to seventeen machines. 하나's are met around encounter 3,900,
+   * against a bag of a hundred and fifty. Copying 관동's column there put every
+   * one of the eight between 84% and 99% — a formality with a badge attached.
+   * So 하나's numbers run 1.8 to 3.0 where 관동's run 1.5 to 2.15, and they were
+   * found the same way: a binary search over nine hundred fights per step,
+   * aiming at 62% and landing every row between 60% and 71%.
    */
   grit: number;
   /**
@@ -331,6 +339,36 @@ export type RegionRow = {
  * `server/gyms.ts` collapses to exactly the constant it replaced, which is how
  * the whole test suite stays green through the refactor.
  */
+/**
+ * 하나's eight, in ROUTE order — which here is also the games' own order.
+ *
+ * ## Black, not Black 2
+ *
+ * The first-version rule. It decides three things: 사간 holds 쌍용시티 (아이리스
+ * has it in White), the Striaton gym is the trio rather than 체렌, and the two
+ * badges 톡식 and 웨이브 do not exist here at all. That last one is why this
+ * region's badge numbers are NOT contiguous — 33 34 35 37 38 39 40 41, skipping
+ * 36 and 42, which belong to the two B2W2-only leaders. A per-region 1..8 index
+ * could not express that; the global number can.
+ *
+ * ## The Striaton trio
+ *
+ * 성신시티 has three leaders — 덴트, 팟 and 콘 — and one badge between them. The
+ * games send out whichever counters your starter, and this app has no starter.
+ * So 덴트 is fixed, and said out loud rather than pretended away, exactly as
+ * 그린's starter-dependent last three are in 관동's table.
+ */
+const UNOVA_GYMS: GymRow[] = [
+  { id: 'cilan',   region: '하나', badge: 33, order: 1, ko: '덴트',   badgeKo: '트라이배지',   city: '성신시티',   sprite: 'cilan',   gender: 'm', grit: 2.88, prize: 526, team: [506, 511] },
+  { id: 'lenora',  region: '하나', badge: 34, order: 2, ko: '알로에', badgeKo: '베이직배지',   city: '칠보시티',   sprite: 'lenora',  gender: 'f', grit: 3.00, prize: 514, team: [507, 505] },
+  { id: 'burgh',   region: '하나', badge: 35, order: 3, ko: '아티',   badgeKo: '비틀배지',     city: '구름시티',   sprite: 'burgh',   gender: 'm', grit: 2.17, prize: 522, team: [544, 557, 542] },
+  { id: 'elesa',   region: '하나', badge: 37, order: 4, ko: '카밀레', badgeKo: '볼트배지',     city: '뇌문시티',   sprite: 'elesa',   gender: 'f', grit: 2.18, prize: 521, team: [587, 587, 523] },
+  { id: 'clay',    region: '하나', badge: 38, order: 5, ko: '야콘',   badgeKo: '퀘이크배지',   city: '물풍경시티', sprite: 'clay',    gender: 'm', grit: 2.38, prize: 523, team: [552, 536, 530] },
+  { id: 'skyla',   region: '하나', badge: 39, order: 6, ko: '풍란',   badgeKo: '제트배지',     city: '궐수시티',   sprite: 'skyla',   gender: 'f', grit: 2.29, prize: 512, team: [528, 521, 581] },
+  { id: 'brycen',  region: '하나', badge: 40, order: 7, ko: '담죽',   badgeKo: '아이시클배지', city: '설화시티',   sprite: 'brycen',  gender: 'm', grit: 2.27, prize: 524, team: [583, 615, 614] },
+  { id: 'drayden', region: '하나', badge: 41, order: 8, ko: '사간',   badgeKo: '레전드배지',   city: '쌍용시티',   sprite: 'drayden', gender: 'm', grit: 1.82, prize: 525, team: [611, 621, 612] },
+];
+
 export const REGIONS: RegionRow[] = [
   {
     id: 'kanto',
@@ -339,6 +377,32 @@ export const REGIONS: RegionRow[] = [
     league: KANTO_LEAGUE,
     leagueCity: '석영고원',
     leagueIn: '관동',
+    leagueKind: '사천왕',
+    gymNoun: '체육관',
+  },
+  {
+    id: 'unova',
+    ko: '하나',
+    gyms: UNOVA_GYMS,
+    /**
+     * The ladder is NOT transcribed yet, and an empty array says exactly that.
+     *
+     * Not `leagueCity: null`, which is what a region with no league at all
+     * would carry — 하나 has one, at 포켓몬 리그, and conflating "there is none"
+     * with "we have not written it down" is the kind of quiet lie this table
+     * exists to avoid. The panel reads the pair and says which it is.
+     *
+     * It is empty because the four names could not be verified. Every other
+     * Korean string in this row was cross-checked against two sources; the
+     * Elite Four's could not be, and the header's rule is that an unverified
+     * name does not ship. There is a second question waiting behind it: Black's
+     * league does not end with the champion at all — N is at the top of the
+     * tower, and 노간주 comes after — so which five rows this should hold is a
+     * content decision as much as a transcription.
+     */
+    league: [],
+    leagueCity: '포켓몬 리그',
+    leagueIn: '하나',
     leagueKind: '사천왕',
     gymNoun: '체육관',
   },

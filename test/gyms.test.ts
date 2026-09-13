@@ -333,9 +333,19 @@ describe('the table', () => {
     for (const g of ALL_GYMS) expect(gymReward(g), g.ko).toBeGreaterThan(6.52);
   });
 
-  it('gives every league a ladder that ends in a champion', () => {
+  it('says whether a missing ladder is absent or merely unwritten', () => {
+    /**
+     * An empty `league` is allowed, and it means one of two different things
+     * that must not be confused. `leagueCity: null` is "this region has no
+     * league at all"; a city with an empty ladder is "it has one and the four
+     * names have not been verified yet". The panel prints a different sentence
+     * for each, so the pair has to stay coherent.
+     */
     for (const r of REGIONS) {
-      expect(r.league.length, r.ko).toBeGreaterThan(0);
+      if (r.league.length === 0) {
+        expect(typeof r.leagueCity === 'string' || r.leagueCity === null, r.ko).toBe(true);
+        continue;
+      }
       for (const m of r.league) expect(m.region, m.id).toBe(r.ko);
       expect(new Set(r.league.map((m) => m.id)).size, r.ko).toBe(r.league.length);
       // The LAST row is the champion. Positional, because 가라르 and 알로라 are
@@ -399,8 +409,14 @@ describe('the route it is pinned to', () => {
       }
       seen++;
       expect(atLeague(seq), `seq ${seq}`).toBe(true);
-      // Swept everything: exactly one ladder is offered, never two.
       const open = leagueAt(seq, all, {});
+      // A stop whose only ladder is still unwritten stands there and offers
+      // nothing — which is the honest answer, not a bug.
+      if (!here.some((r) => r.league.length > 0)) {
+        expect(open, `seq ${seq}`).toBeNull();
+        continue;
+      }
+      // Swept everything: exactly one ladder is offered, never two.
       expect(open, `seq ${seq}`).not.toBeNull();
       expect(here.some((r) => r.id === open!.id)).toBe(true);
       // Nothing swept: no ladder at all.
@@ -515,13 +531,22 @@ describe('difficulty', () => {
     return won / n;
   };
 
-  it('can be lost at every single gym', () => {
-    // The whole point. A wild encounter cannot be lost; these can, and the
-    // easiest of them still turns you away about one time in five.
-    for (const g of KANTO.gyms) {
+  it('can be lost at every single gym, in every region', () => {
+    /**
+     * The whole point. A wild encounter cannot be lost; these can, and the
+     * easiest of them still turns you away about one time in five.
+     *
+     * Swept across every region rather than 관동's eight, because the bag is
+     * what makes this hard to keep true and the bag is a function of WHEN a
+     * region is reached. 관동's leaders are met against two to seventeen
+     * machines; 하나's against about a hundred and fifty. A grit column copied
+     * from one region to the next puts every fight above 90%, which is how
+     * this test earns its keep.
+     */
+    for (const g of ALL_GYMS) {
       const r = rate(g.id, Math.round(0.04 * MET_AT[g.id]));
-      expect(r, `${g.ko} too easy`).toBeLessThan(0.85);
-      expect(r, `${g.ko} too hard`).toBeGreaterThan(0.4);
+      expect(r, `${g.region} ${g.ko} too easy`).toBeLessThan(0.85);
+      expect(r, `${g.region} ${g.ko} too hard`).toBeGreaterThan(0.4);
     }
   });
 

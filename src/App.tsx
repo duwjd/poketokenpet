@@ -3314,7 +3314,15 @@ export default function App() {
           </p>
         </>
       ) : (
-        <p className="muted sub note">{badgeReg?.ko}에는 포켓몬리그가 없습니다.</p>
+        <p className="muted sub note">
+          {/* Two different facts, and saying the wrong one would be a lie. The
+              payload only lists a region's ladder once it has rows, so a region
+              that HAS a league whose roster is not transcribed yet has to say
+              so rather than claim there is none. */}
+          {state.badges.regions.length > 1 && badgeReg?.key === 'unova'
+            ? `${badgeReg?.ko}의 사천왕 명단은 아직 들어오지 않았습니다.`
+            : `${badgeReg?.ko}에는 포켓몬리그가 없습니다.`}
+        </p>
       )}
 
       <div className="chips awardcats" role="group" aria-label="업적 분야">

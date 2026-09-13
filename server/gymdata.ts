@@ -352,8 +352,10 @@ export type RegionRow = {
  *
  * The shape shipped with one row and the regions arrived as data, one commit
  * each, exactly as intended: nothing in `server/gyms.ts` needed editing for any
- * of them. 히스이 is deliberately absent — it has no gyms and no league, and the
- * panel says so rather than leaving the chip row to imply one.
+ * of them. The order is the ROUTE's, because the badge case renders its region
+ * chips straight off this array. 히스이 has no row at all — see `RegionKo` — so
+ * it gets no chip, which is the right answer for a region with nothing to
+ * transcribe.
  */
 /**
  * 하나's eight, in ROUTE order — which here is also the games' own order.

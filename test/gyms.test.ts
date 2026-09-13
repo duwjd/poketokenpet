@@ -5,6 +5,7 @@ import { trainerAt } from '../server/trainer.ts';
 import { legendOf } from '../server/legenddata.ts';
 import { learnableMoves, moveById, speciesInfo } from '../server/moves.ts';
 import { trainerBattleAt } from '../server/trainer.ts';
+import type { GymRow } from '../server/gymdata.ts';
 import {
   ALL_GYMS,
   BADGE_IDS,
@@ -332,6 +333,35 @@ describe('the table', () => {
   it('pays more than a route trainer and scales with the fight', () => {
     // A route trainer averages 6.52 encounter-payouts; the best is 12.6.
     for (const g of ALL_GYMS) expect(gymReward(g), g.ko).toBeGreaterThan(6.52);
+  });
+
+  it('keeps every ladder id unique across the whole roster', () => {
+    // `BY_LEAGUE_ID` in server/gyms.ts is ONE map over every region, because
+    // `HuntEntry.league` records a bare id with no region beside it. Per-region
+    // uniqueness is not enough: 시바 is on 관동's ladder and 성도's, 청목 on
+    // 팔데아's gym column and its ladder, 야청 on 가라르's twice. Those are the
+    // `-e4` and `-cup` suffixes, and this is what makes them mandatory.
+    const ids = REGIONS.flatMap((r) => r.league.map((m) => m.id));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('numbers every gym by the road it is actually met on', () => {
+    // `order` is route order, not the games' order — nine regions' worth of it
+    // was derived by hand from stop indices, and a slip would put a leader
+    // behind one the pet reaches later. Derived here from the same stops
+    // rather than trusted.
+    //
+    // `lateLock` is the one row the road does not place: 비주기 stands at 상록
+    // 시티, which is stop 1, and is still the region's eighth because his gym
+    // is shut until the other seven are held. Sorted to the end for that
+    // reason and no other — there is at most one of him per region.
+    const road = (r: (typeof CAMPAIGNS)[number], g: GymRow) =>
+      g.lateLock ? Number.MAX_SAFE_INTEGER : stopInRegion(r.ko, g.city);
+    for (const r of CAMPAIGNS) {
+      const byRoad = [...r.gyms].sort((a, b) => road(r, a) - road(r, b)).map((g) => g.id);
+      const byOrder = [...r.gyms].sort((a, b) => a.order - b.order).map((g) => g.id);
+      expect(byOrder, r.ko).toEqual(byRoad);
+    }
   });
 
   it('says whether a missing ladder is absent or merely unwritten', () => {

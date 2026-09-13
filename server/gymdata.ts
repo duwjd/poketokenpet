@@ -350,10 +350,10 @@ export type RegionRow = {
 /**
  * Every region with a campaign, in route order.
  *
- * One row today. The shape is what this release ships; the other eight are
- * data, added one commit at a time — and with a single row every derivation in
- * `server/gyms.ts` collapses to exactly the constant it replaced, which is how
- * the whole test suite stays green through the refactor.
+ * The shape shipped with one row and the regions arrived as data, one commit
+ * each, exactly as intended: nothing in `server/gyms.ts` needed editing for any
+ * of them. 히스이 is deliberately absent — it has no gyms and no league, and the
+ * panel says so rather than leaving the chip row to imply one.
  */
 /**
  * 하나's eight, in ROUTE order — which here is also the games' own order.
@@ -747,6 +747,75 @@ const PALDEA_LEAGUE: LeagueRow[] = [
   { id: 'geeta',     region: '팔데아', ko: '챔피언 테사',  sprite: 'geeta',  gender: 'f', grit: 2.03, team: [956, 713, 983, 976, 673, 970] },
 ];
 
+/**
+ * 가라르's eight, from Sword.
+ *
+ * ## Two of the ten are Shield's
+ *
+ * 가라르 allocates ten badges because two stadiums change hands by version:
+ * 어니언 has 래터럴's ghost gym in Shield where 채두 has the fighting one in
+ * Sword, and 멜론 has 키르쿠스's ice gym where 마쿠와 has the rock one. Sword is
+ * this table's version, so badges 55 and 58 are allocated upstream and unused
+ * here — the same shape 하나's 36 and 42 have.
+ *
+ * ## The badges have no names, again
+ *
+ * Like 팔데아's, and for the same reason: the games call them by type. 스파이크
+ * is also the one stop that is a 체육관 rather than a 스타디움 — 두송 refused to
+ * rebuild — which is why `gymNoun` says 스타디움 and is slightly wrong once.
+ */
+const GALAR_GYMS: GymRow[] = [
+  { id: 'opal',   region: '가라르', badge: 56, order: 1, ko: '포플러', badgeKo: '페어리배지', city: '아라베스크마을', sprite: 'opal',   gender: 'f', grit: 1.77, prize: 577, team: [110, 303, 468, 869] },
+  { id: 'gordie', region: '가라르', badge: 57, order: 2, ko: '마쿠와', badgeKo: '바위배지',   city: '키르쿠스마을',   sprite: 'gordie', gender: 'm', grit: 1.82, prize: 317, team: [689, 213, 874, 839] },
+  { id: 'raihan', region: '가라르', badge: 60, order: 3, ko: '금랑',   badgeKo: '드래곤배지', city: '너클시티',       sprite: 'raihan', gender: 'm', grit: 1.94, prize: 784, team: [526, 330, 844, 884] },
+  { id: 'nessa',  region: '가라르', badge: 52, order: 4, ko: '야청',   badgeKo: '물배지',     city: '바우마을',       sprite: 'nessa',  gender: 'f', grit: 2.49, prize: 250, team: [118, 846, 834] },
+  { id: 'kabu',   region: '가라르', badge: 53, order: 5, ko: '순무',   badgeKo: '불꽃배지',   city: '엔진시티',       sprite: 'kabu',   gender: 'm', grit: 2.36, prize: 261, team: [38, 59, 851] },
+  { id: 'piers',  region: '가라르', badge: 59, order: 6, ko: '두송',   badgeKo: '악배지',     city: '스파이크마을',   sprite: 'piers',  gender: 'm', grit: 2.18, prize: 555, team: [560, 687, 435, 862] },
+  { id: 'bea',    region: '가라르', badge: 54, order: 7, ko: '채두',   badgeKo: '격투배지',   city: '래터럴마을',     sprite: 'bea',    gender: 'f', grit: 1.82, prize: 279, team: [237, 675, 865, 68] },
+  { id: 'milo',   region: '가라르', badge: 51, order: 8, ko: '아킬',   badgeKo: '풀배지',     city: '터프마을',       sprite: 'milo',   gender: 'm', grit: 2.86, prize: 345, team: [829, 830] },
+];
+
+/**
+ * 가라르's Champion Cup — seven rounds, not four and a champion.
+ *
+ * There is no Elite Four in 가라르. The finals are a tournament at 슛시티 and
+ * the bracket is 마리, 호브, 비트, then three gym leaders, then 단델, which is
+ * why `leagueKind` says 챔피언컵 and this array is seven long where every other
+ * is five. `LEAGUE_REWARD` divides by `league.length`, so the purse per round
+ * falls out of the length without an edit.
+ *
+ * 야청, 채두 and 금랑 are already gym leaders in this region, so their cup rows
+ * take the `-cup` suffix — the same rule 독수 and 청목 use — and carry their gym
+ * sprite. The cup teams are NOT the gym teams: 금랑 fields 토쿠 and 디아루가급
+ * bulk here and a sand team at 너클시티, which is the games' own doing.
+ *
+ * ## The starter this table picked
+ *
+ * 호브 and 단델 both carry a starter that depends on the player's, and this app
+ * has no starter. Fixed on the player having taken 염버니: 호브 then raises
+ * 인텔리온 and 단델 closes with 고릴타. Any of the three is equally canon and
+ * two of them would be a lie, so one is chosen and written down — exactly what
+ * 관동's 그린 and 하나's 덴트 already do.
+ *
+ * ## Why the grit column is the LOWEST on the roster
+ *
+ * Seven rounds of about five is thirty-four opponents in one unbroken run
+ * against six bars — a third more than any Elite Four. Grit is per Pokemon, so
+ * a 관동-shaped column here clears at 0% for every party tried. Measured down
+ * to 1.41-1.57, which lands the cup at 30% to 71%, in the same band as the
+ * five-round ladders. Length is the difficulty here; the individual rounds
+ * are not meant to be.
+ */
+const GALAR_LEAGUE: LeagueRow[] = [
+  { id: 'marnie',     region: '가라르', ko: '마리',     sprite: 'marnie', gender: 'f', grit: 1.41, team: [510, 454, 560, 877, 861] },
+  { id: 'hop',        region: '가라르', ko: '호브',     sprite: 'hop',    gender: 'm', grit: 1.43, team: [832, 823, 871, 143, 818] },
+  { id: 'bede',       region: '가라르', ko: '비트',     sprite: 'bede',   gender: 'm', grit: 1.46, team: [303, 282, 78, 858] },
+  { id: 'nessa-cup',  region: '가라르', ko: '야청',     sprite: 'nessa',  gender: 'f', grit: 1.49, team: [768, 279, 847, 119, 834] },
+  { id: 'bea-cup',    region: '가라르', ko: '채두',     sprite: 'bea',    gender: 'f', grit: 1.51, team: [701, 853, 865, 870, 68] },
+  { id: 'raihan-cup', region: '가라르', ko: '금랑',     sprite: 'raihan', gender: 'm', grit: 1.54, team: [324, 706, 776, 330, 884] },
+  { id: 'leon',       region: '가라르', ko: '챔피언 단델', sprite: 'leon',   gender: 'm', grit: 1.57, team: [681, 887, 612, 537, 812, 6] },
+];
+
 export const REGIONS: RegionRow[] = [
   {
     id: 'kanto',
@@ -807,6 +876,16 @@ export const REGIONS: RegionRow[] = [
     leagueIn: '팔데아',
     leagueKind: '사천왕',
     gymNoun: '체육관',
+  },
+  {
+    id: 'galar',
+    ko: '가라르',
+    gyms: GALAR_GYMS,
+    league: GALAR_LEAGUE,
+    leagueCity: '슛시티',
+    leagueIn: '가라르',
+    leagueKind: '챔피언컵',
+    gymNoun: '스타디움',
   },
   {
     id: 'unova',

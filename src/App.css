@@ -1490,45 +1490,102 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
  * 4-up grid has nowhere to put one. It borrows `.items` for the frame and then
  * only adds what a read-only row needs — no cursor gutter, no hover fill.
  */
-/* Two links in the dex header bar, since the legend board joined the filters. */
+/* Two links in a header bar — the dex's 필터 beside its own, and the award
+   board's 분야 beside 달성 숨기기. */
 .dexlinks { display: flex; gap: var(--s3); }
 
-/* The gauge above sits directly on the chips without this. */
-.chips.awardcats { margin-top: var(--s4); }
-
 /*
- * The region picker, between the badge case's heading and the case.
+ * Nine regions, one line each — and the only place the tab shows the campaign
+ * across regions.
  *
- * `.chips` already carries the height (`var(--ctl)`) and every other control
- * rule, so this is one margin and nothing else. The selector contains both
- * `badge` and, through `.chips`, `button` — which puts it inside
- * test/panel-css.test.ts's control-height sweep. There is nothing to declare
- * there, and there must not be.
+ * It was nine chips. At 420px they wrapped to two rows, which Material calls
+ * "harder to scan", and the most a chip could carry was three characters of
+ * state. A chip is a filter's shape; this is nine comparable things, and nine
+ * comparable things are a list.
  *
- * Ten two-character region names wrap to two rows at 420px, and the state mark
- * below is sized so that stays true: three characters at most, in the same 10px
- * face the chip already uses, with one gap between.
+ * Wearing `.bars` whole — the 기록 tab's label / gauge / figure line, and its
+ * drawn panel frame with it. The frame is the point of `.bars` rather than an
+ * accident of it: the comment above says these readouts sat directly on the
+ * coloured field and read as unfinished, and nine regions are exactly that kind
+ * of readout.
+ *
+ * What is tightened is the ROW, and the tightening is load-bearing rather than
+ * taste. `.bars` at its own 12px is a 25px row; the 지방 view with every badge
+ * held and the ladder open already stands at about 600px against a 675px
+ * budget (760px window less the tab bar and the panel's own padding), and the
+ * chip row this replaces was 68px. At 10px Galmuri9 with `--s1` padding a row
+ * is 19px, so the nine plus the frame come to 193px and the fullest state lands
+ * within a few pixels of the budget instead of sixty past it.
+ *
+ * No `height` here, and there must not be: the selector carries `rowbtn`, which
+ * puts the whole block inside test/panel-css.test.ts's control-height sweep —
+ * and the sweep's pattern matches `max-height` too. The row is content-sized on
+ * purpose.
  */
-.chips.badgeregions { margin: var(--s3) 0; }
+.regionlist { margin: var(--s3) 0 var(--s4); }
 /*
- * The state a region chip carries — `3/8`, or `★` once the Hall of Fame is
- * signed.
+ * `display: block` is the load-bearing word. `.bars li` is itself a
+ * three-column grid, so a single-child `li` drops the whole button into its
+ * first 74px column and the row collapses to a stub.
+ */
+.regionlist li { display: block; margin-bottom: var(--s1); }
+/*
+ * The whole line is the target.
  *
- * Muted rather than accented, because the chip's accent is already spoken for:
- * `.chips button.on` FILLS the selected chip, and a second accent inside it
- * would fight the fill it sits on. `currentColor` at reduced opacity reads
- * correctly on both the plain chip and the filled one, which a fixed colour
- * cannot.
+ * `.items .rowbtn` already argues this — "the games let you pick a LINE, not a
+ * control at the end of one" — but that rule is scoped to `.items` and does not
+ * reach here, so the chrome reset is written out again. The button IS the grid
+ * rather than sitting in one, for the reason `.dex .card` gives: a target you
+ * press has to BE the box.
+ *
+ * `text-align: left` is not decoration. A `<button>` centres its text by UA
+ * default, and centring is the one thing this sheet allows exactly two
+ * selectors to do.
+ */
+.regionlist .rowbtn {
+  display: grid;
+  grid-template-columns: 52px 1fr 54px;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s1) var(--s2);
+  font: inherit;
+  font-size: 10px; font-family: 'Galmuri9';
+  color: var(--muted);
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+/*
+ * Pointed at, and picked — both a surface tint, never an accent fill.
+ *
+ * `.items li.row:hover` settled this for a full-width row and
+ * `.items button:not(.rowbtn)` exists to keep the pill fill off one. The chip
+ * could fill itself because a chip is small; a 374px band of accent is a
+ * different thing entirely.
+ */
+.regionlist .rowbtn:hover { background: var(--track); color: var(--fg); }
+.regionlist li.on .rowbtn { background: var(--track); color: var(--fg); font-weight: 700; }
+.regionlist .lbl { color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.regionlist .num { text-align: right; font-variant-numeric: tabular-nums; }
+/*
+ * The Hall of Fame mark, and the row's clearest win over the chip it replaced.
+ *
+ * On a chip this had to be muted at 65%, because `.chips button.on` fills the
+ * selected chip with the accent and a second accent inside it would fight the
+ * fill. A row's selection is a tint, so the accent is free and the star can
+ * finally be the brightest thing on the line.
+ *
+ * It also no longer REPLACES the count. On a chip `8/8 ★` did not fit across
+ * nine chips at 420px; on a line it does, and a gauge with no figure beside it
+ * reads as broken.
  *
  * `font-style: normal` because this is an `<i>` — chosen for being the shortest
  * inline element in a row that repeats nine times, not for emphasis.
  */
-.chips.badgeregions .mark {
-  font-style: normal;
-  margin-left: var(--s1);
-  opacity: .65;
-  font-variant-numeric: tabular-nums;
-}
+.regionlist .mark { font-style: normal; margin-left: var(--s1); color: var(--accent); }
+
 /* The per-category count on a shelf heading. Tabular so the headings line up. */
 .awardshelf span { font-variant-numeric: tabular-nums; font-weight: 400; }
 /*

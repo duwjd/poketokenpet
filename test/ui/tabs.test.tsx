@@ -1525,7 +1525,13 @@ describe('the achievement board', () => {
    */
   const open = async () => {
     const u = await openBoard();
-    await u.click(screen.getByRole('button', { name: '전체' }));
+    await u.click(screen.getByRole('button', { name: '업적' }));
+    return u;
+  };
+  /** The list with its category picker unfolded. */
+  const openCats = async () => {
+    const u = await open();
+    await u.click(screen.getByRole('button', { name: '분야' }));
     return u;
   };
 
@@ -1561,7 +1567,7 @@ describe('the achievement board', () => {
     expect(document.querySelectorAll('.badgecase li')).toHaveLength(8);
     expect(screen.queryByText('첫 졸업')).toBeNull();
 
-    await u.click(screen.getByRole('button', { name: '도감' }));
+    await u.click(screen.getByRole('button', { name: '업적' }));
     expect(document.querySelectorAll('.badgecase li')).toHaveLength(0);
     expect(screen.getByText('도감 50종')).toBeTruthy();
 
@@ -1577,16 +1583,49 @@ describe('the achievement board', () => {
     expect(screen.getByText(/개 배지/)).toBeTruthy();
     expect(screen.queryByText(/개 달성/)).toBeNull();
 
-    await u.click(screen.getByRole('button', { name: '전체' }));
+    await u.click(screen.getByRole('button', { name: '업적' }));
     expect(screen.getByText(/개 달성/)).toBeTruthy();
     expect(screen.queryByText(/개 배지/)).toBeNull();
   });
 
   it('offers nothing to fold while the campaign is up', async () => {
+    // Neither header link does anything to a badge case: it has no finished
+    // rows to hide and no categories to pick.
     const u = await openBoard();
-    expect(screen.queryByRole('button', { name: '달성 숨기기' })).toBeNull();
-    await u.click(screen.getByRole('button', { name: '전체' }));
+    expect(document.querySelectorAll('.dexlinks button')).toHaveLength(0);
+    await u.click(screen.getByRole('button', { name: '업적' }));
+    expect(document.querySelectorAll('.dexlinks button')).toHaveLength(2);
     expect(screen.getByRole('button', { name: '달성 숨기기' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '분야' })).toBeTruthy();
+  });
+
+  it('keeps the category picker folded until it is asked for', async () => {
+    // The row it replaced was twelve buttons across three wrapped lines. This
+    // is the test that would catch a regression back to an always-on row.
+    const u = await open();
+    expect(document.querySelectorAll('.awardcats button')).toHaveLength(0);
+    await u.click(screen.getByRole('button', { name: '분야' }));
+    // 전체 plus the fixture's two categories.
+    expect(document.querySelectorAll('.awardcats button')).toHaveLength(3);
+    await u.click(screen.getByRole('button', { name: '분야 닫기' }));
+    expect(document.querySelectorAll('.awardcats button')).toHaveLength(0);
+  });
+
+  it('names the chosen category on the folded toggle', async () => {
+    // Folding must not hide state. The dex writes `필터 (2)` because three axes
+    // can be live at once; exactly one category can, so this carries the name.
+    const u = await openCats();
+    await u.click(screen.getByRole('button', { name: '도감' }));
+    await u.click(screen.getByRole('button', { name: '분야 닫기' }));
+    expect(screen.getByRole('button', { name: '분야 (도감)' })).toBeTruthy();
+  });
+
+  it('switches between exactly two views, and no more', async () => {
+    // The number this whole change exists to move: twenty-one buttons in two
+    // wrapped chip rows, down to two.
+    await openBoard();
+    const switcher = [...document.querySelectorAll('.shopchips button')];
+    expect(switcher.map((b) => b.textContent)).toEqual(['지방', '업적']);
   });
 
   it('counts what is done against the whole board', async () => {
@@ -1605,7 +1644,7 @@ describe('the achievement board', () => {
   });
 
   it('drops the headings once a single category is chosen', async () => {
-    const u = await open();
+    const u = await openCats();
     await u.click(screen.getByRole('button', { name: '도감' }));
     // The board's own group headings. The badge case's heading is not among
     // them for a different reason now — the case is not on screen at all.
@@ -1915,7 +1954,7 @@ describe('the badge case across regions', () => {
     render(<App />);
     await waitFor(() => screen.getByRole('tablist'));
     await userEvent.click(screen.getByRole('tab', { name: /업적/ }));
-    expect(document.querySelectorAll('.badgeregions button')).toHaveLength(0);
+    expect(document.querySelectorAll('.regionlist li')).toHaveLength(0);
   });
 
   it('opens on the region the journey is in, not the first row', async () => {
@@ -1944,20 +1983,39 @@ describe('the badge case across regions', () => {
     expect(screen.queryByText('도라지시티')).toBeNull();
   });
 
-  it('carries each region\'s state on its own chip', async () => {
+  it('gives every region a line with a gauge and a figure', async () => {
     payload = twoRegions;
     render(<App />);
     await waitFor(() => screen.getByRole('tablist'));
     await userEvent.click(screen.getByRole('tab', { name: /업적/ }));
-    const chips = [...document.querySelectorAll('.badgeregions button')];
-    // 관동 holds one of eight; 성도 has not been entered, so it says nothing.
-    // This row is the only place the tab shows the campaign across regions.
-    expect(chips.map((b) => b.textContent)).toEqual(['관동1/8', '성도']);
+    const rows = [...document.querySelectorAll('.regionlist li')];
+    expect(rows.map((li) => li.querySelector('.lbl')!.textContent)).toEqual(['관동', '성도']);
+    // Always a count, never a blank: a gauge with no figure beside it reads as
+    // broken. This is the only place the tab shows the campaign across regions.
+    expect(rows.map((li) => li.querySelector('.num')!.textContent)).toEqual(['1/8', '0/8']);
+    // And the gauge is the count, drawn.
+    const fills = rows.map((li) => (li.querySelector('.track i') as HTMLElement).style.width);
+    expect(fills).toEqual(['12.5%', '0%']);
   });
 
-  it('marks a region whose Hall of Fame is signed, and drops its count', async () => {
-    // 8/8 and a star would say the same thing twice: a signed region
-    // necessarily holds every badge.
+  it('marks the line the case belongs to, and only that one', async () => {
+    payload = twoRegions;
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    await userEvent.click(screen.getByRole('tab', { name: /업적/ }));
+    // `now` is 성도, so 성도's line is the lit one.
+    expect([...document.querySelectorAll('.regionlist li.on')].map((li) =>
+      li.querySelector('.lbl')!.textContent,
+    )).toEqual(['성도']);
+    await userEvent.click(screen.getByRole('button', { name: '관동 배지 1 / 8' }));
+    expect([...document.querySelectorAll('.regionlist li.on')].map((li) =>
+      li.querySelector('.lbl')!.textContent,
+    )).toEqual(['관동']);
+  });
+
+  it('marks a region whose Hall of Fame is signed, beside its count', async () => {
+    // On a chip the star had to REPLACE the count — `8/8 ★` did not fit across
+    // nine chips at 420px. A line has room for both, and both are true.
     payload = {
       ...twoRegions,
       badges: {
@@ -1970,20 +2028,26 @@ describe('the badge case across regions', () => {
     render(<App />);
     await waitFor(() => screen.getByRole('tablist'));
     await userEvent.click(screen.getByRole('tab', { name: /업적/ }));
-    const chips = [...document.querySelectorAll('.badgeregions button')];
-    expect(chips.map((b) => b.textContent)).toEqual(['관동★', '성도']);
+    const rows = [...document.querySelectorAll('.regionlist li')];
+    expect(rows.map((li) => li.querySelector('.num')!.textContent)).toEqual(['8/8★', '0/8']);
     expect(screen.getByRole('button', { name: '관동 제패' })).toBeTruthy();
     // And the summary line counts it.
     expect(screen.getByText(/명예의 전당/)).toBeTruthy();
   });
 
-  it('keeps 전체 unambiguous for the category chips', async () => {
+  it('never puts two controls named 전체 on screen at once', async () => {
+    // It used to be possible: the region row sat under a twelve-chip row that
+    // owned the name. The two can no longer co-exist — the campaign has no
+    // category picker at all, and the picker is folded away on the other view —
+    // so the invariant is now structural rather than a naming convention.
     payload = twoRegions;
     render(<App />);
     await waitFor(() => screen.getByRole('tablist'));
     await userEvent.click(screen.getByRole('tab', { name: /업적/ }));
-    // A 전체 chip in the region row would make this throw, and would break
-    // every category test below it.
+    expect(screen.queryAllByRole('button', { name: '전체' })).toEqual([]);
+
+    await userEvent.click(screen.getByRole('button', { name: '업적' }));
+    await userEvent.click(screen.getByRole('button', { name: '분야' }));
     expect(screen.getAllByRole('button', { name: '전체' })).toHaveLength(1);
   });
 

@@ -868,6 +868,16 @@ export default function App() {
    */
   const [hideDone, setHideDone] = useState(false);
   /**
+   * Fold the ten category chips away, exactly as the dex folds its eighteen.
+   *
+   * Same shape as `showFilters` above and for the same reason its comment
+   * gives: an always-on row that is most of a screenful before the first thing
+   * you came for. The board's row was worse than the dex's, because it also
+   * carried the 지방 / 업적 switch — a mode and a filter in one coat, twelve
+   * buttons across three wrapped lines at 420px.
+   */
+  const [showAwardCats, setShowAwardCats] = useState(false);
+  /**
    * How many achievements were unlocked when the board was last looked at.
    *
    * A count in state rather than a ref, because the tab dot is rendered from
@@ -946,6 +956,7 @@ export default function App() {
     setPendingTm(null);
     setAwardCat(REGION_VIEW);
     setHideDone(false);
+    setShowAwardCats(false);
     setDexView('dex');
     setPartySeat(null);
     closeDex();
@@ -1439,9 +1450,6 @@ export default function App() {
   const badgesHeld = state.badges.regions.reduce((n, r) => n + r.count, 0);
   const badgesAll = state.badges.regions.reduce((n, r) => n + r.total, 0);
   const regionsCleared = state.badges.regions.filter((r) => r.clearedAt !== null).length;
-  const badgePct = badgesAll
-    ? Math.max(badgesHeld ? 1 : 0, (badgesHeld / badgesAll) * 100)
-    : 0;
 
   const awardsDone = state.awards.filter((a) => a.at !== null).length;
   const awardPct = state.awards.length
@@ -1457,16 +1465,6 @@ export default function App() {
       (awardCat === null || a.cat === awardCat) &&
       !(hideDone && a.at !== null && a.repeat === null),
   );
-  /**
-   * What one region chip says about itself.
-   *
-   * Three states, and the third replaces the second rather than joining it: a
-   * region whose Hall of Fame is signed necessarily holds all its badges, so
-   * `8/8 ★` would be saying the same thing twice in a row that has to fit nine
-   * chips across 420px.
-   */
-  const regionMark = (r: State['badges']['regions'][number]) =>
-    r.clearedAt !== null ? '★' : r.count > 0 ? `${r.count}/${r.total}` : '';
   /** Unlocked since the board was last opened. Written by tick and goTab. */
   const unseenAwards = Math.max(0, awardsDone - awardsSeen);
   /**
@@ -3230,13 +3228,33 @@ export default function App() {
       <>
       <div className="dexbar">
         <h2>업적</h2>
-        {/* Same place and same control the dex puts its filter toggle in.
-            Off on the campaign, which has nothing to fold: a toggle that does
-            nothing to what is on screen is worse than an absent one. */}
+        {/* Two links, in the place and the control the dex puts its filter
+            toggle in — and in `.dexlinks`, which was written for exactly "two
+            links in one header bar" and then went unused when the dex's legend
+            board moved to the chips row.
+
+            Both are off on the campaign. Neither does anything there: it has
+            no finished rows to fold and no categories to pick, and a control
+            that changes nothing on screen is worse than an absent one. */}
         {!regionView && (
-          <button className="linky" onClick={() => setHideDone(!hideDone)}>
-            {hideDone ? '전부 보기' : '달성 숨기기'}
-          </button>
+          <div className="dexlinks">
+            {/* The category picker, folded. The suffix carries the CHOSEN
+                category rather than a count: the dex writes `필터 (2)` because
+                three axes can be active at once, and here exactly one can, so
+                a "1" would say nothing. Dropped while the panel is open,
+                because the lit chip two lines below already says it. */}
+            {awardCats.length > 1 && (
+              <button className="linky" onClick={() => setShowAwardCats(!showAwardCats)}>
+                {showAwardCats ? '분야 닫기' : '분야'}
+                {!showAwardCats &&
+                  awardCat !== null &&
+                  ` (${awardCats.find((c) => c.cat === awardCat)?.catKo})`}
+              </button>
+            )}
+            <button className="linky" onClick={() => setHideDone(!hideDone)}>
+              {hideDone ? '전부 보기' : '달성 숨기기'}
+            </button>
+          </div>
         )}
       </div>
       {/* The summary follows the VIEW, not the tab.
@@ -3263,45 +3281,67 @@ export default function App() {
       </p>
       {/* Same gauge as the dex counter, floored the same way: one out of fifty
           rounds to 2%, but a board with nothing on it should read as empty
-          rather than as a sliver. */}
-      <div
-        className="bar"
-        role="progressbar"
-        aria-valuenow={regionView ? badgePct : awardPct}
-      >
-        <i className="fill" style={{ width: `${regionView ? badgePct : awardPct}%` }} />
-      </div>
+          rather than as a sliver.
 
-      {/* The view picker, and the tab's whole shape.
+          Off on the campaign, where the region list below carries nine gauges
+          of its own and this would be a tenth saying the sum of them. The
+          count stays, because the sum is the one thing the list does not
+          show. */}
+      {!regionView && (
+        <div className="bar" role="progressbar" aria-valuenow={awardPct}>
+          <i className="fill" style={{ width: `${awardPct}%` }} />
+        </div>
+      )}
+
+      {/* The view switch — two buttons, and the tab's whole shape.
  
-          It sits ABOVE both halves rather than between them, because it now
-          chooses between them. The campaign board is about a screenful and the
-          achievement list is seven; stacked, every reader who wanted one
-          scrolled past the other. Exactly one chip is lit and that chip is what
-          is below.
+          It was twelve: 지방, 전체 and ten categories, wrapping to three lines
+          at 420px, with nine region chips under it. That is a MODE and a FILTER
+          sharing one row, which is why it read as clutter rather than as a
+          control. Apple's guidance puts a segmented control at five to seven;
+          Material's puts chips at one row and calls two "harder to scan".
  
-          지방 is first and is the default. `awardCats` supplies the rest, so a
-          new category still needs no edit here. */}
-      <div className="chips awardcats" role="group" aria-label="업적 보기">
-        <button
-          className={regionView ? 'on' : ''}
-          onClick={() => setAwardCat(REGION_VIEW)}
-        >
+          So the mode is here, in the same `.chips shopchips` row the dex, the
+          bag and the shop already use for "which board am I looking at", and
+          the categories moved behind a fold. Two buttons, one line, never
+          wraps, and it does not grow when a category or a region lands.
+ 
+          지방 is first and is the default. `업적` must call `showAwards`, not
+          `setAwardCat`: that is the path that puts the tab's dot out, and
+          pressing it IS reading the list. */}
+      <div className="chips shopchips" role="group" aria-label="업적 화면">
+        <button className={regionView ? 'on' : ''} onClick={() => setAwardCat(REGION_VIEW)}>
           지방
         </button>
-        <button className={awardCat === null ? 'on' : ''} onClick={() => showAwards(null)}>
-          전체
+        <button className={!regionView ? 'on' : ''} onClick={() => showAwards(null)}>
+          업적
         </button>
-        {awardCats.map((c) => (
-          <button
-            key={c.cat}
-            className={awardCat === c.cat ? 'on' : ''}
-            onClick={() => showAwards(c.cat)}
-          >
-            {c.catKo}
-          </button>
-        ))}
       </div>
+
+      {/* The categories, folded — the dex's filter panel, verbatim.
+ 
+          No `<section><h3>분야</h3>` inside it, which is where this departs
+          from the dex: that panel holds three groups and names each one, and a
+          lone heading repeating the toggle's own word is a stutter. The group's
+          `aria-label` carries the name instead. */}
+      {!regionView && showAwardCats && (
+        <div className="filters">
+          <div className="chips awardcats" role="group" aria-label="업적 분야">
+            <button className={awardCat === null ? 'on' : ''} onClick={() => showAwards(null)}>
+              전체
+            </button>
+            {awardCats.map((c) => (
+              <button
+                key={c.cat}
+                className={awardCat === c.cat ? 'on' : ''}
+                onClick={() => showAwards(c.cat)}
+              >
+                {c.catKo}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* The campaign, shown when 지방 is the lit chip.
 
@@ -3321,42 +3361,43 @@ export default function App() {
             same card, the same dashed edge for a slot not yet filled — because
             that is already what a badge case looks like in the games, and a
             second grid idiom in one panel would be one too many. */}
-        {/* The region picker.
- 
-            `.chips`, not a new idiom: this is the same "pick one view of one
-            list" the dex filters, the bag pockets and the award categories below
-            already use, and a second selector idiom in one panel would be one too
-            many — the argument the badge case itself makes for borrowing the dex
-            grid.
- 
+        {/* The region board — nine lines, not nine chips.
+
+            It WAS nine chips, and at 420px they wrapped to two rows where the
+            only thing each could carry was three characters of state. Two
+            wrapped rows of chips is the shape Material calls "harder to scan",
+            and a chip is a filter's shape anyway: this is a list of nine
+            comparable things, and a list is what it should look like.
+
+            So it borrows `.bars` — the label, gauge and figure line the 기록
+            tab's token bars use — and the whole line is the target, which is
+            the argument `.items .rowbtn` already makes: the games let you pick
+            a LINE, not a control at the end of one.
+
+            What the shape buys: nine gauges in a column can be compared at a
+            glance, where nine chips in two ragged rows cannot, and the star no
+            longer has to REPLACE the count. On a chip `8/8 ★` did not fit and
+            the star stood in for the eight; on a line both fit and both are
+            true. This is still the only place the tab shows the campaign
+            across regions — `clearedAt` has been in the payload since the
+            ladder went region-keyed.
+
             Rendered ONLY when there is more than one region, so a save with one
             gym table sees exactly the tab it saw before. Same rule `awardCats`
             follows: adding a region needs no edit here.
- 
-            No 전체 chip. A badge case is a checklist for one region, and sixty-
-            eight slots is the thing this design exists to prevent — and the view
-            chips above already own the accessible name 전체, which `getByRole`
-            would find ambiguous.
 
-            Each chip carries its own state, and this row is the only place the
-            tab shows the campaign ACROSS regions: `3/8` for one in progress,
-            `★` for one whose Hall of Fame is signed, nothing at all for one the
-            journey has not reached. The star REPLACES the count rather than
-            joining it — a signed region necessarily holds every badge, so
-            `8/8 ★` would say the same thing twice in a row that has to fit nine
-            chips across 420px. `clearedAt` has been in the payload since the
-            ladder went region-keyed, and nothing read it until now. */}
+            `aria-label` says 지방 선택 rather than 지방, because the view chip
+            above is already called 지방 and hearing "지방, 버튼" then "지방,
+            그룹" is a coin toss. */}
         {state.badges.regions.length > 1 && (
-          <div className="chips badgeregions" role="group" aria-label="지방">
-            {state.badges.regions.map((r) => {
-              const mark = regionMark(r);
-              return (
+          <ul className="bars regionlist" aria-label="지방 선택">
+            {state.badges.regions.map((r) => (
+              <li key={r.key} className={r.key === badgeReg?.key ? 'on' : ''}>
                 <button
-                  key={r.key}
-                  className={r.key === badgeReg?.key ? 'on' : ''}
-                  /* The visible text is two words at most; the spoken one says
-                     what the star means, because a lone ★ read aloud is "black
-                     star" and nothing else. */
+                  className="rowbtn"
+                  aria-current={r.key === badgeReg?.key ? true : undefined}
+                  /* The spoken form says what the star means, because a lone ★
+                     read aloud is "black star" and nothing else. */
                   aria-label={
                     r.clearedAt !== null
                       ? `${r.ko} 제패`
@@ -3364,12 +3405,18 @@ export default function App() {
                   }
                   onClick={() => setBadgeRegion(r.key)}
                 >
-                  {r.ko}
-                  {mark && <i className="mark">{mark}</i>}
+                  <span className="lbl">{r.ko}</span>
+                  <span className="track">
+                    <i style={{ width: `${(r.count / r.total) * 100}%` }} />
+                  </span>
+                  <span className="num">
+                    {r.count}/{r.total}
+                    {r.clearedAt !== null && <i className="mark">★</i>}
+                  </span>
                 </button>
-              );
-            })}
-          </div>
+              </li>
+            ))}
+          </ul>
         )}
         {/* `badgeshelf`, not `awardshelf`: the board's group headings come and
             go with the category chips and this one never does, so sharing a

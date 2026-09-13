@@ -816,6 +816,74 @@ const GALAR_LEAGUE: LeagueRow[] = [
   { id: 'leon',       region: '가라르', ko: '챔피언 단델', sprite: 'leon',   gender: 'm', grit: 1.57, team: [681, 887, 612, 537, 812, 6] },
 ];
 
+/**
+ * 알로라's four island kahunas, from Sun/Moon.
+ *
+ * ## There are no gyms, and no badges
+ *
+ * 알로라 replaced the gym circuit with the island challenge, so the four rows
+ * here are 섬킹 and 섬퀸 running 대시련 and what they hand over is a Z-Crystal.
+ * That has three consequences this table has to be honest about.
+ *
+ * `title` is per row rather than a constant, because 섬킹 and 섬퀸 are not
+ * interchangeable — this is the field's whole reason for existing.
+ *
+ * `badge` runs 78 to 81, which is OUTSIDE the 1..77 upstream art. The column's
+ * meaning widens here to "the save key, of which 1..77 happen also to be a
+ * filename"; `ensureBadgeSprite` returns null above 77 and the case draws the
+ * same empty slot an unearned badge draws. Nothing is faked.
+ *
+ * `prize` is the one field here that is CHOSEN rather than transcribed. A
+ * grand trial gives a Z-Crystal and this app has no representation for one, so
+ * each row awards the machine that matches the crystal's type — 파이팅Z becomes
+ * 깨뜨리다, 록Z becomes 스톤샤워, and so on. Written down because every other
+ * `prize` on the roster is the TM the games actually hand over.
+ *
+ * The four stand where the games run the trial, which is not always a town —
+ * 하푸우's is at 포니대협곡 — with one deliberate exception. 라이치's grand trial
+ * is at 생명의 유적, and that stop is a shrine: it stays shut until its
+ * legendary has been met. A gym behind a legendary encounter is a leader who
+ * cannot be reached, so she stands at 코니코니시티 instead, which is her town,
+ * one stop earlier on the same island, and open. `test/shrines.test.ts` is
+ * what caught it; do not move her back.
+ */
+const ALOLA_GYMS: GymRow[] = [
+  { id: 'hala',   region: '알로라', badge: 78, order: 1, ko: '할라',   title: '섬킹', badgeKo: '파이팅Z',   city: '릴리마을',     sprite: 'hala',   gender: 'm', grit: 2.28, prize: 280, team: [56, 296, 739] },
+  { id: 'olivia', region: '알로라', badge: 79, order: 2, ko: '라이치', title: '섬퀸', badgeKo: '록Z',       city: '코니코니시티', sprite: 'olivia', gender: 'f', grit: 2.49, prize: 157, team: [299, 525, 745] },
+  { id: 'nanu',   region: '알로라', badge: 80, order: 3, ko: '나누',   title: '섬킹', badgeKo: '다크Z',     city: '말리에시티',   sprite: 'nanu',   gender: 'm', grit: 2.06, prize: 399, team: [302, 552, 53] },
+  { id: 'hapu',   region: '알로라', badge: 81, order: 4, ko: '하푸우', title: '섬퀸', badgeKo: '그라운드Z', city: '포니대협곡',   sprite: 'hapu',   gender: 'f', grit: 2.10, prize:  89, team: [51, 423, 330, 750] },
+];
+
+/**
+ * 알로라's Elite Four and 쿠쿠이박사, from Sun/Moon.
+ *
+ * ## Why the professor is the champion
+ *
+ * In Sun/Moon there is no sitting champion — the league is brand new and the
+ * player takes the title. The last battle of the run is against 쿠쿠이박사, who
+ * walks in to test the first champion 알로라 ever has, so he is the row. The
+ * alternatives are to invent somebody or to borrow Ultra Sun's, and this is
+ * neither.
+ *
+ * 할라 and 라이치 are here twice — kahuna and Elite Four — so their ladder rows
+ * take the `-e4` suffix and keep their kahuna sprite. Their two teams are
+ * genuinely different: 할라 sends three unevolved fighters at 릴리마을 and five
+ * fully grown ones at the plateau.
+ *
+ * 쿠쿠이박사's sixth follows the player's starter, and this app has no starter.
+ * Fixed on 냐오힘, so he closes with 어흥염 — the same fixing 가라르's 호브 and
+ * 단델 take, and said out loud for the same reason.
+ *
+ * Measured at 38% to 67% across four parties, the tightest band on the roster.
+ */
+const ALOLA_LEAGUE: LeagueRow[] = [
+  { id: 'hala-e4',   region: '알로라', ko: '사천왕 할라',     sprite: 'hala',    gender: 'm', grit: 1.76, team: [297, 57, 760, 62, 740] },
+  { id: 'olivia-e4', region: '알로라', ko: '사천왕 라이치',   sprite: 'olivia',  gender: 'f', grit: 1.82, team: [369, 703, 76, 476, 745] },
+  { id: 'acerola',   region: '알로라', ko: '사천왕 아세로라', sprite: 'acerola', gender: 'f', grit: 1.87, team: [302, 426, 781, 478, 770] },
+  { id: 'kahili',    region: '알로라', ko: '사천왕 카일리',   sprite: 'kahili',  gender: 'f', grit: 1.93, team: [227, 169, 741, 630, 733] },
+  { id: 'kukui',     region: '알로라', ko: '챔피언 쿠쿠이박사', sprite: 'kukui', gender: 'm', grit: 1.98, team: [745, 38, 628, 462, 143, 727] },
+];
+
 export const REGIONS: RegionRow[] = [
   {
     id: 'kanto',
@@ -838,12 +906,32 @@ export const REGIONS: RegionRow[] = [
     gymNoun: '체육관',
   },
   {
+    id: 'hoenn',
+    ko: '호연',
+    gyms: HOENN_GYMS,
+    league: HOENN_LEAGUE,
+    leagueCity: '포켓몬리그',
+    leagueIn: '호연',
+    leagueKind: '사천왕',
+    gymNoun: '체육관',
+  },
+  {
     id: 'sinnoh',
     ko: '신오',
     gyms: SINNOH_GYMS,
     league: SINNOH_LEAGUE,
     leagueCity: '포켓몬 리그',
     leagueIn: '신오',
+    leagueKind: '사천왕',
+    gymNoun: '체육관',
+  },
+  {
+    id: 'unova',
+    ko: '하나',
+    gyms: UNOVA_GYMS,
+    league: UNOVA_LEAGUE,
+    leagueCity: '포켓몬 리그',
+    leagueIn: '하나',
     leagueKind: '사천왕',
     gymNoun: '체육관',
   },
@@ -858,24 +946,14 @@ export const REGIONS: RegionRow[] = [
     gymNoun: '체육관',
   },
   {
-    id: 'hoenn',
-    ko: '호연',
-    gyms: HOENN_GYMS,
-    league: HOENN_LEAGUE,
+    id: 'alola',
+    ko: '알로라',
+    gyms: ALOLA_GYMS,
+    league: ALOLA_LEAGUE,
     leagueCity: '포켓몬리그',
-    leagueIn: '호연',
+    leagueIn: '알로라',
     leagueKind: '사천왕',
-    gymNoun: '체육관',
-  },
-  {
-    id: 'paldea',
-    ko: '팔데아',
-    gyms: PALDEA_GYMS,
-    league: PALDEA_LEAGUE,
-    leagueCity: '포켓몬 리그',
-    leagueIn: '팔데아',
-    leagueKind: '사천왕',
-    gymNoun: '체육관',
+    gymNoun: '대시련',
   },
   {
     id: 'galar',
@@ -888,12 +966,12 @@ export const REGIONS: RegionRow[] = [
     gymNoun: '스타디움',
   },
   {
-    id: 'unova',
-    ko: '하나',
-    gyms: UNOVA_GYMS,
-    league: UNOVA_LEAGUE,
+    id: 'paldea',
+    ko: '팔데아',
+    gyms: PALDEA_GYMS,
+    league: PALDEA_LEAGUE,
     leagueCity: '포켓몬 리그',
-    leagueIn: '하나',
+    leagueIn: '팔데아',
     leagueKind: '사천왕',
     gymNoun: '체육관',
   },

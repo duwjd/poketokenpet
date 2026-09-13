@@ -385,20 +385,61 @@ export async function buildPayloads(): Promise<ShotPayloads> {
         { speciesId: 65, name: '후딘', shiny: false, sprite: '65-a.gif', canTake: [], free: [], moves: [] },
       ],
     },
-    /** Four badges in, mid-Kanto — the case with something in it and something left. */
+    /**
+     * 관동 signed, 성도 half done — the awards tab's campaign view with every
+     * chip state on screen at once.
+     *
+     * `★` on 관동, `4/8` on 성도, nothing on the seven the journey has not
+     * reached. The case shows 성도's, because a case with something in it and
+     * something left is the picture worth taking.
+     */
     badges: {
       count: 4,
       total: 8,
-      wins: 6,
-      league: {
+      now: 'johto',
+      regions: [
+        { key: 'kanto', ko: '관동', count: 8, total: 8, clearedAt: 1_700_000_000_000, until: 0, leagueCity: '석영고원' },
+        { key: 'johto', ko: '성도', count: 4, total: 8, clearedAt: null, until: 6_793, leagueCity: '석영고원' },
+        { key: 'hoenn', ko: '호연', count: 0, total: 8, clearedAt: null, until: 8_653, leagueCity: '포켓몬리그' },
+        { key: 'sinnoh', ko: '신오', count: 0, total: 8, clearedAt: null, until: 9_133, leagueCity: '포켓몬 리그' },
+        { key: 'unova', ko: '하나', count: 0, total: 8, clearedAt: null, until: 10_648, leagueCity: '포켓몬 리그' },
+        { key: 'kalos', ko: '칼로스', count: 0, total: 8, clearedAt: null, until: 1_318, leagueCity: '포켓몬리그' },
+        { key: 'alola', ko: '알로라', count: 0, total: 4, clearedAt: null, until: 2_338, leagueCity: '포켓몬리그' },
+        { key: 'galar', ko: '가라르', count: 0, total: 8, clearedAt: null, until: 3_823, leagueCity: '슛시티' },
+        { key: 'paldea', ko: '팔데아', count: 0, total: 8, clearedAt: null, until: 5_338, leagueCity: '포켓몬 리그' },
+      ],
+      league:
+        {
+        region: 'johto',
         cityKo: '석영고원',
+        kindKo: '사천왕',
         open: false,
         at: null,
         size: 5,
         best: 0,
         wins: 0,
         clearedAt: null,
-        until: 387,
+        until: 6_793,
+        members: [
+          { id: 'will', ko: '사천왕 일목', down: false, sprite: 'npc-will.png' },
+          { id: 'koga-e4', ko: '사천왕 독수', down: false, sprite: 'npc-koga.png' },
+          { id: 'bruno-e4', ko: '사천왕 시바', down: false, sprite: 'npc-bruno.png' },
+          { id: 'karen', ko: '사천왕 카렌', down: false, sprite: 'npc-karen.png' },
+          { id: 'lance-c', ko: '챔피언 목호', down: false, sprite: 'npc-lance.png' },
+        ],
+        },
+      leagues: [
+      {
+        region: 'kanto',
+        cityKo: '석영고원',
+        kindKo: '사천왕',
+        open: true,
+        at: null,
+        size: 5,
+        best: 5,
+        wins: 1,
+        clearedAt: 1_700_000_000_000,
+        until: 0,
         members: [
           { id: 'lorelei', ko: '사천왕 칸나', down: false, sprite: 'npc-lorelei-gen1.png' },
           { id: 'bruno', ko: '사천왕 시바', down: false, sprite: 'npc-bruno.png' },
@@ -407,15 +448,35 @@ export async function buildPayloads(): Promise<ShotPayloads> {
           { id: 'blue', ko: '챔피언 그린', down: false, sprite: 'npc-blue.png' },
         ],
       },
+      {
+        region: 'johto',
+        cityKo: '석영고원',
+        kindKo: '사천왕',
+        open: false,
+        at: null,
+        size: 5,
+        best: 0,
+        wins: 0,
+        clearedAt: null,
+        until: 6_793,
+        members: [
+          { id: 'will', ko: '사천왕 일목', down: false, sprite: 'npc-will.png' },
+          { id: 'koga-e4', ko: '사천왕 독수', down: false, sprite: 'npc-koga.png' },
+          { id: 'bruno-e4', ko: '사천왕 시바', down: false, sprite: 'npc-bruno.png' },
+          { id: 'karen', ko: '사천왕 카렌', down: false, sprite: 'npc-karen.png' },
+          { id: 'lance-c', ko: '챔피언 목호', down: false, sprite: 'npc-lance.png' },
+        ],
+      },
+      ],
       cases: [
-        { no: 1, ko: '회색배지', leaderKo: '웅', cityKo: '회색시티', have: true, locked: false, until: 0, prizeKo: '암석봉인', sprite: 'badge-1.png' },
-        { no: 2, ko: '블루배지', leaderKo: '이슬', cityKo: '블루시티', have: true, locked: false, until: 0, prizeKo: '물의파동', sprite: 'badge-2.png' },
-        { no: 3, ko: '오렌지배지', leaderKo: '마티스', cityKo: '갈색시티', have: true, locked: false, until: 0, prizeKo: '전격파', sprite: 'badge-3.png' },
-        { no: 4, ko: '무지개배지', leaderKo: '민화', cityKo: '무지개시티', have: true, locked: false, until: 0, prizeKo: '기가드레인', sprite: 'badge-4.png' },
-        { no: 5, ko: '핑크배지', leaderKo: '독수', cityKo: '연분홍시티', have: false, locked: false, until: 62, prizeKo: '맹독', sprite: 'badge-5.png' },
-        { no: 6, ko: '골드배지', leaderKo: '초련', cityKo: '노랑시티', have: false, locked: false, until: 37, prizeKo: '명상', sprite: 'badge-6.png' },
-        { no: 7, ko: '진홍색배지', leaderKo: '강연', cityKo: '홍련섬', have: false, locked: false, until: 112, prizeKo: '불대문자', sprite: 'badge-7.png' },
-        { no: 8, ko: '그린배지', leaderKo: '비주기', cityKo: '상록시티', have: false, locked: true, until: 5737, prizeKo: '지진', sprite: 'badge-8.png' },
+        { region: 'johto', no:  9, ko: '윙배지',     leaderKo: '비상', cityKo: '도라지시티', have: true,  locked: false, until: 0,     prizeKo: '진흙뿌리기',   sprite: 'badge-9.png' },
+        { region: 'johto', no: 10, ko: '인섹트배지', leaderKo: '호일', cityKo: '고동마을',   have: true,  locked: false, until: 0,     prizeKo: '연속자르기',   sprite: 'badge-10.png' },
+        { region: 'johto', no: 11, ko: '레귤러배지', leaderKo: '꼭두', cityKo: '금빛시티',   have: true,  locked: false, until: 0,     prizeKo: '헤롱헤롱',     sprite: 'badge-11.png' },
+        { region: 'johto', no: 12, ko: '팬텀배지',   leaderKo: '유빈', cityKo: '인주시티',   have: true,  locked: false, until: 0,     prizeKo: '섀도볼',       sprite: 'badge-12.png' },
+        { region: 'johto', no: 14, ko: '스틸배지',   leaderKo: '규리', cityKo: '담청시티',   have: false, locked: false, until: 37,    prizeKo: '아이언테일',   sprite: 'badge-14.png' },
+        { region: 'johto', no: 13, ko: '쇼크배지',   leaderKo: '사도', cityKo: '진청시티',   have: false, locked: false, until: 52,    prizeKo: '폭발펀치',     sprite: 'badge-13.png' },
+        { region: 'johto', no: 15, ko: '아이스배지', leaderKo: '류옹', cityKo: '황토마을',   have: false, locked: false, until: 67,    prizeKo: '얼어붙은바람', sprite: 'badge-15.png' },
+        { region: 'johto', no: 16, ko: '라이징배지', leaderKo: '이향', cityKo: '검은먹시티', have: false, locked: false, until: 112,   prizeKo: '용의숨결',     sprite: 'badge-16.png' },
       ],
     },
     awards: awards.map(([id, cat, catKo, ko, desc, have, need, ratio, at, repeat, times]) => ({

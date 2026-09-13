@@ -1507,16 +1507,30 @@ describe('the league party', () => {
 });
 
 describe('the achievement board', () => {
-  const open = async () => {
+  /** The tab, on the campaign — which is where it opens. */
+  const openBoard = async () => {
     const u = userEvent.setup();
     render(<App />);
     await ready();
     await u.click(screen.getByRole('tab', { name: '업적' }));
     return u;
   };
+  /**
+   * The tab, on the achievement list.
+   *
+   * The campaign and the list are two views of one tab and only one is on
+   * screen, so a test about the list has to say so. Nearly every test below
+   * used to get the list for free by opening the tab, which is exactly the
+   * stack this split removed.
+   */
+  const open = async () => {
+    const u = await openBoard();
+    await u.click(screen.getByRole('button', { name: '전체' }));
+    return u;
+  };
 
   it('draws all eight badge slots, earned or not', async () => {
-    await open();
+    await openBoard();
     // A checklist, not a shelf: the seven you have not won are the point.
     expect(screen.getByRole('heading', { level: 3, name: /배지\s*1 \/ 8/ })).toBeTruthy();
     const slots = document.querySelectorAll('.badgecase li');
@@ -1527,7 +1541,7 @@ describe('the achievement board', () => {
   });
 
   it('says what an earned slot is and where an unearned one waits', async () => {
-    await open();
+    await openBoard();
     // Earned: the badge's own name, and the TM it came with.
     expect(screen.getByText('회색배지')).toBeTruthy();
     expect(screen.getByText('암석봉인')).toBeTruthy();
@@ -1538,11 +1552,41 @@ describe('the achievement board', () => {
     expect(screen.getByText('배지 7개 필요')).toBeTruthy();
   });
 
-  it('keeps the case up when a category is filtered', async () => {
-    // It is the case, not a group of the board, so the chips do not hide it.
-    const u = await open();
-    await u.click(screen.getByRole('button', { name: '도감' }));
+  it('swaps the campaign out for the list, and never stacks them', async () => {
+    // The whole point of the split. The case and the achievement rows are two
+    // views of one tab: picking a category puts the case away, and 지방 brings
+    // it back and takes the rows away. Stacked, one of them was always seven
+    // screens of scrolling from the other.
+    const u = await openBoard();
     expect(document.querySelectorAll('.badgecase li')).toHaveLength(8);
+    expect(screen.queryByText('첫 졸업')).toBeNull();
+
+    await u.click(screen.getByRole('button', { name: '도감' }));
+    expect(document.querySelectorAll('.badgecase li')).toHaveLength(0);
+    expect(screen.getByText('도감 50종')).toBeTruthy();
+
+    await u.click(screen.getByRole('button', { name: '지방' }));
+    expect(document.querySelectorAll('.badgecase li')).toHaveLength(8);
+    expect(screen.queryByText('도감 50종')).toBeNull();
+  });
+
+  it('summarises the view it is showing, not the tab', async () => {
+    // A fixed achievement count over a campaign board would have the header and
+    // the body describing different things.
+    const u = await openBoard();
+    expect(screen.getByText(/개 배지/)).toBeTruthy();
+    expect(screen.queryByText(/개 달성/)).toBeNull();
+
+    await u.click(screen.getByRole('button', { name: '전체' }));
+    expect(screen.getByText(/개 달성/)).toBeTruthy();
+    expect(screen.queryByText(/개 배지/)).toBeNull();
+  });
+
+  it('offers nothing to fold while the campaign is up', async () => {
+    const u = await openBoard();
+    expect(screen.queryByRole('button', { name: '달성 숨기기' })).toBeNull();
+    await u.click(screen.getByRole('button', { name: '전체' }));
+    expect(screen.getByRole('button', { name: '달성 숨기기' })).toBeTruthy();
   });
 
   it('counts what is done against the whole board', async () => {
@@ -1563,8 +1607,8 @@ describe('the achievement board', () => {
   it('drops the headings once a single category is chosen', async () => {
     const u = await open();
     await u.click(screen.getByRole('button', { name: '도감' }));
-    // The board's own group headings, not the badge case's — that one is not
-    // part of the board and stays put whatever the chips say.
+    // The board's own group headings. The badge case's heading is not among
+    // them for a different reason now — the case is not on screen at all.
     expect(
       screen.queryAllByRole('heading', { level: 3 }).filter((h) =>
         h.className.includes('awardshelf'),
@@ -1845,7 +1889,7 @@ describe('the badge case across regions', () => {
       now: 'johto',
       regions: [
         ...STATE.badges.regions,
-        { key: 'johto', ko: '성도', count: 0, total: 8, clearedAt: null, until: 900, leagueCity: '석영고원' },
+        { key: 'johto', ko: '성도', count: 0, total: 8, clearedAt: null as number | null, until: 900, leagueCity: '석영고원' },
       ],
       league: JOHTO_LEAGUE,
       leagues: [...STATE.badges.leagues, JOHTO_LEAGUE],
@@ -1892,11 +1936,45 @@ describe('the badge case across regions', () => {
     expect(screen.getByText('도라지시티')).toBeTruthy();
     expect(screen.queryByText('블루시티')).toBeNull();
 
-    await userEvent.click(screen.getByRole('button', { name: '관동' }));
+    // Named by the region and its state, because the chip now carries both.
+    await userEvent.click(screen.getByRole('button', { name: '관동 배지 1 / 8' }));
     // 관동's whole case, and 성도's slot gone — the case never grows, it swaps.
     expect(document.querySelectorAll('.badgecase li')).toHaveLength(8);
     expect(screen.getByText('블루시티')).toBeTruthy();
     expect(screen.queryByText('도라지시티')).toBeNull();
+  });
+
+  it('carries each region\'s state on its own chip', async () => {
+    payload = twoRegions;
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    await userEvent.click(screen.getByRole('tab', { name: /업적/ }));
+    const chips = [...document.querySelectorAll('.badgeregions button')];
+    // 관동 holds one of eight; 성도 has not been entered, so it says nothing.
+    // This row is the only place the tab shows the campaign across regions.
+    expect(chips.map((b) => b.textContent)).toEqual(['관동1/8', '성도']);
+  });
+
+  it('marks a region whose Hall of Fame is signed, and drops its count', async () => {
+    // 8/8 and a star would say the same thing twice: a signed region
+    // necessarily holds every badge.
+    payload = {
+      ...twoRegions,
+      badges: {
+        ...twoRegions.badges,
+        regions: twoRegions.badges.regions.map((r) =>
+          r.key === 'kanto' ? { ...r, count: 8, clearedAt: 1 } : r,
+        ),
+      },
+    };
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    await userEvent.click(screen.getByRole('tab', { name: /업적/ }));
+    const chips = [...document.querySelectorAll('.badgeregions button')];
+    expect(chips.map((b) => b.textContent)).toEqual(['관동★', '성도']);
+    expect(screen.getByRole('button', { name: '관동 제패' })).toBeTruthy();
+    // And the summary line counts it.
+    expect(screen.getByText(/명예의 전당/)).toBeTruthy();
   });
 
   it('keeps 전체 unambiguous for the category chips', async () => {

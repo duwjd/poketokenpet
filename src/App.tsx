@@ -642,6 +642,15 @@ const FACTOR_LABEL: Record<number, string> = {
   0: '무효',
 };
 
+/**
+ * The 지방 chip's id, sitting in the same state the category chips write.
+ *
+ * Not a category — nothing in `server/achievements.ts` carries it — which is
+ * exactly why it is safe: `a.cat === awardCat` matches nothing, so the list is
+ * empty by construction rather than by a second flag anyone could forget.
+ */
+const REGION_VIEW = 'region';
+
 type TabId = 'pet' | 'stats' | 'bag' | 'dex' | 'awards' | 'shop' | 'settings';
 
 const TABS: { id: TabId; label: string }[] = [
@@ -821,8 +830,23 @@ export default function App() {
   const [dexView, setDexView] = useState<'dex' | 'legends' | 'party'>('dex');
   /** Which party seat's move sheet is open, or null. */
   const [partySeat, setPartySeat] = useState<number | null>(null);
-  /** Which achievement category is showing. Null is all of them. */
-  const [awardCat, setAwardCat] = useState<string | null>(null);
+  /**
+   * Which view of the board is showing.
+   *
+   * `REGION_VIEW` is the campaign — badge case, ladder, region picker. Null is
+   * every achievement, and any other value is one category's id.
+   *
+   * One piece of state rather than two, because the campaign and the
+   * achievement list are alternatives rather than a list and a filter over it:
+   * a chip row where one entry hides the rows below it and the rest filter them
+   * would be two controls wearing one coat. Sharing the state makes the row say
+   * what it does — exactly one chip is lit, and that chip is what is on screen.
+   *
+   * It opens on the campaign. The list is 77 rows in ten shelves and is most of
+   * a screen tall before its first heading; the campaign is one screenful and
+   * is the half that changes while the pet walks.
+   */
+  const [awardCat, setAwardCat] = useState<string | null>(REGION_VIEW);
   /**
    * Which region's badge case is on screen. Null means "follow the journey".
    *
@@ -854,6 +878,20 @@ export default function App() {
    * contexts, never during render.
    */
   const [awardsSeen, setAwardsSeen] = useState(0);
+  /**
+   * Show one slice of the achievement list, and put the tab's dot out.
+   *
+   * The dot used to go out on OPENING the tab, which was right while the list
+   * was the first thing there. The tab now opens on the campaign, so opening it
+   * is no longer reading the list — and a dot that clears itself while the news
+   * it points at is still one click away is a dot that has stopped meaning
+   * anything. Still an event handler, never a render: `awardsSeen` feeds the
+   * dot, so writing it during render would draw from the previous pass.
+   */
+  const showAwards = (cat: string | null) => {
+    setAwardCat(cat);
+    setAwardsSeen(state?.awards.filter((a) => a.at !== null).length ?? 0);
+  };
   /**
    * The full dex, fetched once when unseen slots are first asked for.
    *
@@ -906,12 +944,10 @@ export default function App() {
     setBagOver(null);
     setTmPage(0);
     setPendingTm(null);
-    setAwardCat(null);
+    setAwardCat(REGION_VIEW);
     setHideDone(false);
     setDexView('dex');
     setPartySeat(null);
-    // Opening the board IS reading it, so the dot goes out here.
-    if (id === 'awards') setAwardsSeen(state?.awards.filter((a) => a.at !== null).length ?? 0);
     closeDex();
   };
 
@@ -1390,6 +1426,23 @@ export default function App() {
   const badgeLeague =
     state.badges.leagues.find((l) => l.region === badgeReg?.key) ?? null;
 
+  /** True while the campaign is on screen instead of the achievement list. */
+  const regionView = awardCat === REGION_VIEW;
+  /**
+   * The campaign's own totals, for the summary line.
+   *
+   * Every region's badges rather than the selected one's, and the count of
+   * regions whose Hall of Fame carries a date — which is the record this tab
+   * had no way to show. `clearedAt` has been in the payload since the ladder
+   * went region-keyed; nothing read it.
+   */
+  const badgesHeld = state.badges.regions.reduce((n, r) => n + r.count, 0);
+  const badgesAll = state.badges.regions.reduce((n, r) => n + r.total, 0);
+  const regionsCleared = state.badges.regions.filter((r) => r.clearedAt !== null).length;
+  const badgePct = badgesAll
+    ? Math.max(badgesHeld ? 1 : 0, (badgesHeld / badgesAll) * 100)
+    : 0;
+
   const awardsDone = state.awards.filter((a) => a.at !== null).length;
   const awardPct = state.awards.length
     ? Math.max(awardsDone ? 1 : 0, (awardsDone / state.awards.length) * 100)
@@ -1404,6 +1457,16 @@ export default function App() {
       (awardCat === null || a.cat === awardCat) &&
       !(hideDone && a.at !== null && a.repeat === null),
   );
+  /**
+   * What one region chip says about itself.
+   *
+   * Three states, and the third replaces the second rather than joining it: a
+   * region whose Hall of Fame is signed necessarily holds all its badges, so
+   * `8/8 ★` would be saying the same thing twice in a row that has to fit nine
+   * chips across 420px.
+   */
+  const regionMark = (r: State['badges']['regions'][number]) =>
+    r.clearedAt !== null ? '★' : r.count > 0 ? `${r.count}/${r.total}` : '';
   /** Unlocked since the board was last opened. Written by tick and goTab. */
   const unseenAwards = Math.max(0, awardsDone - awardsSeen);
   /**
@@ -3167,181 +3230,254 @@ export default function App() {
       <>
       <div className="dexbar">
         <h2>업적</h2>
-        {/* Same place and same control the dex puts its filter toggle in. */}
-        <button className="linky" onClick={() => setHideDone(!hideDone)}>
-          {hideDone ? '전부 보기' : '달성 숨기기'}
-        </button>
+        {/* Same place and same control the dex puts its filter toggle in.
+            Off on the campaign, which has nothing to fold: a toggle that does
+            nothing to what is on screen is worse than an absent one. */}
+        {!regionView && (
+          <button className="linky" onClick={() => setHideDone(!hideDone)}>
+            {hideDone ? '전부 보기' : '달성 숨기기'}
+          </button>
+        )}
       </div>
+      {/* The summary follows the VIEW, not the tab.
+ 
+          One line and one gauge either way, in the same place. The alternative
+          — a fixed achievement count above a campaign board — has the header
+          and the body describing different things, which is how a reader ends
+          up trusting neither. */}
       <p className="sub">
-        <b>{awardsDone}</b>
-        <span className="muted">개 / {state.awards.length}개 달성</span>
+        {regionView ? (
+          <>
+            <b>{badgesHeld}</b>
+            <span className="muted">개 / {badgesAll}개 배지</span>
+            <span className="muted"> · 명예의 전당 </span>
+            <b>{regionsCleared}</b>
+            <span className="muted"> / {state.badges.regions.length}</span>
+          </>
+        ) : (
+          <>
+            <b>{awardsDone}</b>
+            <span className="muted">개 / {state.awards.length}개 달성</span>
+          </>
+        )}
       </p>
       {/* Same gauge as the dex counter, floored the same way: one out of fifty
           rounds to 2%, but a board with nothing on it should read as empty
           rather than as a sliver. */}
-      <div className="bar" role="progressbar" aria-valuenow={awardPct}>
-        <i className="fill" style={{ width: `${awardPct}%` }} />
+      <div
+        className="bar"
+        role="progressbar"
+        aria-valuenow={regionView ? badgePct : awardPct}
+      >
+        <i className="fill" style={{ width: `${regionView ? badgePct : awardPct}%` }} />
       </div>
 
-      {/* The badge case.
-
-          Above the category chips rather than below the board, so the tab
-          reads "here is what you hold, here is what you are working toward".
-          Borrowed wholesale from the dex grid — four across, two down, the
-          same card, the same dashed edge for a slot not yet filled — because
-          that is already what a badge case looks like in the games, and a
-          second grid idiom in one panel would be one too many. */}
-      {/* `badgeshelf`, not `awardshelf`: the board's group headings come and
-          go with the category chips and this one never does, so sharing a
-          class would make "the headings are gone" untestable. */}
-      <h3 className="shelf badgeshelf">
-        {state.badges.regions.length > 1 ? `${badgeReg?.ko ?? ''} 배지` : '배지'}{' '}
-        <span className="muted">{badgeReg?.count ?? 0} / {badgeReg?.total ?? 0}</span>
-      </h3>
-      {/* The region picker.
+      {/* The view picker, and the tab's whole shape.
  
-          `.chips`, not a new idiom: this is the same "pick one view of one
-          list" the dex filters, the bag pockets and the award categories below
-          already use, and a second selector idiom in one panel would be one too
-          many — the argument the badge case itself makes for borrowing the dex
-          grid.
+          It sits ABOVE both halves rather than between them, because it now
+          chooses between them. The campaign board is about a screenful and the
+          achievement list is seven; stacked, every reader who wanted one
+          scrolled past the other. Exactly one chip is lit and that chip is what
+          is below.
  
-          Rendered ONLY when there is more than one region, so a save with one
-          gym table sees exactly the tab it saw before. Same rule `awardCats`
-          follows: adding a region needs no edit here.
- 
-          No 전체 chip. A badge case is a checklist for one region, and sixty-
-          eight slots is the thing this design exists to prevent — and the award
-          categories below already own the accessible name 전체, which
-          `getByRole` would find ambiguous. No counts on the chips either: ten
-          two-character chips already wrap at 420px, so the count rides on the
-          heading. */}
-      {state.badges.regions.length > 1 && (
-        <div className="chips badgeregions" role="group" aria-label="지방">
-          {state.badges.regions.map((r) => (
-            <button
-              key={r.key}
-              className={r.key === badgeReg?.key ? 'on' : ''}
-              onClick={() => setBadgeRegion(r.key)}
-            >
-              {r.ko}
-            </button>
-          ))}
-        </div>
-      )}
-      <ul className="dex badgecase">
-        {badgeCases.map((b) => (
-          <li key={b.no} className={b.have ? '' : 'unseen'}>
-            <span className="card">
-              <span className="art">
-                {b.sprite ? <img src={spriteUrl(b.sprite)} alt="" /> : '🔒'}
-              </span>
-              <span className="nm">{b.have ? b.ko : b.cityKo}</span>
-              {/* One line that changes with the state, so a locked slot is
-                  never a blank that leaves the reader guessing. */}
-              <span className="no">
-                {b.have
-                  ? (b.prizeKo ?? b.leaderKo)
-                  : b.locked
-                    ? `배지 ${Math.max(0, (badgeReg?.total ?? 1) - 1)}개 필요`
-                    : b.until === 0
-                      ? '지금 여기'
-                      : `${compact(b.until)}조우`}
-              </span>
-            </span>
-          </li>
-        ))}
-      </ul>
-      {(badgeReg?.count ?? 0) === 0 && (
-        <p className="muted sub note">
-          여정이 {badgeReg?.ko}의 체육관 도시를 지날 때 관장이 승부를 걸어옵니다. 도전을 받아
-          이기면 배지와 그 관장의 기술머신을 받습니다.
-        </p>
-      )}
-
-      {/* The summit.
- 
-          The HEADING and the sentence are unconditional, because a badge
-          requirement nobody can see is a requirement nobody works toward. The
-          PORTRAITS are not: five faces tell a player with two badges nothing
-          they can act on, and at nine regions they would be the largest block
-          on the tab. They arrive once the ladder is reachable, or once it has
-          been walked even part of the way. */}
-      {badgeLeague ? (
-        <>
-          <h3 className="shelf badgeshelf">
-            {badgeLeague.kindKo === '챔피언컵' ? '챔피언컵' : '포켓몬리그'}
-            {badgeLeague.wins > 0 && (
-              <span className="muted"> {badgeLeague.wins}회 제패</span>
-            )}
-          </h3>
-          {(badgeLeague.open || badgeLeague.best > 0 || badgeLeague.wins > 0) && (
-            <ul className="dex leagueline">
-              {badgeLeague.members.map((m, i) => (
-                <li key={m.id} className={m.down || badgeLeague.wins > 0 ? '' : 'unseen'}>
-                  <span className="card">
-                    <span className="art">
-                      {m.sprite ? <DexSprite name={m.sprite} alt="" /> : '?'}
-                    </span>
-                    <span className="nm">
-                      {m.ko.replace('사천왕 ', '').replace('챔피언 ', '')}
-                    </span>
-                    {/* Positional on the LAST row, not on index 4: 가라르's
-                        Champion Cup and 알로라's ladder are not four-plus-one,
-                        and `RegionRow.league`'s contract is that the champion
-                        is last. */}
-                    <span className="no">
-                      {i === badgeLeague.members.length - 1
-                        ? '챔피언'
-                        : `${badgeLeague.kindKo} ${i + 1}`}
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="muted sub note">
-            {!badgeLeague.open
-              ? `배지 ${badgeReg?.total ?? 0}개를 모으면 ${badgeLeague.cityKo}에서 도전할 수 있습니다.`
-              : !state.party.ready
-                ? `도감에서 파티 ${state.party.size}마리를 짜야 도전할 수 있습니다.`
-                : badgeLeague.at !== null
-                  ? `도전 중 — ${badgeLeague.at} / ${badgeLeague.size}명 격파.`
-                  : badgeLeague.until === 0
-                    ? `${badgeLeague.cityKo}에 있습니다. 도전을 받으면 시작됩니다.`
-                    : `${badgeLeague.cityKo}까지 ${compact(badgeLeague.until)}조우.`}
-            {badgeLeague.best > 0 && badgeLeague.wins === 0 && (
-              <> 최고 기록 {badgeLeague.best} / {badgeLeague.size}명.</>
-            )}
-          </p>
-        </>
-      ) : (
-        <p className="muted sub note">
-          {/* Two different facts, and saying the wrong one would be a lie. The
-              payload lists a region's ladder only once it has rows, so a region
-              that HAS a league whose roster is not transcribed yet has to say
-              so rather than claim there is none. `leagueCity` is what tells
-              them apart, which keeps this line from ever naming a region. */}
-          {badgeReg?.leagueCity
-            ? `${badgeReg.ko}의 ${badgeReg.leagueCity} 명단은 아직 들어오지 않았습니다.`
-            : `${badgeReg?.ko}에는 포켓몬리그가 없습니다.`}
-        </p>
-      )}
-
-      <div className="chips awardcats" role="group" aria-label="업적 분야">
-        <button className={awardCat === null ? 'on' : ''} onClick={() => setAwardCat(null)}>
+          지방 is first and is the default. `awardCats` supplies the rest, so a
+          new category still needs no edit here. */}
+      <div className="chips awardcats" role="group" aria-label="업적 보기">
+        <button
+          className={regionView ? 'on' : ''}
+          onClick={() => setAwardCat(REGION_VIEW)}
+        >
+          지방
+        </button>
+        <button className={awardCat === null ? 'on' : ''} onClick={() => showAwards(null)}>
           전체
         </button>
         {awardCats.map((c) => (
           <button
             key={c.cat}
             className={awardCat === c.cat ? 'on' : ''}
-            onClick={() => setAwardCat(c.cat)}
+            onClick={() => showAwards(c.cat)}
           >
             {c.catKo}
           </button>
         ))}
       </div>
+
+      {/* The campaign, shown when 지방 is the lit chip.
+
+          It was the top of the tab and is now one of two halves. Nothing
+          inside changed shape: the case is still one region at a time, the
+          ladder still appears only once it is reachable, and the tab's height
+          still does not grow with the roster. What changed is that the reader
+          arrives here by choosing it, and the seven screens of achievements
+          are not underneath. */}
+      {regionView && (
+        <>
+        {/* The badge case.
+
+            Above the category chips rather than below the board, so the tab
+            reads "here is what you hold, here is what you are working toward".
+            Borrowed wholesale from the dex grid — four across, two down, the
+            same card, the same dashed edge for a slot not yet filled — because
+            that is already what a badge case looks like in the games, and a
+            second grid idiom in one panel would be one too many. */}
+        {/* The region picker.
+ 
+            `.chips`, not a new idiom: this is the same "pick one view of one
+            list" the dex filters, the bag pockets and the award categories below
+            already use, and a second selector idiom in one panel would be one too
+            many — the argument the badge case itself makes for borrowing the dex
+            grid.
+ 
+            Rendered ONLY when there is more than one region, so a save with one
+            gym table sees exactly the tab it saw before. Same rule `awardCats`
+            follows: adding a region needs no edit here.
+ 
+            No 전체 chip. A badge case is a checklist for one region, and sixty-
+            eight slots is the thing this design exists to prevent — and the view
+            chips above already own the accessible name 전체, which `getByRole`
+            would find ambiguous.
+
+            Each chip carries its own state, and this row is the only place the
+            tab shows the campaign ACROSS regions: `3/8` for one in progress,
+            `★` for one whose Hall of Fame is signed, nothing at all for one the
+            journey has not reached. The star REPLACES the count rather than
+            joining it — a signed region necessarily holds every badge, so
+            `8/8 ★` would say the same thing twice in a row that has to fit nine
+            chips across 420px. `clearedAt` has been in the payload since the
+            ladder went region-keyed, and nothing read it until now. */}
+        {state.badges.regions.length > 1 && (
+          <div className="chips badgeregions" role="group" aria-label="지방">
+            {state.badges.regions.map((r) => {
+              const mark = regionMark(r);
+              return (
+                <button
+                  key={r.key}
+                  className={r.key === badgeReg?.key ? 'on' : ''}
+                  /* The visible text is two words at most; the spoken one says
+                     what the star means, because a lone ★ read aloud is "black
+                     star" and nothing else. */
+                  aria-label={
+                    r.clearedAt !== null
+                      ? `${r.ko} 제패`
+                      : `${r.ko} 배지 ${r.count} / ${r.total}`
+                  }
+                  onClick={() => setBadgeRegion(r.key)}
+                >
+                  {r.ko}
+                  {mark && <i className="mark">{mark}</i>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {/* `badgeshelf`, not `awardshelf`: the board's group headings come and
+            go with the category chips and this one never does, so sharing a
+            class would make "the headings are gone" untestable. */}
+        <h3 className="shelf badgeshelf">
+          {state.badges.regions.length > 1 ? `${badgeReg?.ko ?? ''} 배지` : '배지'}{' '}
+          <span className="muted">{badgeReg?.count ?? 0} / {badgeReg?.total ?? 0}</span>
+        </h3>
+        <ul className="dex badgecase">
+          {badgeCases.map((b) => (
+            <li key={b.no} className={b.have ? '' : 'unseen'}>
+              <span className="card">
+                <span className="art">
+                  {b.sprite ? <img src={spriteUrl(b.sprite)} alt="" /> : '🔒'}
+                </span>
+                <span className="nm">{b.have ? b.ko : b.cityKo}</span>
+                {/* One line that changes with the state, so a locked slot is
+                    never a blank that leaves the reader guessing. */}
+                <span className="no">
+                  {b.have
+                    ? (b.prizeKo ?? b.leaderKo)
+                    : b.locked
+                      ? `배지 ${Math.max(0, (badgeReg?.total ?? 1) - 1)}개 필요`
+                      : b.until === 0
+                        ? '지금 여기'
+                        : `${compact(b.until)}조우`}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        {(badgeReg?.count ?? 0) === 0 && (
+          <p className="muted sub note">
+            여정이 {badgeReg?.ko}의 체육관 도시를 지날 때 관장이 승부를 걸어옵니다. 도전을 받아
+            이기면 배지와 그 관장의 기술머신을 받습니다.
+          </p>
+        )}
+
+        {/* The summit.
+ 
+            The HEADING and the sentence are unconditional, because a badge
+            requirement nobody can see is a requirement nobody works toward. The
+            PORTRAITS are not: five faces tell a player with two badges nothing
+            they can act on, and at nine regions they would be the largest block
+            on the tab. They arrive once the ladder is reachable, or once it has
+            been walked even part of the way. */}
+        {badgeLeague ? (
+          <>
+            <h3 className="shelf badgeshelf">
+              {badgeLeague.kindKo === '챔피언컵' ? '챔피언컵' : '포켓몬리그'}
+              {badgeLeague.wins > 0 && (
+                <span className="muted"> {badgeLeague.wins}회 제패</span>
+              )}
+            </h3>
+            {(badgeLeague.open || badgeLeague.best > 0 || badgeLeague.wins > 0) && (
+              <ul className="dex leagueline">
+                {badgeLeague.members.map((m, i) => (
+                  <li key={m.id} className={m.down || badgeLeague.wins > 0 ? '' : 'unseen'}>
+                    <span className="card">
+                      <span className="art">
+                        {m.sprite ? <DexSprite name={m.sprite} alt="" /> : '?'}
+                      </span>
+                      <span className="nm">
+                        {m.ko.replace('사천왕 ', '').replace('챔피언 ', '')}
+                      </span>
+                      {/* Positional on the LAST row, not on index 4: 가라르's
+                          Champion Cup and 알로라's ladder are not four-plus-one,
+                          and `RegionRow.league`'s contract is that the champion
+                          is last. */}
+                      <span className="no">
+                        {i === badgeLeague.members.length - 1
+                          ? '챔피언'
+                          : `${badgeLeague.kindKo} ${i + 1}`}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="muted sub note">
+              {!badgeLeague.open
+                ? `배지 ${badgeReg?.total ?? 0}개를 모으면 ${badgeLeague.cityKo}에서 도전할 수 있습니다.`
+                : !state.party.ready
+                  ? `도감에서 파티 ${state.party.size}마리를 짜야 도전할 수 있습니다.`
+                  : badgeLeague.at !== null
+                    ? `도전 중 — ${badgeLeague.at} / ${badgeLeague.size}명 격파.`
+                    : badgeLeague.until === 0
+                      ? `${badgeLeague.cityKo}에 있습니다. 도전을 받으면 시작됩니다.`
+                      : `${badgeLeague.cityKo}까지 ${compact(badgeLeague.until)}조우.`}
+              {badgeLeague.best > 0 && badgeLeague.wins === 0 && (
+                <> 최고 기록 {badgeLeague.best} / {badgeLeague.size}명.</>
+              )}
+            </p>
+          </>
+        ) : (
+          <p className="muted sub note">
+            {/* Two different facts, and saying the wrong one would be a lie. The
+                payload lists a region's ladder only once it has rows, so a region
+                that HAS a league whose roster is not transcribed yet has to say
+                so rather than claim there is none. `leagueCity` is what tells
+                them apart, which keeps this line from ever naming a region. */}
+            {badgeReg?.leagueCity
+              ? `${badgeReg.ko}의 ${badgeReg.leagueCity} 명단은 아직 들어오지 않았습니다.`
+              : `${badgeReg?.ko}에는 포켓몬리그가 없습니다.`}
+          </p>
+        )}
+        </>
+      )}
 
       {/* The trainer rows are the one place the board cannot look backwards,
           and saying so is better than letting someone with a thousand hunts

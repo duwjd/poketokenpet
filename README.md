@@ -104,11 +104,11 @@ Windows는 SmartScreen 창을 띄웁니다. 바이러스가 아니라 **인증�
 <table>
 <tr>
 <td width="50%"><img src="docs/img/05-shop.png" alt="프렌들리숍 — 점원과 대화창"></td>
-<td width="50%"><img src="docs/img/06-awards.png" alt="업적 목록"></td>
+<td width="50%"><img src="docs/img/06-awards.png" alt="업적 탭의 지방 화면 — 지방 칩과 배지함"></td>
 </tr>
 <tr>
 <td><b>상점</b> — 번 토큰으로 이상한사탕·변함없는돌·알을 삽니다. 원작처럼 점원이 있고 대화창이 뜹니다.</td>
-<td><b>업적</b> — 다음에 뭘 해볼지 알려줍니다. 반복 업적은 몇 번이든 다시 달성됩니다.</td>
+<td><b>업적</b> — 지방 화면에서 아홉 지방의 배지와 제패 기록을, 분야 칩에서 업적 목록을 봅니다. 반복 업적은 몇 번이든 다시 달성됩니다.</td>
 </tr>
 </table>
 

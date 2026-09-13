@@ -1505,10 +1505,30 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
  * test/panel-css.test.ts's control-height sweep. There is nothing to declare
  * there, and there must not be.
  *
- * Ten two-character region names wrap to two rows at 420px. That is why the
- * count lives on the heading and not on the chip.
+ * Ten two-character region names wrap to two rows at 420px, and the state mark
+ * below is sized so that stays true: three characters at most, in the same 10px
+ * face the chip already uses, with one gap between.
  */
 .chips.badgeregions { margin: var(--s3) 0; }
+/*
+ * The state a region chip carries — `3/8`, or `★` once the Hall of Fame is
+ * signed.
+ *
+ * Muted rather than accented, because the chip's accent is already spoken for:
+ * `.chips button.on` FILLS the selected chip, and a second accent inside it
+ * would fight the fill it sits on. `currentColor` at reduced opacity reads
+ * correctly on both the plain chip and the filled one, which a fixed colour
+ * cannot.
+ *
+ * `font-style: normal` because this is an `<i>` — chosen for being the shortest
+ * inline element in a row that repeats nine times, not for emphasis.
+ */
+.chips.badgeregions .mark {
+  font-style: normal;
+  margin-left: var(--s1);
+  opacity: .65;
+  font-variant-numeric: tabular-nums;
+}
 /* The per-category count on a shelf heading. Tabular so the headings line up. */
 .awardshelf span { font-variant-numeric: tabular-nums; font-weight: 400; }
 /*

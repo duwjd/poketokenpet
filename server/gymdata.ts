@@ -643,6 +643,58 @@ const KALOS_LEAGUE: LeagueRow[] = [
   { id: 'diantha',  region: '칼로스', ko: '챔피언 카르네',  sprite: 'diantha',  gender: 'f', grit: 1.89, team: [701, 697, 699, 711, 706, 282] },
 ];
 
+/**
+ * 호연's eight, from Ruby/Sapphire.
+ *
+ * ## 윤진 is a leader here, not a champion
+ *
+ * He is 루네시티's water leader in Ruby and Sapphire and the Champion in
+ * Emerald, with 아단 taking the gym. First-version is this table's rule
+ * everywhere, so he is the eighth leader and 성호 is the Champion. Written
+ * down because it is the entry most likely to be read as a bug.
+ *
+ * ## 풍&란 are two people and one row
+ *
+ * 이끼시티's gym is a double battle against a brother and sister, and they
+ * field two Pokemon between them — the smallest team on the whole roster. Grit
+ * carries the difference: it is per Pokemon, so a short team means each one is
+ * very hard, which is the right shape for a gym that only ever sends two.
+ * `gender` has to be one letter and is cosmetic for a named row whose sprite
+ * is explicit, so it says 'f' and means nothing.
+ *
+ * The art is the `-gen3` variant throughout, which is the art these teams
+ * come from. Three of them have no plain slug at all.
+ */
+const HOENN_GYMS: GymRow[] = [
+  { id: 'norman',     region: '호연', badge: 21, order: 1, ko: '종길',  badgeKo: '밸런스배지',  city: '등화도시',   sprite: 'norman-gen3',      gender: 'm', grit: 2.25, prize: 263, team: [289, 288, 289] },
+  { id: 'tateliza',   region: '호연', badge: 23, order: 2, ko: '풍&란', badgeKo: '마인드배지',  city: '이끼시티',   sprite: 'tateandliza-gen3', gender: 'f', grit: 1.94, prize: 347, team: [338, 337] },
+  { id: 'wallace',    region: '호연', badge: 24, order: 3, ko: '윤진',  badgeKo: '레인배지',    city: '루네시티',   sprite: 'wallace-gen3',     gender: 'm', grit: 1.93, prize: 352, team: [370, 340, 364, 119, 350] },
+  { id: 'brawly',     region: '호연', badge: 18, order: 4, ko: '철구',  badgeKo: '너클배지',    city: '무로마을',   sprite: 'brawly-gen3',      gender: 'm', grit: 1.99, prize: 339, team: [66, 307, 296] },
+  { id: 'flannery',   region: '호연', badge: 20, order: 5, ko: '민지',  badgeKo: '히트배지',    city: '용암마을',   sprite: 'flannery-gen3',    gender: 'f', grit: 1.99, prize: 315, team: [218, 218, 324] },
+  { id: 'wattson',    region: '호연', badge: 19, order: 6, ko: '암페어', badgeKo: '다이나모배지', city: '보라시티',   sprite: 'wattson-gen3',     gender: 'm', grit: 1.94, prize: 351, team: [81, 100, 82] },
+  { id: 'roxanne',    region: '호연', badge: 17, order: 7, ko: '원규',  badgeKo: '스톤배지',    city: '금탄도시',   sprite: 'roxanne-gen3',     gender: 'f', grit: 2.29, prize: 317, team: [74, 74, 299] },
+  { id: 'winona',     region: '호연', badge: 22, order: 8, ko: '은송',  badgeKo: '깃털배지',    city: '검방울시티', sprite: 'winona-gen3',      gender: 'f', grit: 1.72, prize: 332, team: [277, 279, 227, 334] },
+];
+
+/**
+ * 호연's Elite Four and 성호, from Ruby/Sapphire.
+ *
+ * Bulbapedia gives his Korean name in full as 나성호. The games print the
+ * given name in battle, and every other row here is a given name, so 성호 is
+ * what the message box says and the surname is recorded in this comment
+ * rather than in the string.
+ *
+ * Measured at 21% to 73% across four parties, against the ~85-machine bag this
+ * ladder is reached with.
+ */
+const HOENN_LEAGUE: LeagueRow[] = [
+  { id: 'sidney', region: '호연', ko: '사천왕 혁진', sprite: 'sidney-gen3', gender: 'm', grit: 1.68, team: [262, 275, 332, 342, 359] },
+  { id: 'phoebe', region: '호연', ko: '사천왕 회연', sprite: 'phoebe-gen3', gender: 'f', grit: 1.73, team: [356, 354, 354, 302, 356] },
+  { id: 'glacia', region: '호연', ko: '사천왕 미혜', sprite: 'glacia-gen3', gender: 'f', grit: 1.79, team: [364, 364, 362, 362, 365] },
+  { id: 'drake',  region: '호연', ko: '사천왕 권수', sprite: 'drake-gen3',  gender: 'm', grit: 1.84, team: [372, 334, 230, 330, 373] },
+  { id: 'steven', region: '호연', ko: '챔피언 성호', sprite: 'steven-gen3', gender: 'm', grit: 1.89, team: [227, 344, 306, 346, 348, 376] },
+];
+
 export const REGIONS: RegionRow[] = [
   {
     id: 'kanto',
@@ -681,6 +733,16 @@ export const REGIONS: RegionRow[] = [
     league: KALOS_LEAGUE,
     leagueCity: '포켓몬리그',
     leagueIn: '칼로스',
+    leagueKind: '사천왕',
+    gymNoun: '체육관',
+  },
+  {
+    id: 'hoenn',
+    ko: '호연',
+    gyms: HOENN_GYMS,
+    league: HOENN_LEAGUE,
+    leagueCity: '포켓몬리그',
+    leagueIn: '호연',
     leagueKind: '사천왕',
     gymNoun: '체육관',
   },

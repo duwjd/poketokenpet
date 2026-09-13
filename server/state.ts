@@ -1108,6 +1108,16 @@ export async function buildState(mode: CountMode = 'activity') {
           total: r.gyms.length,
           clearedAt: leagues[r.id] ?? null,
           until: encountersUntilLeague(state.huntCount, r),
+          /**
+           * Where the ladder stands, or null for a region that has none.
+           *
+           * Carried so the panel never has to name a region to tell "has no
+           * league" apart from "has one nobody has transcribed yet". Those are
+           * different facts and saying the wrong one is a lie; the pair
+           * (`leagueCity`, an entry in `leagues`) settles it for any region,
+           * including ones this table does not hold yet.
+           */
+          leagueCity: r.leagueCity,
         })),
         /**
          * The live region's ladder. Literally `leagues.find(now)` — the same

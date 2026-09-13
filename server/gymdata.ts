@@ -164,6 +164,20 @@ export type GymRow = {
   /** The original team, entire. Nothing is trimmed for balance. */
   team: number[];
   /**
+   * The four moves each of them actually carries, index-aligned with `team`.
+   *
+   * Optional, and absent means "not transcribed" rather than "none" — the
+   * opponent then draws from everything its species can learn, which is what
+   * every fight did before this column existed. That fallback is deliberate:
+   * an invented moveset is worse than a generated one, and grit measured
+   * against the generated pool stays valid until a real set lands.
+   *
+   * Index-aligned rather than keyed by species because a roster can hold the
+   * same species twice with different sets — 카밀레 carries two 에몽가. The
+   * length is checked against `team` at module load.
+   */
+  teamMoves?: number[][];
+  /**
    * Toughness PER POKEMON, which is why the column is not sorted.
    *
    * `battleAt` multiplies this onto one opponent's HP pool and onto one
@@ -259,6 +273,8 @@ export type LeagueRow = {
   sprite: string;
   gender: Gender;
   team: number[];
+  /** The four each carries, index-aligned with `team`. See `GymRow.teamMoves`. */
+  teamMoves?: number[][];
   /**
    * Rising, unlike the gym column.
    *
@@ -369,6 +385,109 @@ const UNOVA_GYMS: GymRow[] = [
   { id: 'drayden', region: '하나', badge: 41, order: 8, ko: '사간',   badgeKo: '레전드배지',   city: '쌍용시티',   sprite: 'drayden', gender: 'm', grit: 1.82, prize: 525, team: [611, 621, 612] },
 ];
 
+/**
+ * 하나's Elite Four and its Champion, at 포켓몬 리그.
+ *
+ * ## Which battle this is
+ *
+ * The four are their **Black/White first battle** rosters, pre-National-Dex —
+ * the same first-version rule the eight gyms above follow. The Champion is
+ * **아이리스, from Black 2/White 2**, and that is a deliberate mix of versions
+ * worth saying out loud: Black/White's tower does not end with a champion at
+ * all. N sits at the top and 노간주 comes after him, and neither is a league
+ * fight in any sense this app can stage — one is a story boss, the other an
+ * epilogue. 아이리스 is the answer to "who is 하나's Champion" that the series
+ * itself settled on, so she is the row, at her B2W2 initial-battle roster.
+ *
+ * Her Aggron is the plain species: Mega Aggron did not exist in Generation V.
+ * 망초's Jellicent is the female form, which is a gender difference and not a
+ * regional one — 593 either way. No legendary, no mythical, no paradox, no
+ * regional form anywhere on the five rosters.
+ *
+ * ## Why some sets are shorter than four
+ *
+ * `teamMoves` holds what each one actually carries, and every member carries
+ * four in the games. The arrays below are shorter wherever a move has no
+ * machine in any version group, because `server/moves.ts` is exactly the
+ * machine-learnable union and an id outside it does not exist to this app.
+ * Eleven slots fall out that way — 섀도펀치, 모래뿌리기, 속이기, 야습(×2),
+ * 폭기폭배, 태권당수, 암해머, 점프킥, 바디퍼지, 노래하다, 더블촙. Dropping the
+ * slot is the honest form: the alternative is substituting a move the trainer
+ * does not know, and then the table no longer says what it claims to say.
+ *
+ * Status and zero-power moves ARE kept here even though `poolFrom` filters
+ * them out before the fight. This column is the transcription; deciding what
+ * an opponent can swing with is the battle model's business, and keeping the
+ * two separate means a later change to that filter needs no edit here.
+ *
+ * ## The grit column
+ *
+ * Measured, like 관동's, and against a bag of ~150 machines — what a save
+ * actually holds by the time it walks past 쌍용시티, not the ~47 관동's column
+ * was sized for. Four parties of six were run 400 runs each at every step:
+ * 관동 starters clear about 60%, 하나 starters about 29%, a mixed late-game
+ * six about 92%. Wide, and deliberately so — the transcribed sets are the
+ * reason. Swapping this table's `teamMoves` out for the generated pools moves
+ * those same four numbers by up to 28 points in either direction, because four
+ * named moves have a type chart and a weighted draw from a whole learnset
+ * averages it away. Who you bring now matters more than how big the bag is,
+ * which is the point of transcribing them at all.
+ */
+const UNOVA_LEAGUE: LeagueRow[] = [
+  {
+    id: 'shauntal', region: '하나', ko: '사천왕 망초', sprite: 'shauntal', gender: 'f', grit: 1.68,
+    team: [563, 593, 623, 609],
+    teamMoves: [
+      [94, 261, 247, 447],
+      [247, 57, 412, 362],
+      [174, 280, 89],
+      [126, 94, 247, 371],
+    ],
+  },
+  {
+    id: 'grimsley', region: '하나', ko: '사천왕 플래리', sprite: 'grimsley', gender: 'm', grit: 1.74,
+    team: [560, 553, 510, 625],
+    teamMoves: [
+      [242, 398, 280],
+      [242, 337, 492, 89],
+      [213, 332],
+      [404, 232, 332],
+    ],
+  },
+  {
+    id: 'caitlin', region: '하나', ko: '사천왕 카를레아', sprite: 'caitlin', gender: 'f', grit: 1.79,
+    team: [579, 518, 561, 576],
+    teamMoves: [
+      [412, 87, 411, 94],
+      [115, 451, 247, 94],
+      [247, 58, 403, 94],
+      [347, 85, 247, 94],
+    ],
+  },
+  {
+    id: 'marshal', region: '하나', ko: '사천왕 연무', sprite: 'marshal', gender: 'm', grit: 1.85,
+    team: [538, 539, 534, 620],
+    teamMoves: [
+      [444, 371, 523],
+      [444, 447, 514],
+      [444, 514, 447],
+      [369, 157, 514],
+    ],
+  },
+  {
+    id: 'iris', region: '하나', ko: '챔피언 아이리스', sprite: 'iris', gender: 'f', grit: 1.90,
+    team: [635, 621, 567, 306, 131, 612],
+    teamMoves: [
+      [53, 451, 406, 57],
+      [157, 53, 525, 411],
+      [512, 157, 337, 283],
+      [89, 38, 157],
+      [57, 58, 85],
+      [89, 404, 349],
+    ],
+  },
+];
+
 export const REGIONS: RegionRow[] = [
   {
     id: 'kanto',
@@ -384,23 +503,7 @@ export const REGIONS: RegionRow[] = [
     id: 'unova',
     ko: '하나',
     gyms: UNOVA_GYMS,
-    /**
-     * The ladder is NOT transcribed yet, and an empty array says exactly that.
-     *
-     * Not `leagueCity: null`, which is what a region with no league at all
-     * would carry — 하나 has one, at 포켓몬 리그, and conflating "there is none"
-     * with "we have not written it down" is the kind of quiet lie this table
-     * exists to avoid. The panel reads the pair and says which it is.
-     *
-     * It is empty because the four names could not be verified. Every other
-     * Korean string in this row was cross-checked against two sources; the
-     * Elite Four's could not be, and the header's rule is that an unverified
-     * name does not ship. There is a second question waiting behind it: Black's
-     * league does not end with the champion at all — N is at the top of the
-     * tower, and 노간주 comes after — so which five rows this should hold is a
-     * content decision as much as a transcription.
-     */
-    league: [],
+    league: UNOVA_LEAGUE,
     leagueCity: '포켓몬 리그',
     leagueIn: '하나',
     leagueKind: '사천왕',

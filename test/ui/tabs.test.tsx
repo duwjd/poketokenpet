@@ -1845,7 +1845,7 @@ describe('the badge case across regions', () => {
       now: 'johto',
       regions: [
         ...STATE.badges.regions,
-        { key: 'johto', ko: '성도', count: 0, total: 8, clearedAt: null, until: 900 },
+        { key: 'johto', ko: '성도', count: 0, total: 8, clearedAt: null, until: 900, leagueCity: '석영고원' },
       ],
       league: JOHTO_LEAGUE,
       leagues: [...STATE.badges.leagues, JOHTO_LEAGUE],

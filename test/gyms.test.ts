@@ -20,6 +20,7 @@ import {
   gymReward,
   gymTrainer,
   leagueAt,
+  leagueRoundAt,
   leaguesAt,
   regionOfStop,
   regionSwept,
@@ -352,6 +353,91 @@ describe('the table', () => {
       // not four-plus-one and the panel must not assume five.
       expect(r.league.at(-1)!.ko, r.ko).toContain('챔피언');
     }
+  });
+});
+
+describe('transcribed movesets', () => {
+  /** Every row on the whole roster that carries one, gyms and ladders alike. */
+  const TRANSCRIBED = [...ALL_GYMS, ...REGIONS.flatMap((r) => r.league)].filter(
+    (t) => t.teamMoves !== undefined,
+  );
+
+  it('has some, or this whole describe is passing on nothing', () => {
+    expect(TRANSCRIBED.length).toBeGreaterThan(0);
+  });
+
+  it('lines every set up with the member it belongs to', () => {
+    // `server/gyms.ts` throws at module load on a mismatch, so reaching this
+    // assertion at all already proves it. Stated anyway: the throw is easy to
+    // delete by accident and the failure it prevents is silent.
+    for (const t of TRANSCRIBED) expect(t.teamMoves!.length, t.id).toBe(t.team.length);
+  });
+
+  it('names only moves this build actually has', () => {
+    for (const t of TRANSCRIBED) {
+      for (const set of t.teamMoves!) {
+        expect(set.length, t.id).toBeGreaterThan(0);
+        expect(set.length, t.id).toBeLessThanOrEqual(4);
+        for (const id of set) expect(moveById(id), `${t.id} ${id}`).not.toBeNull();
+      }
+    }
+  });
+
+  it('leaves every member something to swing with', () => {
+    // `poolFrom` drops status and zero-power moves, and a member whose whole
+    // transcribed set is status would quietly fall back to the plain swing —
+    // weaker than the generated pool it replaced, which is backwards.
+    for (const t of TRANSCRIBED) {
+      for (const [i, set] of t.teamMoves!.entries()) {
+        const hits = set.map((id) => moveById(id)!).filter((m) => m.damageClass !== 'status' && m.power > 0);
+        expect(hits.length, `${t.id} #${i}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('is what the opponent actually swings', () => {
+    // The point of the column. Every move the ladder throws has to come off
+    // its own row, and nothing may leak in from the species learnset.
+    const unova = REGIONS.find((r) => r.id === 'unova')!;
+    const party = [497, 500, 503, 612, 635, 609].map((speciesId) => ({
+      speciesId,
+      shiny: false,
+      moves: learnableMoves(speciesId).slice(0, 4),
+    }));
+    let seen = 0;
+    for (const [i, m] of unova.league.entries()) {
+      const allowed = new Set(m.teamMoves!.flat());
+      const r = leagueRoundAt(i, m, party, party.map(() => 100));
+      for (const round of r.rounds) {
+        for (const turn of round.turns) {
+          if (turn.foeMoveId === null) continue;
+          seen++;
+          expect(allowed.has(turn.foeMoveId), `${m.id} used ${turn.foeMoveId}`).toBe(true);
+        }
+      }
+    }
+    expect(seen).toBeGreaterThan(20);
+  });
+
+  it('reaches the gym path too, which no row exercises yet', () => {
+    // Every transcribed row today is on a ladder, so the `trainerBattleAt`
+    // half of the wiring has no table row behind it. Built by hand rather than
+    // left uncovered — a gym row gaining a moveset must not be the moment the
+    // path is first tried.
+    const moves = learnableMoves(6).slice(0, 4);
+    const t = {
+      className: '관장',
+      name: '관장 시험',
+      gender: 'm' as const,
+      sprite: 'brock',
+      team: [95, 111],
+      teamMoves: [[89], [157]],
+      grit: 1.5,
+    };
+    const b = trainerBattleAt(41, t, moves, 6);
+    const used = b.rounds.flatMap((r) => r.turns.map((x) => x.foeMoveId)).filter((x) => x !== null);
+    expect(used.length).toBeGreaterThan(0);
+    for (const id of used) expect([89, 157]).toContain(id);
   });
 });
 

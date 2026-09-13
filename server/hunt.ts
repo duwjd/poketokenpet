@@ -519,23 +519,47 @@ type FoePool = { moves: MoveInfo[]; weights: number[]; total: number };
  */
 const foePools = new Map<number, FoePool | null>();
 
+/**
+ * Weight a set of moves the way an opponent picks between them.
+ *
+ * Shared by the two ways a pool is built — everything a species could learn,
+ * and the four a named trainer actually carries — so the two can never drift
+ * into weighting the same move differently.
+ */
+function poolFrom(ids: readonly number[], types: readonly MoveType[]): FoePool | null {
+  const moves = ids
+    .map(moveById)
+    .filter((m): m is MoveInfo => !!m && m.damageClass !== 'status' && m.power > 0);
+  if (!moves.length) return null;
+  const weights = moves.map(
+    (m) => (types.includes(m.type) ? STAB_WEIGHT : 1) * (m.power >= HEAVY_POWER ? HEAVY_DAMP : 1),
+  );
+  return { moves, weights, total: weights.reduce((a, w) => a + w, 0) };
+}
+
 function foePool(speciesId: number): FoePool | null {
   const cached = foePools.get(speciesId);
   if (cached !== undefined) return cached;
-
-  const types: readonly MoveType[] = speciesInfo(speciesId)?.types ?? [];
-  const moves = learnableMoves(speciesId)
-    .map(moveById)
-    .filter((m): m is MoveInfo => !!m && m.damageClass !== 'status' && m.power > 0);
-
-  let pool: FoePool | null = null;
-  if (moves.length) {
-    const weights = moves.map(
-      (m) => (types.includes(m.type) ? STAB_WEIGHT : 1) * (m.power >= HEAVY_POWER ? HEAVY_DAMP : 1),
-    );
-    pool = { moves, weights, total: weights.reduce((a, w) => a + w, 0) };
-  }
+  const pool = poolFrom(learnableMoves(speciesId), speciesInfo(speciesId)?.types ?? []);
   foePools.set(speciesId, pool);
+  return pool;
+}
+
+/**
+ * The four moves a named opponent actually carries.
+ *
+ * Cached on the move list itself rather than on the species: a trainer's team
+ * can hold the same species twice with different sets, and 카밀레 does exactly
+ * that. Keyed on the ids joined, which is stable because the table is literal.
+ */
+const namedPools = new Map<string, FoePool | null>();
+
+function namedPool(ids: readonly number[], types: readonly MoveType[]): FoePool | null {
+  const key = ids.join(',');
+  const cached = namedPools.get(key);
+  if (cached !== undefined) return cached;
+  const pool = poolFrom(ids, types);
+  namedPools.set(key, pool);
   return pool;
 }
 
@@ -652,6 +676,21 @@ export type BattleOpts = {
   floor?: boolean;
   /** Multiplied onto TOUGHNESS. A trainer's class makes their team hardier. */
   grit?: number;
+  /**
+   * The four moves this opponent actually carries, if it is somebody's.
+   *
+   * Without it the opponent draws from EVERYTHING its species can learn, which
+   * is the right model for a wild Pokemon — nothing chose its moveset — and the
+   * wrong one for 망초's 샹델라, which has four. A named roster that carries the
+   * real four fights the way it fights in the games, and the narration stops
+   * being a plausible invention.
+   *
+   * Optional on purpose. A roster without a verified moveset keeps the
+   * generated pool rather than getting a made-up one, which is the same rule
+   * the Korean strings follow: no data beats invented data. It also means grit
+   * measured against the generated pool stays valid until a real set lands.
+   */
+  foeMoves?: readonly number[];
   /**
    * Turns the opponent's HP pool is sized for. Defaults to TARGET_TURNS.
    *
@@ -795,7 +834,11 @@ export function battleAt(
   const myPower = opts?.myPower ?? 1;
   const counterMult = opts?.counterMult ?? 1;
   const counterMultTurns = opts?.counterMultTurns ?? Infinity;
-  const pool = foeSpeciesId ? foePool(foeSpeciesId) : null;
+  const pool = opts?.foeMoves?.length
+    ? namedPool(opts.foeMoves, foeTypes)
+    : foeSpeciesId
+      ? foePool(foeSpeciesId)
+      : null;
   /** My move's type -> how the chart bites the opponent. Empty when it has none. */
   const vsFoe = matchupTable(foeTypes);
   /** Theirs -> how it bites me. Empty when my own types are unknown. */

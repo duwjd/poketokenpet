@@ -10,7 +10,7 @@ import {
 } from '../server/game.ts';
 import { migrate } from '../server/store.ts';
 import { hasMet } from '../server/shrines.ts';
-import { KANTO, LEAGUE_OFFSETS, leagueRoundAt } from '../server/gyms.ts';
+import { KANTO, LEAGUE_OFFSETS, REGIONS, leagueRoundAt } from '../server/gyms.ts';
 import { PARTY_SIZE, assign, assignable, clearMember, partyCandidates, setMember } from '../server/party.ts';
 import { canLearn, learnableMoves, moveById } from '../server/moves.ts';
 import { LEG_LENGTH, STOPS } from '../src/journey.ts';
@@ -23,6 +23,8 @@ const PLATEAU = STOPS.findIndex((s) => s.ko === '석영고원') * LEG_LENGTH;
 
 /** Six fully-evolved Kanto Pokemon, all of which learn plenty from machines. */
 const SIX = [6, 9, 3, 143, 65, 149];
+/** Four plausible parties, for sweeps where the species mix is the variable. */
+const PARTIES = [SIX, [497, 500, 503, 612, 635, 609], [130, 94, 448, 445, 462, 149], [154, 157, 160, 248, 197, 212]];
 const entry = (speciesId: number, moves?: number[]): DexEntry => ({
   speciesId,
   shiny: false,
@@ -285,7 +287,7 @@ describe('the league inside hunt()', () => {
 
 describe('league difficulty', () => {
   /** One full run against a party armed from a bag of `tms` machines. */
-  const clears = (ids: number[], tms: number, n = 400) => {
+  const clears = (ids: number[], tms: number, n = 400, ladder = KANTO.league) => {
     let won = 0;
     for (let k = 0; k < n; k++) {
       const rng = mulberry32((k * 2654435761) >>> 0);
@@ -305,8 +307,8 @@ describe('league difficulty', () => {
       });
       let hp = party.map(() => 100);
       let ok = true;
-      for (let i = 0; i < KANTO.league.length && ok; i++) {
-        const r = leagueRoundAt(k * 8 + i, KANTO.league[i], party, hp);
+      for (let i = 0; i < ladder.length && ok; i++) {
+        const r = leagueRoundAt(k * 8 + i, ladder[i], party, hp);
         hp = r.hp;
         ok = r.won;
       }
@@ -330,6 +332,34 @@ describe('league difficulty', () => {
 
   it('rises with the bag rather than with the species', () => {
     expect(clears(SIX, 47)).toBeGreaterThan(clears(SIX, 8));
+  });
+
+  /**
+   * Every ladder, not only 관동's.
+   *
+   * A region is met later than the one before it, so the bag it is measured
+   * against grows with it — ~47 machines at 석영고원 is what INTERNALS recorded,
+   * and a save that has walked as far as 하나's plateau is holding about 150.
+   * Grit is what absorbs the difference, and this is the sweep that says so.
+   */
+  const LADDERS: { ko: string; ladder: typeof KANTO.league; bag: number }[] = [
+    { ko: '관동', ladder: KANTO.league, bag: 47 },
+    ...REGIONS.filter((r) => r.id !== 'kanto' && r.league.length > 0).map((r) => ({
+      ko: r.ko,
+      ladder: r.league,
+      bag: 150,
+    })),
+  ];
+
+  it.each(LADDERS)('leaves $ko winnable and losable', ({ ladder, bag }) => {
+    // Four parties, because who you bring matters far more once a ladder
+    // carries transcribed movesets: four named moves have a type chart, and a
+    // weighted draw from a whole learnset averages one away. The band is on
+    // the spread, not on any one party — no party may be locked out, and none
+    // may walk it.
+    const rates = PARTIES.map((ids) => clears(ids, bag, 200, ladder));
+    expect(Math.max(...rates)).toBeLessThan(0.99);
+    expect(Math.min(...rates)).toBeGreaterThan(0.05);
   });
 });
 

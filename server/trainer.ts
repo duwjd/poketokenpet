@@ -164,6 +164,8 @@ export type Trainer = {
   /** The Showdown slug, i.e. what `ensureNpcSprite` takes. Never a filename. */
   sprite: string;
   team: number[];
+  /** The four moves each carries, index-aligned with `team`. Absent = generated. */
+  teamMoves?: number[][];
   grit: number;
 };
 
@@ -291,6 +293,9 @@ export function trainerBattleAt(
       grit: t.grit,
       mySpeciesId,
       ...boosts,
+      // After the spread deliberately: a transcribed set is the trainer's own
+      // moves, and no caller-side boost has any business replacing them.
+      foeMoves: t.teamMoves?.[i],
     });
     rounds.push(round);
 

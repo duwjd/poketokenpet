@@ -188,6 +188,27 @@ const INDEX: Map<string, RegionIndex> = new Map(
   }
 })();
 
+/**
+ * A transcribed moveset lines up with the team it belongs to.
+ *
+ * `teamMoves` is index-aligned with `team` and optional, which means a row can
+ * legally carry none — but a row that carries *some* and stops halfway would
+ * silently hand the generated pool to the members past the end, and the two
+ * pools are not close: a transcribed set is four named moves, a generated one
+ * is the whole learnset weighted. The mismatch would show up as a leader who
+ * fights correctly for three members and then differently for the fourth, and
+ * nothing on screen would say why. Caught at module load instead.
+ */
+(() => {
+  for (const t of [...ALL_GYMS, ...ALL_LEAGUE]) {
+    if (t.teamMoves && t.teamMoves.length !== t.team.length) {
+      throw new Error(
+        `gymdata.ts: ${t.id} has ${t.teamMoves.length} movesets for ${t.team.length} members`,
+      );
+    }
+  }
+})();
+
 const BY_ID = new Map(ALL_GYMS.map((g) => [g.id, g]));
 
 export function gymById(id: string): GymRow | null {
@@ -363,6 +384,7 @@ export function gymTrainer(row: GymRow): Trainer {
     gender: row.gender,
     sprite: row.sprite,
     team: row.team,
+    teamMoves: row.teamMoves,
     grit: row.grit,
   };
 }
@@ -553,7 +575,8 @@ export function leagueRoundAt(
   /** Global round index, so two rounds against the same opponent differ. */
   let r = 0;
 
-  for (const foe of member.team) {
+  for (let i = 0; i < member.team.length; i++) {
+    const foe = member.team[i];
     let felled = false;
     // An opponent does not go away because one of my six ran out. It stays,
     // and the next bar comes in against it — which is the whole reason six
@@ -574,6 +597,8 @@ export function leagueRoundAt(
         grit: member.grit,
         mySpeciesId: me.speciesId,
         ...boosts,
+        // After the spread: see `trainerBattleAt`. A transcribed set wins.
+        foeMoves: member.teamMoves?.[i],
       });
       rounds.push(round);
       outFor.push(cur);

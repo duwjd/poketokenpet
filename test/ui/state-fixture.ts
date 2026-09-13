@@ -325,7 +325,9 @@ export const STATE = {
      * second entry is what a multi-region test adds for itself.
      */
     now: 'kanto',
-    regions: [{ key: 'kanto', ko: '관동', count: 1, total: 8, clearedAt: null, until: 5972 }],
+    regions: [
+      { key: 'kanto', ko: '관동', count: 1, total: 8, clearedAt: null, until: 5972, leagueCity: '석영고원' },
+    ],
     league: KANTO_LEAGUE,
     leagues: [KANTO_LEAGUE],
     cases: [

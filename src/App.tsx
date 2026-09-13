@@ -339,6 +339,8 @@ type State = {
       total: number;
       clearedAt: number | null;
       until: number;
+      /** Where the ladder stands, or null for a region that has none at all. */
+      leagueCity: string | null;
     }[];
     /** The live region's ladder. The same object as `leagues.find(now)`. */
     league: League;
@@ -3316,11 +3318,12 @@ export default function App() {
       ) : (
         <p className="muted sub note">
           {/* Two different facts, and saying the wrong one would be a lie. The
-              payload only lists a region's ladder once it has rows, so a region
+              payload lists a region's ladder only once it has rows, so a region
               that HAS a league whose roster is not transcribed yet has to say
-              so rather than claim there is none. */}
-          {state.badges.regions.length > 1 && badgeReg?.key === 'unova'
-            ? `${badgeReg?.ko}의 사천왕 명단은 아직 들어오지 않았습니다.`
+              so rather than claim there is none. `leagueCity` is what tells
+              them apart, which keeps this line from ever naming a region. */}
+          {badgeReg?.leagueCity
+            ? `${badgeReg.ko}의 ${badgeReg.leagueCity} 명단은 아직 들어오지 않았습니다.`
             : `${badgeReg?.ko}에는 포켓몬리그가 없습니다.`}
         </p>
       )}

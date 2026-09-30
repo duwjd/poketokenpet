@@ -172,6 +172,42 @@ git push --follow-tags
 
 `npm version minor`(0.3.0), `major`(1.0.0)도 같습니다.
 
+### Publish를 누르는 순간이 배포입니다
+
+앱 안의 업데이터(`electron/update.ts`)가 켤 때와 6시간마다
+`releases/latest/download/SHA256SUMS.txt`를 받아 봅니다. 이 주소는 **공개된 최신 릴리스만**
+가리키므로, 초안으로 있는 동안에는 아무에게도 가지 않고 **Publish release**를 누르는 순간
+설치된 모든 앱에 [업데이트] 버튼이 뜹니다.
+
+REST API(`/repos/…/releases/latest`)를 쓰지 않는 이유는 IP당 시간당 60회 제한 때문입니다 —
+한 사무실 NAT 뒤의 사용자들이 이 한도를 나눠 쓰다 다 쓰면 업데이트가 조용히 안 보입니다.
+다운로드 리다이렉트에는 이 제한이 없습니다.
+
+업데이터와의 약속이 두 가지 있습니다. **바꾸면 설치된 모든 앱의 업데이트가 끊깁니다.**
+
+- `electron-builder.yml`의 `artifactName` — 업데이터는 `PokeTokenPet-<버전>-<arch>-{mac,win}.zip`을
+  이름으로 찾고, 버전도 이 이름에서 읽습니다
+- 릴리스 잡이 만드는 `SHA256SUMS.txt` — 버전 확인과 파일 검증이 전부 이 파일 하나로 이뤄집니다
+
+`test/update.test.ts`의 `assetFor` 테스트가 첫 번째를 지킵니다.
+
+### 업데이트를 태그 없이 시험하기
+
+패키징한 앱을 **더 낮은 버전인 척** 실행하면 실제 최신 릴리스로 업데이트해 볼 수 있습니다.
+내 저장 파일과 실행 중인 앱을 건드리지 않도록 HOME과 user-data-dir을 따로 줍니다.
+
+```bash
+npm run app:build && CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --dir --arm64
+T=$(mktemp -d); ditto release/mac-arm64/PokeTokenPet.app "$T/PokeTokenPet.app"
+HOME="$T/home" POKETOKENPET_FAKE_VERSION=0.0.1 \
+  "$T/PokeTokenPet.app/Contents/MacOS/PokeTokenPet" --user-data-dir="$T/ud"
+```
+
+15초 뒤 패널에 배너가 뜹니다. 교체 후 새 앱은 `open`으로 다시 켜지는데, 평소 쓰는 앱이 켜져
+있으면 단일 인스턴스 잠금에 걸려 바로 꺼지고 **평소 쓰는 앱의 패널이 한 번 열립니다** — 정상입니다.
+Windows 교체 스크립트(`winScript`)는 이 방법으로 Mac에서 시험할 수 없으니, Windows 기기에서
+같은 방식(`%LOCALAPPDATA%`·`--user-data-dir` 분리)으로 확인하세요.
+
 ### 태그 없이 리허설하기
 
 GitHub → **Actions** 탭 → 왼쪽 사이드바의 **Release** → **Run workflow**.

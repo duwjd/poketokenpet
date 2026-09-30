@@ -20,6 +20,8 @@ export type Prefs = {
   petAlwaysOnTop: boolean;
   openAtLogin: boolean;
   showTokensInTray: boolean;
+  /** Ask GitHub for a newer release at launch and every six hours. */
+  checkUpdates: boolean;
 };
 
 export const PET_SIZES = [64, 96, 128, 160, 200, 256] as const;
@@ -33,6 +35,7 @@ export const DEFAULT_PREFS: Prefs = {
   petAlwaysOnTop: true,
   openAtLogin: false,
   showTokensInTray: true,
+  checkUpdates: true,
 };
 
 const file = () => path.join(appDataDir(), 'prefs.json');

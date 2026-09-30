@@ -19,6 +19,10 @@ contextBridge.exposeInMainWorld('pet', {
   stepSize: (delta: number) => ipcRenderer.invoke('pet:stepSize', delta),
   fitTo: (w: number, h: number) => ipcRenderer.send('pet:fitTo', w, h),
   openPopover: () => ipcRenderer.invoke('pet:openPopover'),
+  getUpdate: () => ipcRenderer.invoke('pet:getUpdate'),
+  startUpdate: () => ipcRenderer.invoke('pet:startUpdate'),
+  dismissUpdate: () => ipcRenderer.invoke('pet:dismissUpdate'),
+  version: () => ipcRenderer.invoke('pet:version'),
 
   drag: (dx: number, dy: number) => ipcRenderer.send('pet:drag', dx, dy),
   dragEnd: () => ipcRenderer.send('pet:dragEnd'),
@@ -33,6 +37,11 @@ contextBridge.exposeInMainWorld('pet', {
     const h = (_e: unknown, p: unknown) => cb(p);
     ipcRenderer.on('prefs', h);
     return () => ipcRenderer.off('prefs', h);
+  },
+  onUpdate: (cb: (u: unknown) => void) => {
+    const h = (_e: unknown, u: unknown) => cb(u);
+    ipcRenderer.on('update', h);
+    return () => ipcRenderer.off('update', h);
   },
   onIdle: (cb: (v: boolean) => void) => {
     const h = (_e: unknown, v: boolean) => cb(v);

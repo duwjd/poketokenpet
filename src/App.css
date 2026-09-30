@@ -528,6 +528,22 @@ p.muted.warn { color: var(--gold); }
 
 /* The result toast is `.px-toast` (src/ui.css); `.flash` is only its hook. */
 
+/*
+ * The update banner, above the tabs. A `.px-window` like the scene's message
+ * box, laid out as one row: the sentence, then its buttons. `flex: none` so the
+ * column never squeezes it — the tab body scrolls, this does not.
+ */
+.updatebar {
+  flex: none;
+  margin: var(--s3) var(--s3) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+.updatebar-msg { flex: 1; min-width: 0; }
+.updatebar-acts { flex: none; display: flex; gap: var(--s2); }
+.updatebar-meter { flex: 1; }
+
 
 .foot { font-size: 12px; margin-top: var(--s5); }
 .sizes { display: flex; gap: var(--s2); flex-wrap: wrap; justify-content: flex-end; }

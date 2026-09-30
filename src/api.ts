@@ -100,6 +100,24 @@ export type Prefs = {
   petAlwaysOnTop: boolean;
   openAtLogin: boolean;
   showTokensInTray: boolean;
+  checkUpdates: boolean;
+};
+
+/**
+ * The self-updater's state, as electron/updatecore.ts sends it.
+ *
+ * Restated rather than imported: that file uses node:path, and the app
+ * project has no Node types — the same reason Prefs above is restated.
+ */
+export type UpdateStatus = {
+  phase: 'idle' | 'available' | 'downloading' | 'installing' | 'error' | 'done';
+  current: string;
+  version: string | null;
+  url: string | null;
+  received: number;
+  total: number;
+  message: string | null;
+  canInstall: boolean;
 };
 
 type Bridge = {
@@ -122,6 +140,12 @@ type Bridge = {
   /** True while the machine is asleep or the screen is locked. */
   isIdle(): Promise<boolean>;
   onIdle(cb: (v: boolean) => void): () => void;
+  getUpdate(): Promise<UpdateStatus>;
+  /** Download, verify, swap and restart — or open the release page where that cannot be done. */
+  startUpdate(): Promise<void>;
+  dismissUpdate(): Promise<void>;
+  onUpdate(cb: (u: UpdateStatus) => void): () => void;
+  version(): Promise<string>;
 };
 
 declare global {

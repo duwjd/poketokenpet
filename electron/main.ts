@@ -6,6 +6,7 @@ import {
   nativeImage,
   net,
   nativeTheme,
+  Notification,
   powerMonitor,
   protocol,
   screen,
@@ -34,6 +35,7 @@ import {
 } from '../server/sprites.ts';
 import { appDataDir } from '../server/paths.ts';
 import { DEFAULT_PREFS, PET_SIZES, loadPrefs, nearestSize, savePrefs, stepSize, type Prefs } from './state.ts';
+import { checkNow, currentVersion, dismissUpdate, getUpdate, initUpdater, startUpdate, stopUpdater } from './update.ts';
 
 const __dirname_ = path.dirname(fileURLToPath(import.meta.url));
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
@@ -274,7 +276,16 @@ async function refreshTray() {
 }
 
 function buildTrayMenu() {
+  const update = getUpdate();
   return Menu.buildFromTemplate([
+    // First, so it is the thing seen when the menu opens. Only while there is
+    // something to act on — the panel carries the progress once it starts.
+    ...(update.phase === 'available' && update.version
+      ? [
+          { label: `v${update.version}으로 업데이트`, click: () => void startUpdate() },
+          { type: 'separator' as const },
+        ]
+      : []),
     { label: '창 열기', click: () => togglePopover(true) },
     { type: 'separator' },
     {
@@ -469,17 +480,27 @@ function applyPetPrefs() {
   pet.webContents.send('prefs', prefs);
 }
 
+/**
+ * Point the login item at THIS executable.
+ *
+ * Run on every launch, not just when the toggle changes: the updater may have
+ * moved the app to ~/Applications or %LOCALAPPDATA%\Programs, and a login
+ * item still pointing at the old copy would start the old version at login.
+ */
+function applyLoginItem() {
+  app.setLoginItemSettings({
+    openAtLogin: prefs.openAtLogin,
+    openAsHidden: isMac,
+    args: isMac ? [] : ['--hidden'],
+  });
+}
+
 async function setPrefs(patch: Partial<Prefs>) {
   prefs = { ...prefs, ...patch };
   if (patch.petSize != null) prefs.petSize = nearestSize(patch.petSize);
   await savePrefs(prefs);
-  if ('openAtLogin' in patch) {
-    app.setLoginItemSettings({
-      openAtLogin: prefs.openAtLogin,
-      openAsHidden: isMac,
-      args: isMac ? [] : ['--hidden'],
-    });
-  }
+  if ('openAtLogin' in patch) applyLoginItem();
+  if (patch.checkUpdates === true) void checkNow();
   applyPetPrefs();
   tray?.setContextMenu(buildTrayMenu());
   popover?.webContents.send('prefs', prefs);
@@ -712,6 +733,26 @@ if (!app.requestSingleInstanceLock()) {
 
     createPopover();
     if (prefs.petEnabled) createPet();
+    if (prefs.openAtLogin && app.isPackaged) applyLoginItem();
+
+    initUpdater({
+      enabled: () => prefs.checkUpdates,
+      onChange: (u) => {
+        popover?.webContents.send('update', u);
+        tray?.setContextMenu(buildTrayMenu());
+      },
+      // A tray app's panel may go unopened for days; the notification is what
+      // gets the button seen. Clicking it opens the panel, where the button is.
+      onFound: (version) => {
+        if (!Notification.isSupported()) return;
+        const n = new Notification({
+          title: 'PokeTokenPet 새 버전',
+          body: `v${version}이 나왔습니다. 눌러서 업데이트하세요.`,
+        });
+        n.on('click', () => togglePopover(true));
+        n.show();
+      },
+    });
 
     // Installed before the first scan so the very first rebuild — which is
     // unconditional anyway — is the only one that can land on a busy machine.
@@ -729,6 +770,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on('before-quit', () => {
     stopRefreshTimer();
+    stopUpdater();
   });
 }
 
@@ -751,6 +793,10 @@ ipcMain.handle('pet:dexEntry', (_e, id: number, shiny?: boolean) =>
   dexEntry(Number(id), shiny === true),
 );
 ipcMain.handle('pet:getPrefs', () => prefs);
+ipcMain.handle('pet:getUpdate', () => getUpdate());
+ipcMain.handle('pet:startUpdate', () => startUpdate());
+ipcMain.handle('pet:dismissUpdate', () => dismissUpdate());
+ipcMain.handle('pet:version', () => currentVersion());
 ipcMain.handle('pet:setPrefs', (_e, patch: Partial<Prefs>) => setPrefs(patch));
 ipcMain.handle('pet:sizes', () => PET_SIZES);
 

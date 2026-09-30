@@ -113,13 +113,13 @@ rm ~/.poketokenpet/state.json   # 게임만 초기화 (캐시는 유지)
 
 ```bash
 npm run gen:shots
-npm run gen:readme -- 0.4.0   # 배너·다운로드 버튼·새 기능 카드. 인자는 배너에 찍을 버전
+npm run gen:readme -- 0.4.0   # 배너·다운로드 버튼·새 기능 카드. 인자는 카드가 소개하는 버전
 ```
 
 `gen:readme`는 `readme-art.html`(`src/readme-art/`)을 캡처합니다. 카드는 `gen:shots`
 스크린샷을 잘라 쓰므로 **순서가 중요합니다** — 화면이 바뀌었으면 shots 먼저. 전부 2배
 크기로 그리고 README가 `width`로 절반에 보여 주기 때문에, 폰트 크기와 프레임 두께는 늘
-정수배입니다. 릴리스 전에 다음 버전 번호를 넘겨서 다시 뽑으세요.
+정수배입니다. 배너에는 버전을 찍지 않습니다 — 그림 속 숫자는 다음 릴리스 날 바로 낡으니, 최신 버전은 README의 shields 배지가 실시간으로 보여 줍니다. 카드는 큰 기능이 들어간 릴리스에서만 새로 그리세요.
 
 Vite를 :5199에 띄우고, `node_modules`에 이미 있는 Electron으로 패널을 열어
 `docs/img/`에 PNG 아홉 장을 씁니다. 화면에는 아무것도 뜨지 않습니다.

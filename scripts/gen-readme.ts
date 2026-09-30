@@ -7,8 +7,8 @@
  * cards are crops of the gen:shots screenshots, so run that first when the
  * screens change. Pictures to look at, not a test to diff.
  *
- * The version printed on the banner is the argument, else package.json's —
- * pass the NEXT version when drawing them ahead of `npm version`.
+ * The argument is the release the what's-new card describes, else
+ * package.json's version. The banner prints no version at all.
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';

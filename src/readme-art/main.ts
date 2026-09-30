@@ -19,6 +19,11 @@ import btnPrimary from '../ui-btn-primary.png';
 import flowers from '../scenes/flowers.png';
 import icon from '../../build/icon.png';
 
+/**
+ * The release the what's-new card describes. Only the card: the banner carries
+ * no version of its own, because a number drawn into a picture is stale the
+ * day the next release lands — the README's shields badge says it live.
+ */
 const params = new URLSearchParams(location.search);
 const version = params.get('v') ?? '';
 
@@ -77,9 +82,9 @@ document.body.innerHTML = `
     <p class="tag">AI로 코딩한 만큼<br>포켓몬이 자랍니다</p>
     <p class="sub">Claude Code를 쓰면 알이 부화하고, 진화하고,<br>안 보는 동안 싸우고, 체육관에 도전합니다.</p>
     <div class="plates">
-      ${version ? `<span class="plate">v${version}</span>` : ''}
       <span class="plate">macOS · Windows</span>
       <span class="plate">무료 · 계정 없음</span>
+      <span class="plate">원클릭 업데이트</span>
     </div>
   </div>
   <div class="win hero-shot">${crop('08-gym', ...STAGE)}</div>

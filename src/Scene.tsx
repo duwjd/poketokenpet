@@ -1415,110 +1415,115 @@ export default function Scene({
             )}
           </div>
 
-          <div className="scene-text uiwin">
-            {/* The challenge, over the trainer and nothing else. It used to
-                share 'intro' with the first send-out, which meant the sentence
-                announcing a person went up over a picture of a Pokemon. */}
-            {st.phase === 'meet' ? (
-              <>
-                {fight!.name}
-                {josa(fight!.name, '이', '가')} 승부를 걸어왔다!
-              </>
-            ) : /* The send-out line HOLDS through the entry beats that follow
-                   it. 'send' hands back to 'enter' (see the reducer), so
-                   testing the phase alone would drop the sentence the moment
-                   the Pokemon started arriving. The games leave it up while it
-                   does. Now that the challenge has a beat of its own, EVERY
-                   trainer round says this — the first one included, which is
-                   both what the games do and one condition fewer here. */
-            st.phase === 'send' || (fight && (st.phase === 'enter' || st.phase === 'intro')) ? (
-              /* Whoever is new this round is the one sent out: theirs, mine,
-                 or both after a double knockout. */
-              sendLines.map((line, i) => (
-                <Fragment key={i}>
-                  {i > 0 && <br />}
-                  {line}
-                </Fragment>
-              ))
-            ) : st.phase === 'arrive' ? (
-              (pages(arriveLines(bout, myName, foeName))[st.page] ?? []).map((line, i) => (
-                <Fragment key={i}>
-                  {i > 0 && <br />}
-                  {line}
-                </Fragment>
-              ))
-            ) : st.phase === 'enter' || st.phase === 'intro' ? (
-              /* Wild only: every trainer path is taken by the branch above. */
-              <>
-                앗! 야생 {foeName}
-                {josa(foeName, '이', '가')} 나타났다!
-              </>
-            ) : st.phase === 'form' ? (
-              <>
-                {myName}
-                {josa(myName, '은', '는')} {enc.formKo}
-                {euro(enc.formKo ?? '')} 변했다!
-                <br />
-                {enc.formKind === 'gmax'
-                  ? `${GMAX_TURNS}턴 동안 받는 피해가 절반이 된다!`
-                  : '힘이 넘쳐흐른다!'}
-              </>
-            ) : (acting || st.phase === 'field') && turns[st.turn] ? (
-              /* Either half, or the end of the turn: two lines a page. */
-              (pages(beatLines(turns[st.turn], st.phase, myName, foeName))[st.page] ?? []).map((line, i) => (
-                <Fragment key={i}>
-                  {i > 0 && <br />}
-                  {line}
-                </Fragment>
-              ))
-            ) : st.phase === 'faint' ? (
-              stalled ? (
-                fight ? (
+          {/* No box during the stare-down: it has nothing to say yet, and the
+              only thing left to fall through to below is the ending — which
+              would announce the result over the team it is about to beat. */}
+          {st.phase !== 'vs' && (
+            <div className="scene-text uiwin">
+              {/* The challenge, over the trainer and nothing else. It used to
+                  share 'intro' with the first send-out, which meant the sentence
+                  announcing a person went up over a picture of a Pokemon. */}
+              {st.phase === 'meet' ? (
+                <>
+                  {fight!.name}
+                  {josa(fight!.name, '이', '가')} 승부를 걸어왔다!
+                </>
+              ) : /* The send-out line HOLDS through the entry beats that follow
+                     it. 'send' hands back to 'enter' (see the reducer), so
+                     testing the phase alone would drop the sentence the moment
+                     the Pokemon started arriving. The games leave it up while it
+                     does. Now that the challenge has a beat of its own, EVERY
+                     trainer round says this — the first one included, which is
+                     both what the games do and one condition fewer here. */
+              st.phase === 'send' || (fight && (st.phase === 'enter' || st.phase === 'intro')) ? (
+                /* Whoever is new this round is the one sent out: theirs, mine,
+                   or both after a double knockout. */
+                sendLines.map((line, i) => (
+                  <Fragment key={i}>
+                    {i > 0 && <br />}
+                    {line}
+                  </Fragment>
+                ))
+              ) : st.phase === 'arrive' ? (
+                (pages(arriveLines(bout, myName, foeName))[st.page] ?? []).map((line, i) => (
+                  <Fragment key={i}>
+                    {i > 0 && <br />}
+                    {line}
+                  </Fragment>
+                ))
+              ) : st.phase === 'enter' || st.phase === 'intro' ? (
+                /* Wild only: every trainer path is taken by the branch above. */
+                <>
+                  앗! 야생 {foeName}
+                  {josa(foeName, '이', '가')} 나타났다!
+                </>
+              ) : st.phase === 'form' ? (
+                <>
+                  {myName}
+                  {josa(myName, '은', '는')} {enc.formKo}
+                  {euro(enc.formKo ?? '')} 변했다!
+                  <br />
+                  {enc.formKind === 'gmax'
+                    ? `${GMAX_TURNS}턴 동안 받는 피해가 절반이 된다!`
+                    : '힘이 넘쳐흐른다!'}
+                </>
+              ) : (acting || st.phase === 'field') && turns[st.turn] ? (
+                /* Either half, or the end of the turn: two lines a page. */
+                (pages(beatLines(turns[st.turn], st.phase, myName, foeName))[st.page] ?? []).map((line, i) => (
+                  <Fragment key={i}>
+                    {i > 0 && <br />}
+                    {line}
+                  </Fragment>
+                ))
+              ) : st.phase === 'faint' ? (
+                stalled ? (
+                  fight ? (
+                    <>
+                      {foeName}
+                      {josa(foeName, '을', '를')} 끝내 쓰러뜨리지 못했다…
+                    </>
+                  ) : (
+                    <>
+                      {foeName}
+                      {josa(foeName, '은', '는')} 어딘가로 가 버렸다…
+                    </>
+                  )
+                ) : wiped ? (
                   <>
-                    {foeName}
-                    {josa(foeName, '을', '를')} 끝내 쓰러뜨리지 못했다…
+                    {myName}
+                    {josa(myName, '은', '는')} 눈앞이 캄캄해졌다…
                   </>
+                ) : exit === 'both-down' ? (
+                  <>둘 다 쓰러졌다!</>
+                ) : exit === 'me-down' ? (
+                  <>
+                    {myName}
+                    {josa(myName, '은', '는')} 쓰러졌다!
+                  </>
+                ) : (exit === 'foe-forced' || exit === 'foe-retreat') && fight ? (
+                  <>
+                    {fight.name}
+                    {josa(fight.name, '은', '는')} {foeName}
+                    {josa(foeName, '을', '를')} 불러들였다!
+                  </>
+                ) : exit === 'me-forced' || exit === 'me-retreat' ? (
+                  <>{myName}, 돌아와!</>
                 ) : (
                   <>
                     {foeName}
-                    {josa(foeName, '은', '는')} 어딘가로 가 버렸다…
+                    {josa(foeName, '을', '를')} 쓰러뜨렸다!
                   </>
                 )
-              ) : wiped ? (
-                <>
-                  {myName}
-                  {josa(myName, '은', '는')} 눈앞이 캄캄해졌다…
-                </>
-              ) : exit === 'both-down' ? (
-                <>둘 다 쓰러졌다!</>
-              ) : exit === 'me-down' ? (
-                <>
-                  {myName}
-                  {josa(myName, '은', '는')} 쓰러졌다!
-                </>
-              ) : (exit === 'foe-forced' || exit === 'foe-retreat') && fight ? (
-                <>
-                  {fight.name}
-                  {josa(fight.name, '은', '는')} {foeName}
-                  {josa(foeName, '을', '를')} 불러들였다!
-                </>
-              ) : exit === 'me-forced' || exit === 'me-retreat' ? (
-                <>{myName}, 돌아와!</>
               ) : (
-                <>
-                  {foeName}
-                  {josa(foeName, '을', '를')} 쓰러뜨렸다!
-                </>
-              )
-            ) : (
-              (rewardPages(enc)[st.page] ?? []).map((line, i) => (
-                <Fragment key={i}>
-                  {i > 0 && <br />}
-                  {line}
-                </Fragment>
-              ))
-            )}
-          </div>
+                (rewardPages(enc)[st.page] ?? []).map((line, i) => (
+                  <Fragment key={i}>
+                    {i > 0 && <br />}
+                    {line}
+                  </Fragment>
+                ))
+              )}
+            </div>
+          )}
         </div>
       )}
 

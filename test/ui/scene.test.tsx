@@ -1280,6 +1280,9 @@ describe('a named battle', () => {
     // And it has NOT given the ending away: the badge only exists on a win, so
     // putting it here would announce the result before the first send-out.
     expect(document.querySelector('.scene-vs img[alt="회색배지"]')).toBeNull();
+    // Nor does the message box, which has nothing of its own to say yet and
+    // would otherwise fall through to the victory line over the team.
+    expect(document.querySelector('.scene-text')).toBeNull();
   });
 
   it('gives a route trainer no stare-down', async () => {

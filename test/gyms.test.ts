@@ -705,8 +705,8 @@ describe('difficulty', () => {
       expect(r, `${g.region} ${g.ko} too hard`).toBeGreaterThan(0.35);
     }
     // Sixty-one thousand fights; several seconds on its own, more under a
-    // parallel run.
-  }, 30_000);
+    // parallel run, and past 30s on the Windows CI runner.
+  }, 120_000);
 
   it('makes TMs worth having', () => {
     // Bare-handed, a companion swings one Normal-type 몸통박치기 at a team a
@@ -724,7 +724,7 @@ describe('difficulty', () => {
     const mean = ids.reduce((a, id) => a + bare(id), 0) / ids.length;
     expect(mean).toBeLessThan(0.4);
     expect(bare('giovanni')).toBeLessThan(0.05);
-  });
+  }, 30_000);
 });
 
 describe('stopIndexOf', () => {

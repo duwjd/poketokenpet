@@ -346,5 +346,5 @@ describe('trainers inside hunt()', () => {
     const s = hunting({ huntCount: findTrainer(0) });
     const at = T0 + 30 * HUNT_INTERVAL_MS;
     expect(hunt(s, at).state).toEqual(hunt(s, at).state);
-  });
+  }, 30_000);
 });

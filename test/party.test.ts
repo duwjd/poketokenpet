@@ -375,7 +375,7 @@ describe('league difficulty', () => {
     // what the species could not learn by itself — so the line to hold is
     // between armed and unarmed, no longer between a small bag and a big one.
     expect(clears(SIX, 47)).toBeGreaterThan(clears(SIX, -1) + 0.2);
-  });
+  }, 30_000);
 
   /**
    * Every ladder, not only 관동's.
@@ -403,7 +403,9 @@ describe('league difficulty', () => {
     const rates = PARTIES.map((ids) => clears(ids, bag, 200, ladder));
     expect(Math.max(...rates)).toBeLessThan(0.99);
     expect(Math.min(...rates)).toBeGreaterThan(0.05);
-  });
+    // 800 simulated ladders: under 2s here, past the 5s default on the
+    // Windows CI runner.
+  }, 30_000);
 });
 
 describe('meeting a legendary', () => {

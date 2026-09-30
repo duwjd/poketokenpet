@@ -29,7 +29,7 @@ window.fetch = async (input, init) => {
   const path = url.startsWith('http') ? new URL(url).pathname + new URL(url).search : url;
 
   if (path.startsWith('/api/state')) {
-    return json(window.__shot.state === 'B' ? DATA.stateB : DATA.stateA);
+    return json(DATA[`state${window.__shot.state}`] ?? DATA.stateA);
   }
   /*
    * Order matters and is not a style choice: '/api/dex/6' also satisfies

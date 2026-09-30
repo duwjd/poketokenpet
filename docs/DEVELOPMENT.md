@@ -78,6 +78,7 @@ rm ~/.poketokenpet/state.json   # 게임만 초기화 (캐시는 유지)
 | `src/ui-*.png` | `npm run gen:ui` |
 | `docs/img/*.png` | `npm run gen:shots` |
 | `docs/img/ds-*.png` (디자인 시스템 견본) | `npm run gen:specimen` |
+| `docs/img/readme-*.png` (README 배너·버튼·새 기능 카드) | `npm run gen:readme` |
 
 반대로 `server/legends.ts`(전설 조우 조건), `server/achievements.ts`(업적 표),
 `server/gyms.ts`(관동 체육관 관장·배지·포켓몬리그), `server/shrines.ts`(전설 전용 공간)는
@@ -112,10 +113,16 @@ rm ~/.poketokenpet/state.json   # 게임만 초기화 (캐시는 유지)
 
 ```bash
 npm run gen:shots
+npm run gen:readme -- 0.4.0   # 배너·다운로드 버튼·새 기능 카드. 인자는 배너에 찍을 버전
 ```
 
+`gen:readme`는 `readme-art.html`(`src/readme-art/`)을 캡처합니다. 카드는 `gen:shots`
+스크린샷을 잘라 쓰므로 **순서가 중요합니다** — 화면이 바뀌었으면 shots 먼저. 전부 2배
+크기로 그리고 README가 `width`로 절반에 보여 주기 때문에, 폰트 크기와 프레임 두께는 늘
+정수배입니다. 릴리스 전에 다음 버전 번호를 넘겨서 다시 뽑으세요.
+
 Vite를 :5199에 띄우고, `node_modules`에 이미 있는 Electron으로 패널을 열어
-`docs/img/`에 PNG 여덟 장을 씁니다. 화면에는 아무것도 뜨지 않습니다.
+`docs/img/`에 PNG 아홉 장을 씁니다. 화면에는 아무것도 뜨지 않습니다.
 
 **실제 저장 파일은 절대 안 씁니다.** `scripts/shotdata.ts`가 만든 데모 페이로드를
 쓰고, `scripts/shot-app.mjs`가 세션 수준에서 `/api/*`를 전부 취소하므로 진짜

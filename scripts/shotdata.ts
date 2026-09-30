@@ -43,6 +43,7 @@ import { PRODUCTS } from '../server/shop.ts';
 import { dexStatic } from '../server/dexentry.ts';
 import { FX_SLUGS, effectFor } from '../server/movefx.ts';
 import { journeyFor } from '../src/journey.ts';
+import { gymById, gymTrainer } from '../server/gyms.ts';
 
 /**
  * The dex grid, hand-picked.
@@ -65,6 +66,11 @@ const SHINY_IDS = new Set([25, 448]);
 const ME = 6; // 리자몽 — a stage-2 fire type, so the type chips read at a glance
 const FOE = 94; // 팬텀
 const HUNT_COUNT = 412;
+/**
+ * The leader the stare-down shot is aimed at: the one badge the awards shot
+ * shows as still to come, so the two pictures tell the same story.
+ */
+const GYM_ID = 'clair';
 
 function must<T>(v: T | null, what: string): T {
   if (v === null) {
@@ -160,6 +166,8 @@ export type ShotPayloads = {
   stateA: Record<string, unknown>;
   /** One new encounter newer than A, which is what arms the battle. */
   stateB: Record<string, unknown>;
+  /** Like B, but the newer encounter is a gym leader — for the stare-down. */
+  stateC: Record<string, unknown>;
   index: unknown[];
   entry: Record<string, unknown>;
   /** Which species ids were used, for the generator's manifest line. */
@@ -552,6 +560,53 @@ export async function buildPayloads(): Promise<ShotPayloads> {
   };
 
   /**
+   * The same state one encounter later, where the encounter is a gym leader.
+   *
+   * Only the stare-down is captured, so the one round behind it is the demo
+   * battle again: it never reaches the screen, it only has to be well-formed.
+   */
+  const row = gymById(GYM_ID);
+  if (!row) throw new Error(`gen:shots — no gym row '${GYM_ID}'`);
+  const leader = gymTrainer(row);
+  const stateC = {
+    ...stateB,
+    hunt: {
+      ...stateB.hunt,
+      log: [
+        {
+          ...stateB.hunt.log[0],
+          seq: 402,
+          wildId: leader.team[0],
+          wildName: speciesName(leader.team[0]),
+          wildSprite: null,
+          battle: null,
+          trainerFight: {
+            kind: 'gym',
+            name: leader.name,
+            won: true,
+            lostAt: null,
+            badgeKo: null,
+            badgeSprite: null,
+            prizeKo: null,
+            sprite: must(await ensureNpcSprite(leader.sprite), `portrait for ${leader.name}`),
+            team: await Promise.all(
+              leader.team.map(async (id) => ({
+                speciesId: id,
+                name: speciesName(id),
+                sprite: must(await ensureSprite(id), `sprite for #${id}`),
+              })),
+            ),
+            rounds: [BATTLE],
+            mine: null,
+          },
+          battleBg: await ensureBackground('city'),
+        },
+        ...stateB.hunt.log.slice(1),
+      ],
+    },
+  };
+
+  /**
    * `dexStatic`, not `dexEntry`.
    *
    * `dexEntry` calls `loadState()` — it would read the machine owner's real
@@ -584,7 +639,7 @@ export async function buildPayloads(): Promise<ShotPayloads> {
     types: d.types,
   }));
 
-  return { stateA, stateB, index, entry, dexIds: [...DEX_IDS] };
+  return { stateA, stateB, stateC, index, entry, dexIds: [...DEX_IDS] };
 }
 
 /** Which fx slug the battle's one super-effective turn will ask for. */

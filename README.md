@@ -1,15 +1,19 @@
 <div align="center">
 
-# PokeTokenPet
+<img src="docs/img/readme-hero.png" width="880" alt="PokeTokenPet — AI로 코딩한 만큼 포켓몬이 자랍니다. 리자몽과 체육관 관장 이향의 대결 화면">
 
-### AI로 코딩한 만큼 포켓몬이 자랍니다
+<a href="../../releases/latest"><img src="docs/img/readme-dl-mac.png" width="320" alt="macOS용 받기"></a>
+<a href="../../releases/latest"><img src="docs/img/readme-dl-win.png" width="320" alt="Windows용 받기"></a>
+
+[![최신 버전](https://img.shields.io/github/v/release/duwjd/poketokenpet?label=%EC%B5%9C%EC%8B%A0&color=2c7a6f)](../../releases/latest)
+[![다운로드](https://img.shields.io/github/downloads/duwjd/poketokenpet/total?label=%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C&color=2c7a6f)](../../releases)
+![macOS · Windows](https://img.shields.io/badge/macOS%20%C2%B7%20Windows-1f2220)
+[![MIT](https://img.shields.io/badge/license-MIT-1f2220)](LICENSE)
 
 메뉴바(macOS) · 트레이(Windows)에 사는 작은 육성 게임.<br>
-Claude Code로 일하면 알이 부화하고, 진화하고, 도감이 채워집니다.
+Claude Code로 일하면 알이 부화하고, 진화하고, 체육관에 도전합니다.
 
-[**⬇ 내려받기**](../../releases) · [설치 안내 (Mac)](docs/MACOS.md) · [설치 안내 (Windows)](docs/WINDOWS.md)
-
-<img src="docs/img/00-hero.png" width="820" alt="PokeTokenPet 패널과 화면에 떠 있는 펫">
+[설치 안내 (Mac)](docs/MACOS.md) · [설치 안내 (Windows)](docs/WINDOWS.md) · [자주 묻는 것](#자주-묻는-것)
 
 </div>
 
@@ -24,11 +28,23 @@ Claude Code로 일하면 알이 부화하고, 진화하고, 도감이 채워집�
 
 ---
 
+<div align="center">
+<img src="docs/img/readme-new.png" width="880" alt="v0.4.0에서 새로워진 것 — 레벨과 진화, 진짜 배틀, 체육관과 리그, 배지 68개">
+</div>
+
+- **레벨 1에서 100까지.** 원작의 진화 레벨에 진화하고, 레벨이 오르면 레벨업 기술을 배웁니다
+- **진짜 배틀.** 종족값에서 능력치를 계산하고, 특성·날씨·필드·능력 랭크·연속기까지 원작대로 돕니다
+- **9개 지방의 체육관과 리그.** 관동부터 팔데아까지, 관장을 이기면 배지와 기술머신을 받습니다
+
+---
+
 ## 받기
+
+[**최신 릴리스 페이지**](../../releases/latest)에서 내 컴퓨터에 맞는 파일 하나를 받습니다.
 
 | 내 컴퓨터 | 받을 파일 |
 |---|---|
-| **Mac** (M1~M4) | `PokeTokenPet-<버전>-arm64-mac.dmg` |
+| **Mac** (M1 이후) | `PokeTokenPet-<버전>-arm64-mac.dmg` |
 | **Mac** (Intel) | `PokeTokenPet-<버전>-x64-mac.dmg` |
 | **Windows** | `PokeTokenPet-<버전>-x64-win.zip` |
 | **Windows** (ARM) | `PokeTokenPet-<버전>-arm64-win.zip` |
@@ -51,7 +67,9 @@ Windows는 SmartScreen 창을 띄웁니다. 바이러스가 아니라 **인증�
 
 따로 할 일이 없습니다. 평소처럼 Claude Code로 코딩하면 그게 곧 경험치입니다.
 
-알이 부화하고, 진화하고, 최종 단계에서 충분히 자라면 **졸업**해서 도감에 남고 새 알이 옵니다.
+알이 부화하면 **Lv.1**, 토큰이 쌓일수록 레벨이 오르고 **원작의 진화 레벨**에서 진화합니다(파이리는
+Lv.16에 리자드). 돌·통신교환·친밀도·시간대 진화도 원작 조건 그대로이고, **Lv.100이 되면 졸업**해서
+도감에 남고 새 알이 옵니다. 레벨이 오르면 원작처럼 **레벨업 기술**을 배웁니다.
 
 부화 임계값은 **최근 7일 평균의 15%**로 자동 조정됩니다. 하루 종일 붙어 있는 사람이든
 가끔 쓰는 사람이든, 1~2시간쯤 쓰면 알이 깨지도록 맞춰집니다.
@@ -68,8 +86,12 @@ Windows는 SmartScreen 창을 띄웁니다. 바이러스가 아니라 **인증�
 코딩을 쉬는 동안 펫이 **5분에 한 번** 야생 포켓몬과 싸웁니다. 앱을 꺼 둔 시간도
 **최대 8시간까지 소급 정산**하니 노트북을 닫고 퇴근해도 손해가 없습니다.
 
-연출이 아니라 **진짜 배틀**입니다. HP가 실제로 닳고, 타입 상성이 계산되고,
-급소와 상태이상이 뜨고, 지면 집니다.
+연출이 아니라 **진짜 배틀**입니다. 양쪽 다 레벨 50으로 **종족값**에서 능력치를 계산하고,
+선공기와 빠른 쪽이 먼저 움직이고, 타입 상성과 급소가 들어가고, 마비·잠듦·화상 같은 상태이상이
+원작대로 발을 묶습니다. 비바라기·모래바람 같은 날씨와 필드, 리플렉터·트릭룸, 칼춤 같은 능력
+랭크, 씨기관총·마구할퀴기 같은 연속기의 횟수, 기술의 부가 효과까지 원작 효과를 냅니다.
+포켓몬마다 **특성**이 있어서 위협·하늘의은총·옹골참·부유 같은 특성도 원작대로 작동합니다.
+야생전도 지면 아무것도 받지 못합니다.
 
 다만 사냥에는 **상한**이 있습니다 — 켜두기만 한 기계가 혼자 도감을 채우지 못하도록.
 이 앱의 전제가 "일한 만큼 자란다"라서, 그걸 지키는 쪽을 골랐습니다. (설정에서 끌 수 있습니다.)
@@ -98,6 +120,19 @@ Windows는 SmartScreen 창을 띄웁니다. 바이러스가 아니라 **인증�
 키·무게·등급·특성·배울 수 있는 기술머신 수, 진화 계보에서 내가 몇 종을 채웠는지,
 그리고 18타입 방어 상성표까지 한 장에 들어갑니다.
 </details>
+
+### 🏟️ 체육관에 도전합니다
+
+<img src="docs/img/08-gym.png" width="380" align="left" alt="체육관 관장 이향과 마주 선 대면 화면">
+
+여행하다 보면 **체육관 도시**에 닿습니다. 관장은 원작의 파티 그대로 기다리고, 도전할지는
+직접 고릅니다 — 수락하면 배틀을 처음부터 지켜볼 수 있습니다.
+
+관동·성도·호연·신오·하나·칼로스·알로라·가라르·팔데아, **아홉 지방에 배지 68개.**
+이기면 배지와 원작의 **기술머신**을 받고, 한 지방의 배지를 다 모으면 그 지방의 **리그**가 열립니다.
+관장도 질 수 있는 싸움이라, 레벨이 모자라면 집니다.
+
+<br clear="left">
 
 ### 🏪 번 걸 쓰고, 다음 목표를 받습니다
 
@@ -204,7 +239,7 @@ Windows는 SmartScreen 창을 띄웁니다. 바이러스가 아니라 **인증�
 
 **이 저장소는 포켓몬 스프라이트를 재배포하지 않습니다.** 스프라이트는 실행 중에
 사용자 기기가 직접 받아 로컬에만 캐시합니다. 커밋된 그림은 직접 그린 UI, CC0 타일셋,
-그리고 위 스크린샷뿐이고, 폰트는 [갈무리](https://github.com/quiple/galmuri)(SIL OFL-1.1)입니다.
+그리고 위 스크린샷과 그걸 잘라 만든 소개 그림뿐이고, 폰트는 [갈무리](https://github.com/quiple/galmuri)(SIL OFL-1.1)입니다.
 
 포켓몬은 닌텐도 / 크리처스 / 게임프리크의 상표이자 저작물입니다.
 전문과 출처표는 **[NOTICE.md](NOTICE.md)**에 있습니다.

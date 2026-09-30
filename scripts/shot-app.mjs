@@ -277,6 +277,26 @@ async function run() {
   await openTab(win, 'awards');
   written.push(await capture(win, '06-awards'));
 
+  // 8 · 체육관 — the stare-down before a gym leader's first line. Armed the
+  // same way as the battle: a fresh panel on A, then a strictly newer seq.
+  await loadPanel(win);
+  await win.webContents.executeJavaScript(`window.__shot.state = 'C'`);
+  await until(win, `document.querySelector('.scene-vs')`, 'the stare-down', 15_000, 16);
+  await untilStill(win, '.scene-vs', 'the stare-down');
+  // SceneSprite mounts its <img> only after measuring the file, so SETTLED
+  // alone passes on a stare-down with no faces in it. Wait for the art itself.
+  await until(
+    win,
+    `document.querySelector('.scene-vs-side.foe img')
+       && document.querySelectorAll('.scene-vs-team img').length === 4
+       && ${SETTLED.trim()}`,
+    'the leader and the team to be drawn',
+    1_500,
+    16,
+  );
+  await assertVisible(win, '.scene-vs-side.foe', 'the leader');
+  written.push(await capture(win, '08-gym'));
+
   // 7 · 떠 있는 펫, on a genuinely transparent page.
   //
   // Created BEFORE the panel is destroyed: the first run failed with
@@ -332,12 +352,13 @@ async function run() {
     width: Math.ceil(union.right - union.x + pad * 2),
     height: Math.ceil(union.bottom - union.y + pad * 2),
   };
-  written.push(await capture(pet, '07-pet', rect));
+  const petFile = await capture(pet, '07-pet', rect);
+  written.push(petFile);
 
   // Transparency is the one genuinely uncertain step: a never-shown transparent
   // window can come back opaque. Colour type 6 is RGBA in the PNG IHDR, which
   // is byte 25 of the file.
-  const png = readFileSync(written[written.length - 1]);
+  const png = readFileSync(petFile);
   if (png[25] !== 6) {
     throw new Error(
       `shot-app: 07-pet.png has PNG colour type ${png[25]}, expected 6 (RGBA). ` +
@@ -364,7 +385,7 @@ async function run() {
       i.src = src;
     });
     const panel = await load(${JSON.stringify(b64(readFileSync(written[0])))});
-    const pet = await load(${JSON.stringify(b64(readFileSync(written[6])))});
+    const pet = await load(${JSON.stringify(b64(readFileSync(petFile)))});
     const SCALE = 2, GAP = 40;
     const pw = pet.width * SCALE, ph = pet.height * SCALE;
     const c = document.createElement('canvas');

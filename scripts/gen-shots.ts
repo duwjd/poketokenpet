@@ -3,7 +3,7 @@
  *
  * Run with `npm run gen:shots`. Starts a Vite dev server on a port of its own,
  * launches the pinned Electron binary pointed at it with the demo payloads from
- * scripts/shotdata.ts stubbed in, and writes seven PNGs.
+ * scripts/shotdata.ts stubbed in, and writes eight PNGs.
  *
  * ## These are artifacts, not tests
  *

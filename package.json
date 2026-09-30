@@ -24,6 +24,7 @@
     "gen:ui": "node --experimental-strip-types --no-warnings scripts/gen-ui.ts",
     "gen:shots": "node --experimental-strip-types --no-warnings scripts/gen-shots.ts",
     "gen:specimen": "node --experimental-strip-types --no-warnings scripts/gen-specimen.ts",
+    "gen:readme": "node --experimental-strip-types --no-warnings scripts/gen-readme.ts",
     "test": "vitest run",
     "build:electron": "node scripts/build-electron.mjs",
     "electron:dev": "node scripts/dev-electron.mjs",

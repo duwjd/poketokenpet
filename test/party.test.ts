@@ -12,7 +12,8 @@ import { migrate } from '../server/store.ts';
 import { hasMet } from '../server/shrines.ts';
 import { KANTO, LEAGUE_OFFSETS, REGIONS, leagueRoundAt } from '../server/gyms.ts';
 import { PARTY_SIZE, assign, assignable, clearMember, partyCandidates, setMember } from '../server/party.ts';
-import { canLearn, learnableMoves, moveById } from '../server/moves.ts';
+import { canLearn, learnableMoves, learnsByLevel, levelUpMoves, moveById, speciesInfo, type MoveInfo } from '../server/moves.ts';
+import { CHARGE_MOVES, LOCK_MOVES } from '../server/battlefield.ts';
 import { LEG_LENGTH, STOPS } from '../src/journey.ts';
 
 const H = 10_000_000;
@@ -22,6 +23,24 @@ const ALL_BADGES = KANTO.gyms.map((g) => g.badge).sort((a, b) => a - b);
 const PLATEAU = STOPS.findIndex((s) => s.ko === '석영고원') * LEG_LENGTH;
 
 /** Six fully-evolved Kanto Pokemon, all of which learn plenty from machines. */
+/**
+ * What a sensible player makes of a move over a five-round climb with no
+ * healing: its power, times how often it lands, half again for its own type —
+ * and less for what it costs: a turn charging, recoil, a rampage that ends in
+ * confusion, a move that only works first or last. Ranking on raw power alone
+ * let a bigger bag push a reliable level-up STAB move out for 솔라빔 or
+ * 이판사판태클, so a bigger bag measured WORSE — the harness, not the game.
+ */
+const worth = (m: MoveInfo, speciesId: number) =>
+  m.power *
+  ((m.accuracy || 100) / 100) *
+  ((speciesInfo(speciesId)?.types ?? []).includes(m.type) ? 1.5 : 1) *
+  (m.id in CHARGE_MOVES ? 0.5 : 1) *
+  (m.drain < 0 ? 1 + m.drain / 100 : 1) *
+  (LOCK_MOVES[m.id] === 'rampage' ? 0.6 : 1) *
+  // 오버히트, 인파이트: the price is paid on every use, across five rounds.
+  (m.category === 'damage-raise' && m.statChanges.some((c) => c.change < 0) ? 0.6 : 1) *
+  ([252, 660, 387, 389, 909, 893].includes(m.id) ? 0.3 : 1);
 const SIX = [6, 9, 3, 143, 65, 149];
 /** Four plausible parties, for sweeps where the species mix is the variable. */
 const PARTIES = [SIX, [497, 500, 503, 612, 635, 609], [130, 94, 448, 445, 462, 149], [154, 157, 160, 248, 197, 212]];
@@ -90,10 +109,12 @@ describe('the party builder', () => {
     expect(full.state.party).toHaveLength(PARTY_SIZE);
   });
 
-  it('offers only what the species can be taught', () => {
+  it('offers only what the species can be taught, or learns by level', () => {
     const s = { ...withDex(), party: [{ speciesId: 6, shiny: false, moves: [] }], tms: { 89: 1, 55: 1 } };
     const ids = assignable(s, 0).map((a) => a.moveId);
-    for (const id of ids) expect(canLearn(6, id), String(id)).toBe(true);
+    for (const id of ids) expect(canLearn(6, id) || learnsByLevel(6, id), String(id)).toBe(true);
+    // A graduate is Lv.100: its level-up moves are free.
+    expect(assignable(s, 0).find((a) => a.moveId === 52)?.from).toBe('dex');
   });
 
   it('spends a machine from the bag, and nothing for a move the dex records', () => {
@@ -286,6 +307,19 @@ describe('the league inside hunt()', () => {
 });
 
 describe('league difficulty', () => {
+  /**
+   * Machines a sensible player does not put on a league team: 대폭발 and 자폭
+   * faint the user, 파괴광선 and friends cost the next turn, 힘껏펀치 fails
+   * under any hit, and 내던지기, 자연의은혜 and 폴터가이스트 need an item.
+   * 철제광선 and 깜짝헤드 cost half the user's bar, 목숨걸기 the whole of it;
+   * 트랩셸 only goes off after a physical hit and 트림 needs a berry. Picking by raw power alone put them on
+   * nearly every party with a big bag, so a bigger bag measured WORSE — a
+   * harness artefact, not the game.
+   */
+  const COSTLY = new Set([
+    153, 120, 802, 63, 416, 307, 308, 338, 439, 459, 711, 794, 795, 264, 374, 363, 173, 138, 809, 796, 515, 720, 704,
+    562,
+  ]);
   /** One full run against a party armed from a bag of `tms` machines. */
   const clears = (ids: number[], tms: number, n = 400, ladder = KANTO.league) => {
     let won = 0;
@@ -295,12 +329,16 @@ describe('league difficulty', () => {
         const all = learnableMoves(speciesId);
         const held = new Set<number>();
         for (let i = 0; i < tms; i++) held.add(all[Math.floor(rng() * all.length)]);
+        // A graduate is Lv.100: every level-up move of its species is already its own, free.
+        // A negative bag is a member nobody armed at all.
+        if (tms >= 0) for (const [, id] of levelUpMoves(speciesId)) held.add(id);
         return {
           speciesId,
           shiny: false,
           moves: [...held]
             .map((m) => moveById(m)!)
-            .sort((a, b) => b.power - a.power)
+            .filter((m) => !COSTLY.has(m.id))
+            .sort((a, b) => worth(b, speciesId) - worth(a, speciesId))
             .slice(0, MOVE_SLOTS)
             .map((m) => m.id),
         };
@@ -318,9 +356,11 @@ describe('league difficulty', () => {
   };
 
   it('turns away a party that arrived unprepared', () => {
-    // Eight machines is what the bag holds around the fourth badge. Eight
-    // badges do not by themselves make a league team.
-    expect(clears(SIX, 8)).toBeLessThan(0.2);
+    // A member joins the party knowing nothing (`setMember` starts it at
+    // `moves: []`), and six plain swings are not a league team. Before
+    // level-up moves this was "eight machines"; now a graduate's own learnset
+    // arms it for free, so being unprepared means not arming it at all.
+    expect(clears(SIX, -1)).toBeLessThan(0.2);
   });
 
   it('is winnable, and mostly not, for a real collection', () => {
@@ -330,8 +370,11 @@ describe('league difficulty', () => {
     expect(r).toBeLessThan(0.6);
   });
 
-  it('rises with the bag rather than with the species', () => {
-    expect(clears(SIX, 47)).toBeGreaterThan(clears(SIX, 8));
+  it('is won by what the party is armed with, not by the species alone', () => {
+    // Once a graduate knows its whole level-up learnset, the bag adds only
+    // what the species could not learn by itself — so the line to hold is
+    // between armed and unarmed, no longer between a small bag and a big one.
+    expect(clears(SIX, 47)).toBeGreaterThan(clears(SIX, -1) + 0.2);
   });
 
   /**

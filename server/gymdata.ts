@@ -110,7 +110,10 @@ export type GymRow = {
    */
   badge: number;
   /**
-   * Challenge order WITHIN this region, 1..gyms.length. NOT the same as `badge`.
+   * Where this leader falls along the road WITHIN his region, 1..gyms.length.
+   * NOT the same as `badge`, and not a gate either: any leader can be
+   * challenged at his own city with no badge held at all (see `standingGym`).
+   * The column orders the badge case and the ladder on screen.
    *
    * Assigned by the ROUTE POSITION of the city, not by the games' gym order,
    * because `src/journey.ts` is generated from PokeAPI's location list and
@@ -232,14 +235,14 @@ export type GymRow = {
  * source is WHICH Pokemon, which is the half the type chart reads.
  */
 const KANTO_GYMS: GymRow[] = [
-  { id: 'brock',    region: '관동', badge: 1, order: 1, ko: '웅',     badgeKo: '회색배지',   city: '회색시티',   sprite: 'brock',    gender: 'm', grit: 1.95, prize: 317, team: [74, 95] },
-  { id: 'misty',    region: '관동', badge: 2, order: 2, ko: '이슬',   badgeKo: '블루배지',   city: '블루시티',   sprite: 'misty',    gender: 'f', grit: 2.15, prize: 352, team: [120, 121] },
-  { id: 'surge',    region: '관동', badge: 3, order: 3, ko: '마티스', badgeKo: '오렌지배지', city: '갈색시티',   sprite: 'ltsurge',  gender: 'm', grit: 1.50, prize: 351, team: [100, 25, 26] },
-  { id: 'erika',    region: '관동', badge: 4, order: 4, ko: '민화',   badgeKo: '무지개배지', city: '무지개시티', sprite: 'erika',    gender: 'f', grit: 1.75, prize: 202, team: [71, 114, 45] },
-  { id: 'sabrina',  region: '관동', badge: 6, order: 5, ko: '초련',   badgeKo: '골드배지',   city: '노랑시티',   sprite: 'sabrina',  gender: 'f', grit: 1.56, prize: 347, team: [64, 122, 49, 65] },
-  { id: 'koga',     region: '관동', badge: 5, order: 6, ko: '독수',   badgeKo: '핑크배지',   city: '연분홍시티', sprite: 'koga',     gender: 'm', grit: 1.62, prize: 92,  team: [109, 89, 109, 110] },
-  { id: 'blaine',   region: '관동', badge: 7, order: 7, ko: '강연',   badgeKo: '진홍색배지', city: '홍련섬',     sprite: 'blaine',   gender: 'm', grit: 1.82, prize: 126, team: [58, 77, 78, 59] },
-  { id: 'giovanni', region: '관동', badge: 8, order: 8, ko: '비주기', badgeKo: '그린배지',   city: '상록시티',   sprite: 'giovanni', gender: 'm', grit: 1.72, prize: 89,  team: [111, 51, 31, 34, 112], lateLock: true },
+  { id: 'brock',    region: '관동', badge: 1, order: 1, ko: '웅',     badgeKo: '회색배지',   city: '회색시티',   sprite: 'brock',    gender: 'm', grit: 1.12, prize: 317, team: [74, 95] },
+  { id: 'misty',    region: '관동', badge: 2, order: 2, ko: '이슬',   badgeKo: '블루배지',   city: '블루시티',   sprite: 'misty',    gender: 'f', grit: 0.95, prize: 352, team: [120, 121] },
+  { id: 'surge',    region: '관동', badge: 3, order: 3, ko: '마티스', badgeKo: '오렌지배지', city: '갈색시티',   sprite: 'ltsurge',  gender: 'm', grit: 0.80, prize: 351, team: [100, 25, 26] },
+  { id: 'erika',    region: '관동', badge: 4, order: 4, ko: '민화',   badgeKo: '무지개배지', city: '무지개시티', sprite: 'erika',    gender: 'f', grit: 0.77, prize: 202, team: [71, 114, 45] },
+  { id: 'sabrina',  region: '관동', badge: 6, order: 5, ko: '초련',   badgeKo: '골드배지',   city: '노랑시티',   sprite: 'sabrina',  gender: 'f', grit: 0.58, prize: 347, team: [64, 122, 49, 65] },
+  { id: 'koga',     region: '관동', badge: 5, order: 6, ko: '독수',   badgeKo: '핑크배지',   city: '연분홍시티', sprite: 'koga',     gender: 'm', grit: 0.72, prize: 92,  team: [109, 89, 109, 110] },
+  { id: 'blaine',   region: '관동', badge: 7, order: 7, ko: '강연',   badgeKo: '진홍색배지', city: '홍련섬',     sprite: 'blaine',   gender: 'm', grit: 0.64, prize: 126, team: [58, 77, 78, 59] },
+  { id: 'giovanni', region: '관동', badge: 8, order: 8, ko: '비주기', badgeKo: '그린배지',   city: '상록시티',   sprite: 'giovanni', gender: 'm', grit: 0.51, prize: 89,  team: [111, 51, 31, 34, 112], lateLock: true },
 ];
 
 /**
@@ -294,11 +297,11 @@ export type LeagueRow = {
 };
 
 const KANTO_LEAGUE: LeagueRow[] = [
-  { id: 'lorelei', region: '관동', ko: '사천왕 칸나', sprite: 'lorelei-gen1', gender: 'f', grit: 1.57, team: [87, 91, 80, 124, 131] },
-  { id: 'bruno',   region: '관동', ko: '사천왕 시바', sprite: 'bruno',        gender: 'm', grit: 1.62, team: [95, 107, 106, 95, 68] },
-  { id: 'agatha',  region: '관동', ko: '사천왕 국화', sprite: 'agatha-gen1',  gender: 'f', grit: 1.67, team: [94, 42, 93, 24, 94] },
-  { id: 'lance',   region: '관동', ko: '사천왕 목호', sprite: 'lance',        gender: 'm', grit: 1.73, team: [130, 148, 148, 142, 149] },
-  { id: 'blue',    region: '관동', ko: '챔피언 그린', sprite: 'blue',         gender: 'm', grit: 1.80, team: [18, 65, 112, 130, 103, 59] },
+  { id: 'lorelei', region: '관동', ko: '사천왕 칸나', sprite: 'lorelei-gen1', gender: 'f', grit: 0.60, team: [87, 91, 80, 124, 131] },
+  { id: 'bruno',   region: '관동', ko: '사천왕 시바', sprite: 'bruno',        gender: 'm', grit: 0.62, team: [95, 107, 106, 95, 68] },
+  { id: 'agatha',  region: '관동', ko: '사천왕 국화', sprite: 'agatha-gen1',  gender: 'f', grit: 0.64, team: [94, 42, 93, 24, 94] },
+  { id: 'lance',   region: '관동', ko: '사천왕 목호', sprite: 'lance',        gender: 'm', grit: 0.66, team: [130, 148, 148, 142, 149] },
+  { id: 'blue',    region: '관동', ko: '챔피언 그린', sprite: 'blue',         gender: 'm', grit: 0.68, team: [18, 65, 112, 130, 103, 59] },
 ];
 
 export type RegionRow = {
@@ -377,14 +380,14 @@ export type RegionRow = {
  * 그린's starter-dependent last three are in 관동's table.
  */
 const UNOVA_GYMS: GymRow[] = [
-  { id: 'cilan',   region: '하나', badge: 33, order: 1, ko: '덴트',   badgeKo: '트라이배지',   city: '성신시티',   sprite: 'cilan',   gender: 'm', grit: 2.88, prize: 526, team: [506, 511] },
-  { id: 'lenora',  region: '하나', badge: 34, order: 2, ko: '알로에', badgeKo: '베이직배지',   city: '칠보시티',   sprite: 'lenora',  gender: 'f', grit: 3.00, prize: 514, team: [507, 505] },
-  { id: 'burgh',   region: '하나', badge: 35, order: 3, ko: '아티',   badgeKo: '비틀배지',     city: '구름시티',   sprite: 'burgh',   gender: 'm', grit: 2.17, prize: 522, team: [544, 557, 542] },
-  { id: 'elesa',   region: '하나', badge: 37, order: 4, ko: '카밀레', badgeKo: '볼트배지',     city: '뇌문시티',   sprite: 'elesa',   gender: 'f', grit: 2.18, prize: 521, team: [587, 587, 523] },
-  { id: 'clay',    region: '하나', badge: 38, order: 5, ko: '야콘',   badgeKo: '퀘이크배지',   city: '물풍경시티', sprite: 'clay',    gender: 'm', grit: 2.38, prize: 523, team: [552, 536, 530] },
-  { id: 'skyla',   region: '하나', badge: 39, order: 6, ko: '풍란',   badgeKo: '제트배지',     city: '궐수시티',   sprite: 'skyla',   gender: 'f', grit: 2.29, prize: 512, team: [528, 521, 581] },
-  { id: 'brycen',  region: '하나', badge: 40, order: 7, ko: '담죽',   badgeKo: '아이시클배지', city: '설화시티',   sprite: 'brycen',  gender: 'm', grit: 2.27, prize: 524, team: [583, 615, 614] },
-  { id: 'drayden', region: '하나', badge: 41, order: 8, ko: '사간',   badgeKo: '레전드배지',   city: '쌍용시티',   sprite: 'drayden', gender: 'm', grit: 1.82, prize: 525, team: [611, 621, 612] },
+  { id: 'cilan',   region: '하나', badge: 33, order: 1, ko: '덴트',   badgeKo: '트라이배지',   city: '성신시티',   sprite: 'cilan',   gender: 'm', grit: 1.22, prize: 526, team: [506, 511] },
+  { id: 'lenora',  region: '하나', badge: 34, order: 2, ko: '알로에', badgeKo: '베이직배지',   city: '칠보시티',   sprite: 'lenora',  gender: 'f', grit: 0.92, prize: 514, team: [507, 505] },
+  { id: 'burgh',   region: '하나', badge: 35, order: 3, ko: '아티',   badgeKo: '비틀배지',     city: '구름시티',   sprite: 'burgh',   gender: 'm', grit: 0.65, prize: 522, team: [544, 557, 542] },
+  { id: 'elesa',   region: '하나', badge: 37, order: 4, ko: '카밀레', badgeKo: '볼트배지',     city: '뇌문시티',   sprite: 'elesa',   gender: 'f', grit: 0.52, prize: 521, team: [587, 587, 523] },
+  { id: 'clay',    region: '하나', badge: 38, order: 5, ko: '야콘',   badgeKo: '퀘이크배지',   city: '물풍경시티', sprite: 'clay',    gender: 'm', grit: 0.63, prize: 523, team: [552, 536, 530] },
+  { id: 'skyla',   region: '하나', badge: 39, order: 6, ko: '풍란',   badgeKo: '제트배지',     city: '궐수시티',   sprite: 'skyla',   gender: 'f', grit: 0.65, prize: 512, team: [528, 521, 581] },
+  { id: 'brycen',  region: '하나', badge: 40, order: 7, ko: '담죽',   badgeKo: '아이시클배지', city: '설화시티',   sprite: 'brycen',  gender: 'm', grit: 0.70, prize: 524, team: [583, 615, 614] },
+  { id: 'drayden', region: '하나', badge: 41, order: 8, ko: '사간',   badgeKo: '레전드배지',   city: '쌍용시티',   sprite: 'drayden', gender: 'm', grit: 0.57, prize: 525, team: [611, 621, 612] },
 ];
 
 /**
@@ -406,16 +409,16 @@ const UNOVA_GYMS: GymRow[] = [
  * regional one — 593 either way. No legendary, no mythical, no paradox, no
  * regional form anywhere on the five rosters.
  *
- * ## Why some sets are shorter than four
+ * ## Every set is four
  *
  * `teamMoves` holds what each one actually carries, and every member carries
- * four in the games. The arrays below are shorter wherever a move has no
- * machine in any version group, because `server/moves.ts` is exactly the
- * machine-learnable union and an id outside it does not exist to this app.
- * Eleven slots fall out that way — 섀도펀치, 모래뿌리기, 속이기, 야습(×2),
- * 폭기폭배, 태권당수, 암해머, 점프킥, 바디퍼지, 노래하다, 더블촙. Dropping the
- * slot is the honest form: the alternative is substituting a move the trainer
- * does not know, and then the table no longer says what it claims to say.
+ * four in the games. Twelve slots used to be missing, back when
+ * `server/moves.ts` held only machine moves — 섀도펀치, 모래뿌리기, 속이기,
+ * 깜짝베기(×2), 업어후리기, 태권당수, 암해머, 점프킥, 바디퍼지, 노래하기,
+ * 더블촙. Level-up moves brought ten of them into the table; 태권당수 and
+ * 점프킥, which no species learns in the newest games, are kept for exactly
+ * these two slots (`ROSTER_ONLY` in scripts/gen-moves.ts). Each was checked
+ * against the leader's Black/White (아이리스: Black 2/White 2) first battle.
  *
  * Status and zero-power moves ARE kept here even though `poolFrom` filters
  * them out before the fight. This column is the transcription; deciding what
@@ -437,27 +440,27 @@ const UNOVA_GYMS: GymRow[] = [
  */
 const UNOVA_LEAGUE: LeagueRow[] = [
   {
-    id: 'shauntal', region: '하나', ko: '사천왕 망초', sprite: 'shauntal', gender: 'f', grit: 1.68,
+    id: 'shauntal', region: '하나', ko: '사천왕 망초', sprite: 'shauntal', gender: 'f', grit: 0.62,
     team: [563, 593, 623, 609],
     teamMoves: [
       [94, 261, 247, 447],
       [247, 57, 412, 362],
-      [174, 280, 89],
+      [174, 280, 89, 325],
       [126, 94, 247, 371],
     ],
   },
   {
-    id: 'grimsley', region: '하나', ko: '사천왕 플래리', sprite: 'grimsley', gender: 'm', grit: 1.74,
+    id: 'grimsley', region: '하나', ko: '사천왕 플래리', sprite: 'grimsley', gender: 'm', grit: 0.63,
     team: [560, 553, 510, 625],
     teamMoves: [
-      [242, 398, 280],
+      [28, 242, 398, 280],
       [242, 337, 492, 89],
-      [213, 332],
-      [404, 232, 332],
+      [252, 213, 332, 400],
+      [404, 400, 232, 332],
     ],
   },
   {
-    id: 'caitlin', region: '하나', ko: '사천왕 카를레아', sprite: 'caitlin', gender: 'f', grit: 1.79,
+    id: 'caitlin', region: '하나', ko: '사천왕 카를레아', sprite: 'caitlin', gender: 'f', grit: 0.65,
     team: [579, 518, 561, 576],
     teamMoves: [
       [412, 87, 411, 94],
@@ -467,25 +470,25 @@ const UNOVA_LEAGUE: LeagueRow[] = [
     ],
   },
   {
-    id: 'marshal', region: '하나', ko: '사천왕 연무', sprite: 'marshal', gender: 'm', grit: 1.85,
+    id: 'marshal', region: '하나', ko: '사천왕 연무', sprite: 'marshal', gender: 'm', grit: 0.66,
     team: [538, 539, 534, 620],
     teamMoves: [
-      [444, 371, 523],
-      [444, 447, 514],
-      [444, 514, 447],
-      [369, 157, 514],
+      [444, 371, 523, 480],
+      [444, 2, 447, 514],
+      [444, 359, 514, 447],
+      [369, 26, 157, 514],
     ],
   },
   {
-    id: 'iris', region: '하나', ko: '챔피언 아이리스', sprite: 'iris', gender: 'f', grit: 1.90,
+    id: 'iris', region: '하나', ko: '챔피언 아이리스', sprite: 'iris', gender: 'f', grit: 0.68,
     team: [635, 621, 567, 306, 131, 612],
     teamMoves: [
       [53, 451, 406, 57],
       [157, 53, 525, 411],
       [512, 157, 337, 283],
-      [89, 38, 157],
-      [57, 58, 85],
-      [89, 404, 349],
+      [89, 38, 157, 475],
+      [57, 58, 85, 47],
+      [89, 404, 530, 349],
     ],
   },
 ];
@@ -514,14 +517,14 @@ const UNOVA_LEAGUE: LeagueRow[] = [
  * exception would cost more than the flavour is worth.
  */
 const JOHTO_GYMS: GymRow[] = [
-  { id: 'falkner', region: '성도', badge:  9, order: 1, ko: '비상', badgeKo: '윙배지',     city: '도라지시티', sprite: 'falkner', gender: 'm', grit: 2.67, prize: 189, team: [16, 17] },
-  { id: 'bugsy',   region: '성도', badge: 10, order: 2, ko: '호일', badgeKo: '인섹트배지', city: '고동마을',   sprite: 'bugsy',   gender: 'm', grit: 1.96, prize: 210, team: [11, 14, 123] },
-  { id: 'whitney', region: '성도', badge: 11, order: 3, ko: '꼭두', badgeKo: '레귤러배지', city: '금빛시티',   sprite: 'whitney', gender: 'f', grit: 2.24, prize: 213, team: [35, 241] },
-  { id: 'morty',   region: '성도', badge: 12, order: 4, ko: '유빈', badgeKo: '팬텀배지',   city: '인주시티',   sprite: 'morty',   gender: 'm', grit: 1.35, prize: 247, team: [92, 93, 93, 94] },
-  { id: 'jasmine', region: '성도', badge: 14, order: 5, ko: '규리', badgeKo: '스틸배지',   city: '담청시티',   sprite: 'jasmine', gender: 'f', grit: 1.78, prize: 231, team: [81, 81, 208] },
-  { id: 'chuck',   region: '성도', badge: 13, order: 6, ko: '사도', badgeKo: '쇼크배지',   city: '진청시티',   sprite: 'chuck',   gender: 'm', grit: 2.65, prize: 223, team: [57, 62] },
-  { id: 'pryce',   region: '성도', badge: 15, order: 7, ko: '류옹', badgeKo: '아이스배지', city: '황토마을',   sprite: 'pryce',   gender: 'm', grit: 2.34, prize: 196, team: [86, 87, 221] },
-  { id: 'clair',   region: '성도', badge: 16, order: 8, ko: '이향', badgeKo: '라이징배지', city: '검은먹시티', sprite: 'clair',   gender: 'f', grit: 1.59, prize: 225, team: [148, 148, 148, 230] },
+  { id: 'falkner', region: '성도', badge:  9, order: 1, ko: '비상', badgeKo: '윙배지',     city: '도라지시티', sprite: 'falkner', gender: 'm', grit: 1.34, prize: 189, team: [16, 17] },
+  { id: 'bugsy',   region: '성도', badge: 10, order: 2, ko: '호일', badgeKo: '인섹트배지', city: '고동마을',   sprite: 'bugsy',   gender: 'm', grit: 0.89, prize: 210, team: [11, 14, 123] },
+  { id: 'whitney', region: '성도', badge: 11, order: 3, ko: '꼭두', badgeKo: '레귤러배지', city: '금빛시티',   sprite: 'whitney', gender: 'f', grit: 0.85, prize: 213, team: [35, 241] },
+  { id: 'morty',   region: '성도', badge: 12, order: 4, ko: '유빈', badgeKo: '팬텀배지',   city: '인주시티',   sprite: 'morty',   gender: 'm', grit: 0.63, prize: 247, team: [92, 93, 93, 94] },
+  { id: 'jasmine', region: '성도', badge: 14, order: 5, ko: '규리', badgeKo: '스틸배지',   city: '담청시티',   sprite: 'jasmine', gender: 'f', grit: 0.54, prize: 231, team: [81, 81, 208] },
+  { id: 'chuck',   region: '성도', badge: 13, order: 6, ko: '사도', badgeKo: '쇼크배지',   city: '진청시티',   sprite: 'chuck',   gender: 'm', grit: 0.78, prize: 223, team: [57, 62] },
+  { id: 'pryce',   region: '성도', badge: 15, order: 7, ko: '류옹', badgeKo: '아이스배지', city: '황토마을',   sprite: 'pryce',   gender: 'm', grit: 0.83, prize: 196, team: [86, 87, 221] },
+  { id: 'clair',   region: '성도', badge: 16, order: 8, ko: '이향', badgeKo: '라이징배지', city: '검은먹시티', sprite: 'clair',   gender: 'f', grit: 0.66, prize: 225, team: [148, 148, 148, 230] },
 ];
 
 /**
@@ -553,11 +556,11 @@ const JOHTO_GYMS: GymRow[] = [
  * whole band under 25% — because twenty-six opponents compound.
  */
 const JOHTO_LEAGUE: LeagueRow[] = [
-  { id: 'will',     region: '성도', ko: '사천왕 일목', sprite: 'will',  gender: 'm', grit: 1.65, team: [178, 124, 103, 80, 178] },
-  { id: 'koga-e4',  region: '성도', ko: '사천왕 독수', sprite: 'koga',  gender: 'm', grit: 1.70, team: [168, 49, 205, 89, 169] },
-  { id: 'bruno-e4', region: '성도', ko: '사천왕 시바', sprite: 'bruno', gender: 'm', grit: 1.75, team: [237, 106, 107, 95, 68] },
-  { id: 'karen',    region: '성도', ko: '사천왕 카렌', sprite: 'karen', gender: 'f', grit: 1.80, team: [197, 45, 94, 198, 229] },
-  { id: 'lance-c',  region: '성도', ko: '챔피언 목호', sprite: 'lance', gender: 'm', grit: 1.85, team: [130, 149, 149, 142, 6, 149] },
+  { id: 'will',     region: '성도', ko: '사천왕 일목', sprite: 'will',  gender: 'm', grit: 0.66, team: [178, 124, 103, 80, 178] },
+  { id: 'koga-e4',  region: '성도', ko: '사천왕 독수', sprite: 'koga',  gender: 'm', grit: 0.68, team: [168, 49, 205, 89, 169] },
+  { id: 'bruno-e4', region: '성도', ko: '사천왕 시바', sprite: 'bruno', gender: 'm', grit: 0.69, team: [237, 106, 107, 95, 68] },
+  { id: 'karen',    region: '성도', ko: '사천왕 카렌', sprite: 'karen', gender: 'f', grit: 0.71, team: [197, 45, 94, 198, 229] },
+  { id: 'lance-c',  region: '성도', ko: '챔피언 목호', sprite: 'lance', gender: 'm', grit: 0.72, team: [130, 149, 149, 142, 6, 149] },
 ];
 
 /**
@@ -579,14 +582,14 @@ const JOHTO_LEAGUE: LeagueRow[] = [
  * games number them 3, 4, 5, 6, 7, 8 in a different sequence entirely.
  */
 const SINNOH_GYMS: GymRow[] = [
-  { id: 'roark',       region: '신오', badge: 25, order: 1, ko: '강석',   badgeKo: '콜배지',       city: '무쇠시티', sprite: 'roark',       gender: 'm', grit: 2.00, prize: 446, team: [74, 95, 408] },
-  { id: 'gardenia',    region: '신오', badge: 26, order: 2, ko: '유채',   badgeKo: '포레스트배지', city: '영원시티', sprite: 'gardenia',    gender: 'f', grit: 2.18, prize: 447, team: [420, 387, 407] },
-  { id: 'byron',       region: '신오', badge: 30, order: 3, ko: '동관',   badgeKo: '마인배지',     city: '운하시티', sprite: 'byron',       gender: 'm', grit: 1.71, prize: 430, team: [82, 208, 411] },
-  { id: 'crasherwake', region: '신오', badge: 28, order: 4, ko: '맥실러', badgeKo: '펜배지',       city: '들판시티', sprite: 'crasherwake', gender: 'm', grit: 2.31, prize: 362, team: [130, 195, 419] },
-  { id: 'volkner',     region: '신오', badge: 32, order: 5, ko: '전진',   badgeKo: '비컨배지',     city: '물가시티', sprite: 'volkner',     gender: 'm', grit: 1.84, prize: 451, team: [26, 424, 224, 405] },
-  { id: 'fantina',     region: '신오', badge: 29, order: 6, ko: '멜리사', badgeKo: '레릭배지',     city: '연고시티', sprite: 'fantina',     gender: 'f', grit: 1.35, prize: 421, team: [355, 93, 429] },
-  { id: 'maylene',     region: '신오', badge: 27, order: 7, ko: '자두',   badgeKo: '코블배지',     city: '장막시티', sprite: 'maylene',     gender: 'f', grit: 1.98, prize: 409, team: [307, 67, 448] },
-  { id: 'candice',     region: '신오', badge: 31, order: 8, ko: '무청',   badgeKo: '글레이셔배지', city: '선단시티', sprite: 'candice',     gender: 'f', grit: 1.93, prize: 419, team: [215, 308, 459, 460] },
+  { id: 'roark',       region: '신오', badge: 25, order: 1, ko: '강석',   badgeKo: '콜배지',       city: '무쇠시티', sprite: 'roark',       gender: 'm', grit: 0.65, prize: 446, team: [74, 95, 408] },
+  { id: 'gardenia',    region: '신오', badge: 26, order: 2, ko: '유채',   badgeKo: '포레스트배지', city: '영원시티', sprite: 'gardenia',    gender: 'f', grit: 0.80, prize: 447, team: [420, 387, 407] },
+  { id: 'byron',       region: '신오', badge: 30, order: 3, ko: '동관',   badgeKo: '마인배지',     city: '운하시티', sprite: 'byron',       gender: 'm', grit: 0.46, prize: 430, team: [82, 208, 411] },
+  { id: 'crasherwake', region: '신오', badge: 28, order: 4, ko: '맥실러', badgeKo: '펜배지',       city: '들판시티', sprite: 'crasherwake', gender: 'm', grit: 0.56, prize: 362, team: [130, 195, 419] },
+  { id: 'volkner',     region: '신오', badge: 32, order: 5, ko: '전진',   badgeKo: '비컨배지',     city: '물가시티', sprite: 'volkner',     gender: 'm', grit: 0.46, prize: 451, team: [26, 424, 224, 405] },
+  { id: 'fantina',     region: '신오', badge: 29, order: 6, ko: '멜리사', badgeKo: '레릭배지',     city: '연고시티', sprite: 'fantina',     gender: 'f', grit: 0.68, prize: 421, team: [355, 93, 429] },
+  { id: 'maylene',     region: '신오', badge: 27, order: 7, ko: '자두',   badgeKo: '코블배지',     city: '장막시티', sprite: 'maylene',     gender: 'f', grit: 0.70, prize: 409, team: [307, 67, 448] },
+  { id: 'candice',     region: '신오', badge: 31, order: 8, ko: '무청',   badgeKo: '글레이셔배지', city: '선단시티', sprite: 'candice',     gender: 'f', grit: 0.55, prize: 419, team: [215, 308, 459, 460] },
 ];
 
 /**
@@ -598,11 +601,11 @@ const SINNOH_GYMS: GymRow[] = [
  * comes round again. 24% to 69% across four parties.
  */
 const SINNOH_LEAGUE: LeagueRow[] = [
-  { id: 'aaron',   region: '신오', ko: '사천왕 충호',   sprite: 'aaron',   gender: 'm', grit: 1.71, team: [269, 267, 416, 214, 452] },
-  { id: 'bertha',  region: '신오', ko: '사천왕 들국화', sprite: 'bertha',  gender: 'f', grit: 1.77, team: [195, 185, 76, 340, 450] },
-  { id: 'flint',   region: '신오', ko: '사천왕 대엽',   sprite: 'flint',   gender: 'm', grit: 1.82, team: [78, 208, 426, 428, 392] },
-  { id: 'lucian',  region: '신오', ko: '사천왕 오엽',   sprite: 'lucian',  gender: 'm', grit: 1.87, team: [122, 203, 308, 65, 437] },
-  { id: 'cynthia', region: '신오', ko: '챔피언 난천',   sprite: 'cynthia', gender: 'f', grit: 1.93, team: [442, 407, 423, 448, 350, 445] },
+  { id: 'aaron',   region: '신오', ko: '사천왕 충호',   sprite: 'aaron',   gender: 'm', grit: 0.63, team: [269, 267, 416, 214, 452] },
+  { id: 'bertha',  region: '신오', ko: '사천왕 들국화', sprite: 'bertha',  gender: 'f', grit: 0.66, team: [195, 185, 76, 340, 450] },
+  { id: 'flint',   region: '신오', ko: '사천왕 대엽',   sprite: 'flint',   gender: 'm', grit: 0.67, team: [78, 208, 426, 428, 392] },
+  { id: 'lucian',  region: '신오', ko: '사천왕 오엽',   sprite: 'lucian',  gender: 'm', grit: 0.68, team: [122, 203, 308, 65, 437] },
+  { id: 'cynthia', region: '신오', ko: '챔피언 난천',   sprite: 'cynthia', gender: 'f', grit: 0.71, team: [442, 407, 423, 448, 350, 445] },
 ];
 
 /**
@@ -616,14 +619,14 @@ const SINNOH_LEAGUE: LeagueRow[] = [
  * like every other.
  */
 const KALOS_GYMS: GymRow[] = [
-  { id: 'viola',   region: '칼로스', badge: 43, order: 1, ko: '비올라', badgeKo: '버그배지',       city: '백단시티', sprite: 'viola',   gender: 'f', grit: 2.76, prize: 611, team: [283, 666] },
-  { id: 'clemont', region: '칼로스', badge: 47, order: 2, ko: '시트론', badgeKo: '볼티지배지',     city: '미르시티', sprite: 'clemont', gender: 'm', grit: 2.22, prize:  85, team: [587, 82, 695] },
-  { id: 'grant',   region: '칼로스', badge: 44, order: 3, ko: '자크로', badgeKo: '월배지',         city: '삼채시티', sprite: 'grant',   gender: 'm', grit: 2.41, prize: 317, team: [698, 696] },
-  { id: 'korrina', region: '칼로스', badge: 45, order: 4, ko: '코르니', badgeKo: '파이트배지',     city: '사라시티', sprite: 'korrina', gender: 'f', grit: 2.05, prize: 612, team: [619, 67, 701] },
-  { id: 'ramos',   region: '칼로스', badge: 46, order: 5, ko: '후쿠지', badgeKo: '플랜트배지',     city: '비익시티', sprite: 'ramos',   gender: 'm', grit: 2.29, prize: 447, team: [189, 70, 673] },
-  { id: 'valerie', region: '칼로스', badge: 48, order: 6, ko: '마슈',   badgeKo: '페어리배지',     city: '후늬시티', sprite: 'valerie', gender: 'f', grit: 1.81, prize: 605, team: [303, 122, 700] },
-  { id: 'olympia', region: '칼로스', badge: 49, order: 7, ko: '고지카', badgeKo: '사이킥배지',     city: '향전시티', sprite: 'olympia', gender: 'f', grit: 2.06, prize: 347, team: [561, 199, 678] },
-  { id: 'wulfric', region: '칼로스', badge: 50, order: 8, ko: '우르프', badgeKo: '아이스버그배지', city: '이설시티', sprite: 'wulfric', gender: 'm', grit: 2.29, prize:  58, team: [460, 615, 713] },
+  { id: 'viola',   region: '칼로스', badge: 43, order: 1, ko: '비올라', badgeKo: '버그배지',       city: '백단시티', sprite: 'viola',   gender: 'f', grit: 1.05, prize: 611, team: [283, 666] },
+  { id: 'clemont', region: '칼로스', badge: 47, order: 2, ko: '시트론', badgeKo: '볼티지배지',     city: '미르시티', sprite: 'clemont', gender: 'm', grit: 0.45, prize:  85, team: [587, 82, 695] },
+  { id: 'grant',   region: '칼로스', badge: 44, order: 3, ko: '자크로', badgeKo: '월배지',         city: '삼채시티', sprite: 'grant',   gender: 'm', grit: 0.96, prize: 317, team: [698, 696] },
+  { id: 'korrina', region: '칼로스', badge: 45, order: 4, ko: '코르니', badgeKo: '파이트배지',     city: '사라시티', sprite: 'korrina', gender: 'f', grit: 0.66, prize: 612, team: [619, 67, 701] },
+  { id: 'ramos',   region: '칼로스', badge: 46, order: 5, ko: '후쿠지', badgeKo: '플랜트배지',     city: '비익시티', sprite: 'ramos',   gender: 'm', grit: 0.69, prize: 447, team: [189, 70, 673] },
+  { id: 'valerie', region: '칼로스', badge: 48, order: 6, ko: '마슈',   badgeKo: '페어리배지',     city: '후늬시티', sprite: 'valerie', gender: 'f', grit: 0.62, prize: 605, team: [303, 122, 700] },
+  { id: 'olympia', region: '칼로스', badge: 49, order: 7, ko: '고지카', badgeKo: '사이킥배지',     city: '향전시티', sprite: 'olympia', gender: 'f', grit: 0.61, prize: 347, team: [561, 199, 678] },
+  { id: 'wulfric', region: '칼로스', badge: 50, order: 8, ko: '우르프', badgeKo: '아이스버그배지', city: '이설시티', sprite: 'wulfric', gender: 'm', grit: 0.55, prize:  58, team: [460, 615, 713] },
 ];
 
 /**
@@ -638,11 +641,11 @@ const KALOS_GYMS: GymRow[] = [
  * this ladder is actually reached with.
  */
 const KALOS_LEAGUE: LeagueRow[] = [
-  { id: 'malva',    region: '칼로스', ko: '사천왕 파키라',  sprite: 'malva',    gender: 'f', grit: 1.68, team: [668, 324, 609, 663] },
-  { id: 'siebold',  region: '칼로스', ko: '사천왕 즈미',    sprite: 'siebold',  gender: 'm', grit: 1.73, team: [693, 130, 121, 689] },
-  { id: 'wikstrom', region: '칼로스', ko: '사천왕 간피',    sprite: 'wikstrom', gender: 'm', grit: 1.79, team: [707, 476, 212, 681] },
-  { id: 'drasna',   region: '칼로스', ko: '사천왕 드라세나', sprite: 'drasna',   gender: 'f', grit: 1.84, team: [691, 621, 334, 715] },
-  { id: 'diantha',  region: '칼로스', ko: '챔피언 카르네',  sprite: 'diantha',  gender: 'f', grit: 1.89, team: [701, 697, 699, 711, 706, 282] },
+  { id: 'malva',    region: '칼로스', ko: '사천왕 파키라',  sprite: 'malva',    gender: 'f', grit: 0.65, team: [668, 324, 609, 663] },
+  { id: 'siebold',  region: '칼로스', ko: '사천왕 즈미',    sprite: 'siebold',  gender: 'm', grit: 0.66, team: [693, 130, 121, 689] },
+  { id: 'wikstrom', region: '칼로스', ko: '사천왕 간피',    sprite: 'wikstrom', gender: 'm', grit: 0.68, team: [707, 476, 212, 681] },
+  { id: 'drasna',   region: '칼로스', ko: '사천왕 드라세나', sprite: 'drasna',   gender: 'f', grit: 0.70, team: [691, 621, 334, 715] },
+  { id: 'diantha',  region: '칼로스', ko: '챔피언 카르네',  sprite: 'diantha',  gender: 'f', grit: 0.71, team: [701, 697, 699, 711, 706, 282] },
 ];
 
 /**
@@ -668,14 +671,14 @@ const KALOS_LEAGUE: LeagueRow[] = [
  * come from. Three of them have no plain slug at all.
  */
 const HOENN_GYMS: GymRow[] = [
-  { id: 'norman',     region: '호연', badge: 21, order: 1, ko: '종길',  badgeKo: '밸런스배지',  city: '등화도시',   sprite: 'norman-gen3',      gender: 'm', grit: 2.25, prize: 263, team: [289, 288, 289] },
-  { id: 'tateliza',   region: '호연', badge: 23, order: 2, ko: '풍&란', badgeKo: '마인드배지',  city: '이끼시티',   sprite: 'tateandliza-gen3', gender: 'f', grit: 1.94, prize: 347, team: [338, 337] },
-  { id: 'wallace',    region: '호연', badge: 24, order: 3, ko: '윤진',  badgeKo: '레인배지',    city: '루네시티',   sprite: 'wallace-gen3',     gender: 'm', grit: 1.93, prize: 352, team: [370, 340, 364, 119, 350] },
-  { id: 'brawly',     region: '호연', badge: 18, order: 4, ko: '철구',  badgeKo: '너클배지',    city: '무로마을',   sprite: 'brawly-gen3',      gender: 'm', grit: 1.99, prize: 339, team: [66, 307, 296] },
-  { id: 'flannery',   region: '호연', badge: 20, order: 5, ko: '민지',  badgeKo: '히트배지',    city: '용암마을',   sprite: 'flannery-gen3',    gender: 'f', grit: 1.99, prize: 315, team: [218, 218, 324] },
-  { id: 'wattson',    region: '호연', badge: 19, order: 6, ko: '암페어', badgeKo: '다이나모배지', city: '보라시티',   sprite: 'wattson-gen3',     gender: 'm', grit: 1.94, prize: 351, team: [81, 100, 82] },
-  { id: 'roxanne',    region: '호연', badge: 17, order: 7, ko: '원규',  badgeKo: '스톤배지',    city: '금탄도시',   sprite: 'roxanne-gen3',     gender: 'f', grit: 2.29, prize: 317, team: [74, 74, 299] },
-  { id: 'winona',     region: '호연', badge: 22, order: 8, ko: '은송',  badgeKo: '깃털배지',    city: '검방울시티', sprite: 'winona-gen3',      gender: 'f', grit: 1.72, prize: 332, team: [277, 279, 227, 334] },
+  { id: 'norman',     region: '호연', badge: 21, order: 1, ko: '종길',  badgeKo: '밸런스배지',  city: '등화도시',   sprite: 'norman-gen3',      gender: 'm', grit: 0.62, prize: 263, team: [289, 288, 289] },
+  { id: 'tateliza',   region: '호연', badge: 23, order: 2, ko: '풍&란', badgeKo: '마인드배지',  city: '이끼시티',   sprite: 'tateandliza-gen3', gender: 'f', grit: 0.75, prize: 347, team: [338, 337] },
+  { id: 'wallace',    region: '호연', badge: 24, order: 3, ko: '윤진',  badgeKo: '레인배지',    city: '루네시티',   sprite: 'wallace-gen3',     gender: 'm', grit: 0.61, prize: 352, team: [370, 340, 364, 119, 350] },
+  { id: 'brawly',     region: '호연', badge: 18, order: 4, ko: '철구',  badgeKo: '너클배지',    city: '무로마을',   sprite: 'brawly-gen3',      gender: 'm', grit: 0.92, prize: 339, team: [66, 307, 296] },
+  { id: 'flannery',   region: '호연', badge: 20, order: 5, ko: '민지',  badgeKo: '히트배지',    city: '용암마을',   sprite: 'flannery-gen3',    gender: 'f', grit: 0.78, prize: 315, team: [218, 218, 324] },
+  { id: 'wattson',    region: '호연', badge: 19, order: 6, ko: '암페어', badgeKo: '다이나모배지', city: '보라시티',   sprite: 'wattson-gen3',     gender: 'm', grit: 0.56, prize: 351, team: [81, 100, 82] },
+  { id: 'roxanne',    region: '호연', badge: 17, order: 7, ko: '원규',  badgeKo: '스톤배지',    city: '금탄도시',   sprite: 'roxanne-gen3',     gender: 'f', grit: 0.61, prize: 317, team: [74, 74, 299] },
+  { id: 'winona',     region: '호연', badge: 22, order: 8, ko: '은송',  badgeKo: '깃털배지',    city: '검방울시티', sprite: 'winona-gen3',      gender: 'f', grit: 0.57, prize: 332, team: [277, 279, 227, 334] },
 ];
 
 /**
@@ -690,11 +693,11 @@ const HOENN_GYMS: GymRow[] = [
  * ladder is reached with.
  */
 const HOENN_LEAGUE: LeagueRow[] = [
-  { id: 'sidney', region: '호연', ko: '사천왕 혁진', sprite: 'sidney-gen3', gender: 'm', grit: 1.68, team: [262, 275, 332, 342, 359] },
-  { id: 'phoebe', region: '호연', ko: '사천왕 회연', sprite: 'phoebe-gen3', gender: 'f', grit: 1.73, team: [356, 354, 354, 302, 356] },
-  { id: 'glacia', region: '호연', ko: '사천왕 미혜', sprite: 'glacia-gen3', gender: 'f', grit: 1.79, team: [364, 364, 362, 362, 365] },
-  { id: 'drake',  region: '호연', ko: '사천왕 권수', sprite: 'drake-gen3',  gender: 'm', grit: 1.84, team: [372, 334, 230, 330, 373] },
-  { id: 'steven', region: '호연', ko: '챔피언 성호', sprite: 'steven-gen3', gender: 'm', grit: 1.89, team: [227, 344, 306, 346, 348, 376] },
+  { id: 'sidney', region: '호연', ko: '사천왕 혁진', sprite: 'sidney-gen3', gender: 'm', grit: 0.65, team: [262, 275, 332, 342, 359] },
+  { id: 'phoebe', region: '호연', ko: '사천왕 회연', sprite: 'phoebe-gen3', gender: 'f', grit: 0.66, team: [356, 354, 354, 302, 356] },
+  { id: 'glacia', region: '호연', ko: '사천왕 미혜', sprite: 'glacia-gen3', gender: 'f', grit: 0.69, team: [364, 364, 362, 362, 365] },
+  { id: 'drake',  region: '호연', ko: '사천왕 권수', sprite: 'drake-gen3',  gender: 'm', grit: 0.70, team: [372, 334, 230, 330, 373] },
+  { id: 'steven', region: '호연', ko: '챔피언 성호', sprite: 'steven-gen3', gender: 'm', grit: 0.73, team: [227, 344, 306, 346, 348, 376] },
 ];
 
 /**
@@ -719,14 +722,14 @@ const HOENN_LEAGUE: LeagueRow[] = [
  * everywhere else.
  */
 const PALDEA_GYMS: GymRow[] = [
-  { id: 'katy',     region: '팔데아', badge: 70, order: 1, ko: '단풍',   badgeKo: '벌레배지',   city: '세르클마을', sprite: 'katy',     gender: 'f', grit: 2.41, prize: 884, team: [915, 917, 216] },
-  { id: 'tulip',    region: '팔데아', badge: 76, order: 2, ko: '리파',   badgeKo: '에스퍼배지', city: '베이크마을', sprite: 'tulip',    gender: 'f', grit: 1.82, prize:  94, team: [981, 282, 956, 671] },
-  { id: 'brassius', region: '팔데아', badge: 71, order: 3, ko: '콜사',   badgeKo: '풀배지',     city: '보울마을',   sprite: 'brassius', gender: 'm', grit: 2.53, prize: 885, team: [548, 928, 185] },
-  { id: 'iono',     region: '팔데아', badge: 72, order: 4, ko: '모야모', badgeKo: '전기배지',   city: '누룩스시티', sprite: 'iono',     gender: 'f', grit: 1.59, prize: 521, team: [940, 939, 404, 429] },
-  { id: 'kofu',     region: '팔데아', badge: 73, order: 5, ko: '곤포',   badgeKo: '물배지',     city: '카라프시티', sprite: 'kofu',     gender: 'm', grit: 2.29, prize: 886, team: [976, 961, 740] },
-  { id: 'larry',    region: '팔데아', badge: 74, order: 6, ko: '청목',   badgeKo: '노말배지',   city: '참푸르마을', sprite: 'larry',    gender: 'm', grit: 2.36, prize: 263, team: [775, 982, 398] },
-  { id: 'ryme',     region: '팔데아', badge: 75, order: 7, ko: '라임',   badgeKo: '고스트배지', city: '프리지마을', sprite: 'ryme',     gender: 'f', grit: 1.12, prize: 247, team: [778, 354, 972, 849] },
-  { id: 'grusha',   region: '팔데아', badge: 77, order: 8, ko: '그루샤', badgeKo: '얼음배지',   city: '나페산',     sprite: 'grusha',   gender: 'm', grit: 2.08, prize: 861, team: [873, 614, 975, 334] },
+  { id: 'katy',     region: '팔데아', badge: 70, order: 1, ko: '단풍',   badgeKo: '벌레배지',   city: '세르클마을', sprite: 'katy',     gender: 'f', grit: 1.04, prize: 884, team: [915, 917, 216] },
+  { id: 'tulip',    region: '팔데아', badge: 76, order: 2, ko: '리파',   badgeKo: '에스퍼배지', city: '베이크마을', sprite: 'tulip',    gender: 'f', grit: 0.51, prize:  94, team: [981, 282, 956, 671] },
+  { id: 'brassius', region: '팔데아', badge: 71, order: 3, ko: '콜사',   badgeKo: '풀배지',     city: '보울마을',   sprite: 'brassius', gender: 'm', grit: 0.78, prize: 885, team: [548, 928, 185] },
+  { id: 'iono',     region: '팔데아', badge: 72, order: 4, ko: '모야모', badgeKo: '전기배지',   city: '누룩스시티', sprite: 'iono',     gender: 'f', grit: 0.51, prize: 521, team: [940, 939, 404, 429] },
+  { id: 'kofu',     region: '팔데아', badge: 73, order: 5, ko: '곤포',   badgeKo: '물배지',     city: '카라프시티', sprite: 'kofu',     gender: 'm', grit: 0.61, prize: 886, team: [976, 961, 740] },
+  { id: 'larry',    region: '팔데아', badge: 74, order: 6, ko: '청목',   badgeKo: '노말배지',   city: '참푸르마을', sprite: 'larry',    gender: 'm', grit: 0.56, prize: 263, team: [775, 982, 398] },
+  { id: 'ryme',     region: '팔데아', badge: 75, order: 7, ko: '라임',   badgeKo: '고스트배지', city: '프리지마을', sprite: 'ryme',     gender: 'f', grit: 0.15, prize: 247, team: [778, 354, 972, 849] },
+  { id: 'grusha',   region: '팔데아', badge: 77, order: 8, ko: '그루샤', badgeKo: '얼음배지',   city: '나페산',     sprite: 'grusha',   gender: 'm', grit: 0.57, prize: 861, team: [873, 614, 975, 334] },
 ];
 
 /**
@@ -742,11 +745,11 @@ const PALDEA_GYMS: GymRow[] = [
  * bag that saturated long ago. Measured at 25% to 79% across four parties.
  */
 const PALDEA_LEAGUE: LeagueRow[] = [
-  { id: 'rika',      region: '팔데아', ko: '사천왕 칠리',  sprite: 'rika',   gender: 'f', grit: 1.81, team: [340, 323, 232, 51, 980] },
-  { id: 'poppy',     region: '팔데아', ko: '사천왕 뽀삐',  sprite: 'poppy',  gender: 'f', grit: 1.86, team: [879, 437, 823, 958, 959] },
-  { id: 'larry-e4',  region: '팔데아', ko: '사천왕 청목',  sprite: 'larry',  gender: 'm', grit: 1.92, team: [357, 398, 334, 741, 973] },
-  { id: 'hassel',    region: '팔데아', ko: '사천왕 팔자크', sprite: 'hassel', gender: 'm', grit: 1.98, team: [715, 691, 841, 612, 998] },
-  { id: 'geeta',     region: '팔데아', ko: '챔피언 테사',  sprite: 'geeta',  gender: 'f', grit: 2.03, team: [956, 713, 983, 976, 673, 970] },
+  { id: 'rika',      region: '팔데아', ko: '사천왕 칠리',  sprite: 'rika',   gender: 'f', grit: 0.63, team: [340, 323, 232, 51, 980] },
+  { id: 'poppy',     region: '팔데아', ko: '사천왕 뽀삐',  sprite: 'poppy',  gender: 'f', grit: 0.64, team: [879, 437, 823, 958, 959] },
+  { id: 'larry-e4',  region: '팔데아', ko: '사천왕 청목',  sprite: 'larry',  gender: 'm', grit: 0.66, team: [357, 398, 334, 741, 973] },
+  { id: 'hassel',    region: '팔데아', ko: '사천왕 팔자크', sprite: 'hassel', gender: 'm', grit: 0.69, team: [715, 691, 841, 612, 998] },
+  { id: 'geeta',     region: '팔데아', ko: '챔피언 테사',  sprite: 'geeta',  gender: 'f', grit: 0.70, team: [956, 713, 983, 976, 673, 970] },
 ];
 
 /**
@@ -767,14 +770,14 @@ const PALDEA_LEAGUE: LeagueRow[] = [
  * rebuild — which is why `gymNoun` says 스타디움 and is slightly wrong once.
  */
 const GALAR_GYMS: GymRow[] = [
-  { id: 'opal',   region: '가라르', badge: 56, order: 1, ko: '포플러', badgeKo: '페어리배지', city: '아라베스크마을', sprite: 'opal',   gender: 'f', grit: 1.77, prize: 577, team: [110, 303, 468, 869] },
-  { id: 'gordie', region: '가라르', badge: 57, order: 2, ko: '마쿠와', badgeKo: '바위배지',   city: '키르쿠스마을',   sprite: 'gordie', gender: 'm', grit: 1.82, prize: 317, team: [689, 213, 874, 839] },
-  { id: 'raihan', region: '가라르', badge: 60, order: 3, ko: '금랑',   badgeKo: '드래곤배지', city: '너클시티',       sprite: 'raihan', gender: 'm', grit: 1.94, prize: 784, team: [526, 330, 844, 884] },
-  { id: 'nessa',  region: '가라르', badge: 52, order: 4, ko: '야청',   badgeKo: '물배지',     city: '바우마을',       sprite: 'nessa',  gender: 'f', grit: 2.49, prize: 250, team: [118, 846, 834] },
-  { id: 'kabu',   region: '가라르', badge: 53, order: 5, ko: '순무',   badgeKo: '불꽃배지',   city: '엔진시티',       sprite: 'kabu',   gender: 'm', grit: 2.36, prize: 261, team: [38, 59, 851] },
-  { id: 'piers',  region: '가라르', badge: 59, order: 6, ko: '두송',   badgeKo: '악배지',     city: '스파이크마을',   sprite: 'piers',  gender: 'm', grit: 2.18, prize: 555, team: [560, 687, 435, 862] },
-  { id: 'bea',    region: '가라르', badge: 54, order: 7, ko: '채두',   badgeKo: '격투배지',   city: '래터럴마을',     sprite: 'bea',    gender: 'f', grit: 1.82, prize: 279, team: [237, 675, 865, 68] },
-  { id: 'milo',   region: '가라르', badge: 51, order: 8, ko: '아킬',   badgeKo: '풀배지',     city: '터프마을',       sprite: 'milo',   gender: 'm', grit: 2.86, prize: 345, team: [829, 830] },
+  { id: 'opal',   region: '가라르', badge: 56, order: 1, ko: '포플러', badgeKo: '페어리배지', city: '아라베스크마을', sprite: 'opal',   gender: 'f', grit: 0.51, prize: 577, team: [110, 303, 468, 869] },
+  { id: 'gordie', region: '가라르', badge: 57, order: 2, ko: '마쿠와', badgeKo: '바위배지',   city: '키르쿠스마을',   sprite: 'gordie', gender: 'm', grit: 0.48, prize: 317, team: [689, 213, 874, 839] },
+  { id: 'raihan', region: '가라르', badge: 60, order: 3, ko: '금랑',   badgeKo: '드래곤배지', city: '너클시티',       sprite: 'raihan', gender: 'm', grit: 0.36, prize: 784, team: [526, 330, 844, 884] },
+  { id: 'nessa',  region: '가라르', badge: 52, order: 4, ko: '야청',   badgeKo: '물배지',     city: '바우마을',       sprite: 'nessa',  gender: 'f', grit: 0.82, prize: 250, team: [118, 846, 834] },
+  { id: 'kabu',   region: '가라르', badge: 53, order: 5, ko: '순무',   badgeKo: '불꽃배지',   city: '엔진시티',       sprite: 'kabu',   gender: 'm', grit: 0.53, prize: 261, team: [38, 59, 851] },
+  { id: 'piers',  region: '가라르', badge: 59, order: 6, ko: '두송',   badgeKo: '악배지',     city: '스파이크마을',   sprite: 'piers',  gender: 'm', grit: 0.51, prize: 555, team: [560, 687, 435, 862] },
+  { id: 'bea',    region: '가라르', badge: 54, order: 7, ko: '채두',   badgeKo: '격투배지',   city: '래터럴마을',     sprite: 'bea',    gender: 'f', grit: 0.53, prize: 279, team: [237, 675, 865, 68] },
+  { id: 'milo',   region: '가라르', badge: 51, order: 8, ko: '아킬',   badgeKo: '풀배지',     city: '터프마을',       sprite: 'milo',   gender: 'm', grit: 1.01, prize: 345, team: [829, 830] },
 ];
 
 /**
@@ -809,13 +812,13 @@ const GALAR_GYMS: GymRow[] = [
  * are not meant to be.
  */
 const GALAR_LEAGUE: LeagueRow[] = [
-  { id: 'marnie',     region: '가라르', ko: '마리',     sprite: 'marnie', gender: 'f', grit: 1.41, team: [510, 454, 560, 877, 861] },
-  { id: 'hop',        region: '가라르', ko: '호브',     sprite: 'hop',    gender: 'm', grit: 1.43, team: [832, 823, 871, 143, 818] },
-  { id: 'bede',       region: '가라르', ko: '비트',     sprite: 'bede',   gender: 'm', grit: 1.46, team: [303, 282, 78, 858] },
-  { id: 'nessa-cup',  region: '가라르', ko: '야청',     sprite: 'nessa',  gender: 'f', grit: 1.49, team: [768, 279, 847, 119, 834] },
-  { id: 'bea-cup',    region: '가라르', ko: '채두',     sprite: 'bea',    gender: 'f', grit: 1.51, team: [701, 853, 865, 870, 68] },
-  { id: 'raihan-cup', region: '가라르', ko: '금랑',     sprite: 'raihan', gender: 'm', grit: 1.54, team: [324, 706, 776, 330, 884] },
-  { id: 'leon',       region: '가라르', ko: '챔피언 단델', sprite: 'leon',   gender: 'm', grit: 1.57, team: [681, 887, 612, 537, 812, 6] },
+  { id: 'marnie',     region: '가라르', ko: '마리',     sprite: 'marnie', gender: 'f', grit: 0.58, team: [510, 454, 560, 877, 861] },
+  { id: 'hop',        region: '가라르', ko: '호브',     sprite: 'hop',    gender: 'm', grit: 0.59, team: [832, 823, 871, 143, 818] },
+  { id: 'bede',       region: '가라르', ko: '비트',     sprite: 'bede',   gender: 'm', grit: 0.59, team: [303, 282, 78, 858] },
+  { id: 'nessa-cup',  region: '가라르', ko: '야청',     sprite: 'nessa',  gender: 'f', grit: 0.60, team: [768, 279, 847, 119, 834] },
+  { id: 'bea-cup',    region: '가라르', ko: '채두',     sprite: 'bea',    gender: 'f', grit: 0.62, team: [701, 853, 865, 870, 68] },
+  { id: 'raihan-cup', region: '가라르', ko: '금랑',     sprite: 'raihan', gender: 'm', grit: 0.64, team: [324, 706, 776, 330, 884] },
+  { id: 'leon',       region: '가라르', ko: '챔피언 단델', sprite: 'leon',   gender: 'm', grit: 0.65, team: [681, 887, 612, 537, 812, 6] },
 ];
 
 /**
@@ -850,10 +853,10 @@ const GALAR_LEAGUE: LeagueRow[] = [
  * what caught it; do not move her back.
  */
 const ALOLA_GYMS: GymRow[] = [
-  { id: 'hala',   region: '알로라', badge: 78, order: 1, ko: '할라',   title: '섬킹', badgeKo: '파이팅Z',   city: '릴리마을',     sprite: 'hala',   gender: 'm', grit: 2.28, prize: 280, team: [56, 296, 739] },
-  { id: 'olivia', region: '알로라', badge: 79, order: 2, ko: '라이치', title: '섬퀸', badgeKo: '록Z',       city: '코니코니시티', sprite: 'olivia', gender: 'f', grit: 2.49, prize: 157, team: [299, 525, 745] },
-  { id: 'nanu',   region: '알로라', badge: 80, order: 3, ko: '나누',   title: '섬킹', badgeKo: '다크Z',     city: '말리에시티',   sprite: 'nanu',   gender: 'm', grit: 2.06, prize: 399, team: [302, 552, 53] },
-  { id: 'hapu',   region: '알로라', badge: 81, order: 4, ko: '하푸우', title: '섬퀸', badgeKo: '그라운드Z', city: '포니대협곡',   sprite: 'hapu',   gender: 'f', grit: 2.10, prize:  89, team: [51, 423, 330, 750] },
+  { id: 'hala',   region: '알로라', badge: 78, order: 1, ko: '할라',   title: '섬킹', badgeKo: '파이팅Z',   city: '릴리마을',     sprite: 'hala',   gender: 'm', grit: 0.92, prize: 280, team: [56, 296, 739] },
+  { id: 'olivia', region: '알로라', badge: 79, order: 2, ko: '라이치', title: '섬퀸', badgeKo: '록Z',       city: '코니코니시티', sprite: 'olivia', gender: 'f', grit: 0.49, prize: 157, team: [299, 525, 745] },
+  { id: 'nanu',   region: '알로라', badge: 80, order: 3, ko: '나누',   title: '섬킹', badgeKo: '다크Z',     city: '말리에시티',   sprite: 'nanu',   gender: 'm', grit: 0.69, prize: 399, team: [302, 552, 53] },
+  { id: 'hapu',   region: '알로라', badge: 81, order: 4, ko: '하푸우', title: '섬퀸', badgeKo: '그라운드Z', city: '포니대협곡',   sprite: 'hapu',   gender: 'f', grit: 0.50, prize:  89, team: [51, 423, 330, 750] },
 ];
 
 /**
@@ -879,11 +882,11 @@ const ALOLA_GYMS: GymRow[] = [
  * Measured at 38% to 67% across four parties, the tightest band on the roster.
  */
 const ALOLA_LEAGUE: LeagueRow[] = [
-  { id: 'hala-e4',   region: '알로라', ko: '사천왕 할라',     sprite: 'hala',    gender: 'm', grit: 1.76, team: [297, 57, 760, 62, 740] },
-  { id: 'olivia-e4', region: '알로라', ko: '사천왕 라이치',   sprite: 'olivia',  gender: 'f', grit: 1.82, team: [369, 703, 76, 476, 745] },
-  { id: 'acerola',   region: '알로라', ko: '사천왕 아세로라', sprite: 'acerola', gender: 'f', grit: 1.87, team: [302, 426, 781, 478, 770] },
-  { id: 'kahili',    region: '알로라', ko: '사천왕 카일리',   sprite: 'kahili',  gender: 'f', grit: 1.93, team: [227, 169, 741, 630, 733] },
-  { id: 'kukui',     region: '알로라', ko: '챔피언 쿠쿠이박사', sprite: 'kukui', gender: 'm', grit: 1.98, team: [745, 38, 628, 462, 143, 727] },
+  { id: 'hala-e4',   region: '알로라', ko: '사천왕 할라',     sprite: 'hala',    gender: 'm', grit: 0.67, team: [297, 57, 760, 62, 740] },
+  { id: 'olivia-e4', region: '알로라', ko: '사천왕 라이치',   sprite: 'olivia',  gender: 'f', grit: 0.69, team: [369, 703, 76, 476, 745] },
+  { id: 'acerola',   region: '알로라', ko: '사천왕 아세로라', sprite: 'acerola', gender: 'f', grit: 0.72, team: [302, 426, 781, 478, 770] },
+  { id: 'kahili',    region: '알로라', ko: '사천왕 카일리',   sprite: 'kahili',  gender: 'f', grit: 0.72, team: [227, 169, 741, 630, 733] },
+  { id: 'kukui',     region: '알로라', ko: '챔피언 쿠쿠이박사', sprite: 'kukui', gender: 'm', grit: 0.74, team: [745, 38, 628, 462, 143, 727] },
 ];
 
 export const REGIONS: RegionRow[] = [

@@ -1,7 +1,8 @@
 import { josa } from '../src/josa.ts';
 import type { DexEntry, GameState, PartyMember } from './game.ts';
 import { MOVE_SLOTS } from './hunt.ts';
-import { canLearn, moveById } from './moves.ts';
+import { canLearn, learnsByLevel, levelUpMoves, moveById } from './moves.ts';
+import { canKnow } from './learnset.ts';
 import type { ShopResult } from './shop.ts';
 import { speciesName } from './species.ts';
 
@@ -90,9 +91,11 @@ export function assignable(state: GameState, index: number): Assignable[] {
     if (m.moves.includes(moveId) || !canLearn(m.speciesId, moveId)) continue;
     out.set(moveId, { moveId, from: 'bag' });
   }
-  // Second, so a move that is both known and held is recorded as free.
-  for (const moveId of known) {
-    if (m.moves.includes(moveId) || !canLearn(m.speciesId, moveId)) continue;
+  // Second, so a move that is both known and held is recorded as free. A
+  // graduate is Lv.100, so its whole level-up learnset is already its own.
+  const byLevel = levelUpMoves(m.speciesId).map(([, id]) => id);
+  for (const moveId of [...known, ...byLevel]) {
+    if (m.moves.includes(moveId) || !canKnow(m.speciesId, moveId)) continue;
     out.set(moveId, { moveId, from: 'dex' });
   }
   return [...out.values()].sort(
@@ -115,7 +118,13 @@ export function setMember(state: GameState, index: number | null, d: DexEntry): 
   if (slot >= PARTY_SIZE) {
     return { state, ok: false, message: `파티는 ${PARTY_SIZE}마리까지입니다.` };
   }
-  party[slot] = { speciesId: d.speciesId, shiny: d.shiny, ...(d.formId !== undefined ? { formId: d.formId } : {}), moves: [] };
+  party[slot] = {
+    speciesId: d.speciesId,
+    shiny: d.shiny,
+    ...(d.formId !== undefined ? { formId: d.formId } : {}),
+    ...(d.abilitySlot !== undefined ? { abilitySlot: d.abilitySlot } : {}),
+    moves: [],
+  };
   return {
     state: { ...state, party: party.filter(Boolean) },
     ok: true,
@@ -162,14 +171,16 @@ export function assign(
   const move = moveById(moveId);
   if (!move) return { state, ok: false, message: '없는 기술입니다.' };
   const who = speciesName(m.speciesId);
-  if (!canLearn(m.speciesId, moveId)) {
+  if (!canKnow(m.speciesId, moveId)) {
     return { state, ok: false, message: `${who}${josa(who, '은', '는')} ${move.ko}${josa(move.ko, '을', '를')} 배울 수 없습니다.` };
   }
   if (m.moves.includes(moveId)) {
     return { state, ok: false, message: `이미 ${move.ko}${josa(move.ko, '을', '를')} 배웠습니다.` };
   }
 
-  const free = (state.dex.find((d) => sameAs(m, d))?.moves ?? []).includes(moveId);
+  // Free if it already knew it, or if it learns it by level: everything in the
+  // party graduated at Lv.100, so every level-up move is already its own.
+  const free = (state.dex.find((d) => sameAs(m, d))?.moves ?? []).includes(moveId) || learnsByLevel(m.speciesId, moveId);
   const held = state.tms[moveId] ?? 0;
   if (!free && held < 1) {
     return { state, ok: false, message: '그 기술머신이 없습니다.' };

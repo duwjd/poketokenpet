@@ -1,22 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import {
   advance,
+  companionAbility,
+  friendshipOf,
   initialState,
   lifetimeOf,
   mulberry32,
   rarityOf,
+  speciesIdOf,
   type GameState,
-  type Rarity,
 } from '../server/game.ts';
 import { LINES } from '../server/species.ts';
 import { formById } from '../server/forms.ts';
-import { MOVES, canLearn, learnableMoves, moveById, speciesInfo } from '../server/moves.ts';
+import { MOVES, canLearn, learnableMoves, levelUpMoves, moveById, speciesInfo } from '../server/moves.ts';
+import type { Condition } from '../server/hunt.ts';
 import {
   HUNT_INTERVAL_MS,
   MAX_TURNS,
   HUNT_OFFLINE_CAP,
   MOVE_SLOTS,
   battleAt,
+  battleStats,
   encounterAt,
   forget,
   formOpts,
@@ -153,7 +157,53 @@ describe('hunt', () => {
     const s = hunting();
     expect(tick(s, 1).huntCount).toBe(1);
     expect(tick(s, 7).huntCount).toBe(7);
-    expect(tick(s, 1).huntTokens).toBeGreaterThan(0);
+    expect(tick(s, 7).huntLog).toHaveLength(7);
+  });
+
+  it('pays nothing and drops nothing for a wild fight it lost', () => {
+    // A wild encounter is a real fight now. The fixture's companion is a
+    // fresh 알통몬 with one move, which loses most of them — so a long enough
+    // run has plenty of both outcomes to check.
+    const s = tick(hunting(), 200);
+    const wild = s.huntLog.filter((e) => !e.trainer && !e.legend);
+    const lost = wild.filter((e) => e.won === false);
+    const won = wild.filter((e) => e.won === true);
+    expect(lost.length).toBeGreaterThan(0);
+    expect(won.length).toBeGreaterThan(0);
+    for (const e of lost) {
+      expect(e.tokens).toBe(0);
+      expect(e.moveId).toBeNull();
+      expect(e.stoneId).toBeUndefined();
+      expect(e.legendItem).toBeUndefined();
+    }
+    for (const e of won) expect(e.tokens).toBeGreaterThan(0);
+  });
+
+  it('settles the same fight the panel replays', () => {
+    // The panel re-runs battleAt with the same arguments; the outcome the log
+    // records has to be the one it will draw.
+    const s = tick(hunting(), 40);
+    const me = s.active!;
+    for (const e of s.huntLog) {
+      // Who fought is on the record, so an evolution in the same pass cannot
+      // swap the fighter out from under the replay.
+      // Friendship too: it grows with the level, and 은혜갚기 reads it.
+      if (!e.league) {
+        expect(e.mine, `seq ${e.seq}`).toEqual({
+          speciesId: speciesIdOf(me),
+          moves: me.moves,
+          friendship: friendshipOf(me),
+          ability: companionAbility(me),
+        });
+      }
+      if (e.trainer || e.legend) continue;
+      const b = battleAt(e.seq, encounterAt(e.seq, speciesIdOf(me), H).rarity, me.moves, e.wildId, {
+        mySpeciesId: speciesIdOf(me),
+        myFriendship: e.mine!.friendship,
+        myAbility: e.mine!.ability,
+      });
+      expect(b.won, `seq ${e.seq}`).toBe(e.won);
+    }
   });
 
   it('is idempotent — the whole design rests on this', () => {
@@ -221,7 +271,8 @@ describe('hunt', () => {
     expect(s.huntCount).toBeGreaterThan(1000);
     // TMs still drop past the cap — farming keeps working, the currency saturates.
     expect(Object.keys(s.tms).length).toBeGreaterThan(0);
-  });
+    // Thirty-eight thousand encounters, every trainer a whole team fight.
+  }, 30_000);
 
   it('lets the cap grow with tokens actually burned', () => {
     const poor = hunting({ lifetimeEarned: 0 });
@@ -277,17 +328,14 @@ describe('hunt', () => {
     expect(events.length).toBeLessThan(100);
   });
 
-  it('lands on the advertised rate on a bare moveset', () => {
-    // About 5% of a hatch threshold per hour from wild encounters, plus a
-    // little from trainers, plus a little more since every companion now
-    // hatches knowing one attack. "Bare" no longer means empty; nothing is
-    // ever empty.
-    //
-    // Measured at 8.10%, where it was 6.05%. The gap is the gym leaders: this
-    // samples encounters 0 to 4,800, which is Kanto and the start of Johto,
-    // and a badge fight pays twice a route trainer's formula. It is real
-    // income in the stretch it happens, and `huntCap` still holds the ceiling
-    // — so the band moves rather than the numbers.
+  it('lands on the measured rate for a fresh companion', () => {
+    // The payout table still AIMS at 5% of a hatch threshold per hour — every
+    // encounter's reward is normalised to that — but a wild fight can be lost
+    // now, and a loss pays nothing. The fixture is a fresh 알통몬 knowing one
+    // 바위깨기, which wins about a quarter of its wild fights at level 50, so
+    // it earns about 1.5% an hour. This was 8.10% while every wild fight was a
+    // win. A final evolution with four machines wins most of them and earns
+    // most of the advertised rate; the rate is a ceiling, not a promise.
     //
     // Measured over many starting points rather than one:
     // a trainer is worth a dozen ordinary encounters, so a single hour that
@@ -299,94 +347,17 @@ describe('hunt', () => {
       total += hunt(s, T0 + 12 * HUNT_INTERVAL_MS).state.huntTokens / H;
     }
     const mean = total / runs;
-    expect(mean).toBeGreaterThan(0.055);
-    expect(mean).toBeLessThan(0.100);
+    expect(mean).toBeGreaterThan(0.008);
+    expect(mean).toBeLessThan(0.03);
   });
 });
 
 describe('battleAt', () => {
   const strong = [63, 53, 89, 87]; // Hyper Beam, Flamethrower, Earthquake, Thunder
 
-  /**
-   * The companion's half of the fight, frozen.
-   *
-   * Rows are [moveId, damage, crit, missed, effect, foeHpAfter]. Booleans are
-   * 0/1 so a row stays one short line.
-   *
-   * ## Four of these are compatibility anchors
-   *
-   * `0`, `5`, `7` and `13` are the cases where the type chart has nothing to
-   * say — no foe species at all, or a Normal one every move is neutral against,
-   * or no moveset to choose from. Every weight is therefore exactly 1, and
-   * `pickWeighted` turns an all-ones draw back into the uniform index it
-   * replaced. These were captured before the opponent had a moveset of its own
-   * and they have not moved since. NONE OF THEM MAY MOVE. If one does, either a
-   * draw leaked into the companion's stream or an entry for 1 crept into
-   * MATCHUP_WEIGHT, and every battle the app has ever shown just changed
-   * underneath it.
-   *
-   * ## Two were re-recorded on purpose
-   *
-   * `42` and `91` are the rows with a real matchup, and they are what the
-   * chart-aware pick was FOR. Against Gyarados the companion now leads with
-   * Thunder at 4x instead of spreading its picks over a 0.5x Flamethrower and a
-   * 0x Earthquake; against Gastly it no longer opens with a Normal move that
-   * does nothing at all. Both fights got shorter, which is the reward for a
-   * good matchup and is deliberate: `foeMaxHp` is sized off `swingPower`, which
-   * stays chart-blind.
-   *
-   * That cost this table the coverage it used to carry — 42's immune turn and
-   * 91's immune opener are now rare by design. Do not tune them back. The two
-   * tests named for that coverage below own it instead, where the next
-   * re-record cannot quietly take it away again.
-   *
-   * 13 is still untaught, 5 is still a single-move set long enough to reach
-   * MAX_TURNS, and three rows still carry a miss.
-   */
-  const GOLDEN: [string, { foeMaxHp: number; turns: (number | null)[][] }][] = [
-    ['0-common-strong', {"foeMaxHp":498,"turns":[[53,135,1,0,1,363],[63,165,0,0,1,198],[53,97,0,0,1,101],[89,88,0,0,1,13],[53,116,1,0,1,0]]}],
-    ['7-rare-strong-19', {"foeMaxHp":643,"turns":[[63,136,0,0,1,507],[89,145,1,0,1,362],[63,243,1,0,1,119],[89,93,0,0,1,26],[87,106,0,0,1,0]]}],
-    ['42-legendary-strong-130', {"foeMaxHp":809,"turns":[[87,445,0,0,4,364],[87,0,0,1,4,364],[87,428,0,0,4,1],[87,0,0,1,4,1],[87,379,0,0,4,0]]}],
-    ['13-uncommon-bare-19', {"foeMaxHp":234,"turns":[[null,46,0,0,1,188],[null,37,0,0,1,151],[null,65,1,0,1,86],[null,45,0,0,1,41],[null,60,1,0,1,0]]}],
-    ['5-legendary-hyper', {"foeMaxHp":1220,"turns":[[63,165,0,0,1,1055],[63,163,0,0,1,892],[63,238,1,0,1,654],[63,0,0,1,1,654],[63,159,0,0,1,495],[63,139,0,0,1,356],[63,138,0,0,1,218],[63,218,0,0,1,0]]}],
-    ['91-common-strong-92', {"foeMaxHp":450,"turns":[[53,81,0,0,1,369],[89,227,0,0,2,142],[87,111,0,0,1,31],[89,329,1,0,2,0]]}],
-  ];
-
-  const GOLDEN_ARGS: Record<string, [number, Rarity, number[], number | undefined]> = {
-    '0-common-strong': [0, 'common', strong, undefined],
-    '7-rare-strong-19': [7, 'rare', strong, 19],
-    '42-legendary-strong-130': [42, 'legendary', strong, 130],
-    '13-uncommon-bare-19': [13, 'uncommon', [], 19],
-    '5-legendary-hyper': [5, 'legendary', [63], undefined],
-    '91-common-strong-92': [91, 'common', strong, 92],
-  };
-
-  it('has not moved the companion half of any recorded fight', () => {
-    for (const [label, want] of GOLDEN) {
-      const [seq, rarity, moves, foe] = GOLDEN_ARGS[label];
-      const b = battleAt(seq, rarity, moves, foe);
-      expect(b.foeMaxHp, label).toBe(want.foeMaxHp);
-      expect(
-        b.turns.map((t) => [t.moveId, t.damage, t.crit ? 1 : 0, t.missed ? 1 : 0, t.effect, t.foeHpAfter]),
-        label,
-      ).toEqual(want.turns);
-    }
-  });
-
   it('is a pure function of the encounter index', () => {
     for (const k of [0, 3, 91, 5000]) {
       expect(battleAt(k, 'rare', strong)).toEqual(battleAt(k, 'rare', strong));
-    }
-  });
-
-  it('always ends with the opponent down', () => {
-    for (const rarity of ['common', 'uncommon', 'rare', 'legendary'] as const) {
-      for (let k = 0; k < 400; k++) {
-        const b = battleAt(k, rarity, k % 2 ? strong : []);
-        expect(b.turns.at(-1)!.foeHpAfter, `${rarity}/${k}`).toBe(0);
-        expect(b.turns.length).toBeLessThanOrEqual(MAX_TURNS);
-        expect(b.turns.length).toBeGreaterThan(0);
-      }
     }
   });
 
@@ -410,17 +381,6 @@ describe('battleAt', () => {
     expect(mean('legendary')).toBeGreaterThan(mean('common') + 1);
   });
 
-  it('keeps the fight the same length however strong the moveset gets', () => {
-    // A fixed HP pool meant a good moveset one-shot everything common. Scaling
-    // the opponent to the companion's own damage is what fixes that.
-    const mean = (moves: number[]) => {
-      let t = 0;
-      for (let k = 0; k < 600; k++) t += battleAt(k, 'uncommon', moves).turns.length;
-      return t / 600;
-    };
-    expect(Math.abs(mean(strong) - mean([]))).toBeLessThan(1);
-  });
-
   it('hits harder with a stronger move, and criticals hit hardest', () => {
     // Hyper Beam is 150, Pound is 40.
     const hard = battleAt(5, 'legendary', [63]).turns[0].damage;
@@ -436,8 +396,8 @@ describe('battleAt', () => {
     // "전기자석파로 상대를 때렸다" a thing the game said out loud.
     const b = battleAt(2, 'rare', [97]);
     expect(b.turns[0].damage).toBe(0);
-    // Something happened, though — Agility is a setup move.
-    expect(b.turns[0].selfEffect).toBe('boost');
+    // Something happened, though — Agility sharply raises Speed.
+    expect(b.turns[0].myEvents).toContainEqual({ k: 'stat', on: 'user', stat: 'spe', delta: 2, tried: 2 });
     expect(b.turns[0].ailment).toBeNull();
   });
 
@@ -512,18 +472,6 @@ describe('battleAt', () => {
     expect(failed).toBe(0);
   });
 
-  it('keeps a landed status standing for the rest of the fight', () => {
-    // The plate badge reads this. An ailment is news once and a condition after.
-    const b = battleAt(5, 'rare', [86, 53], 19, { mySpeciesId: 25 });
-    const at = b.turns.findIndex((t) => t.ailment === 'paralysis');
-    expect(at).toBeGreaterThanOrEqual(0);
-    for (let i = at; i < b.turns.length; i++) {
-      expect(b.turns[i].foeStatus, `turn ${i}`).toBe('paralysis');
-    }
-    // And nothing before it.
-    for (let i = 0; i < at; i++) expect(b.turns[i].foeStatus).toBeNull();
-  });
-
   it('keeps volatile conditions off the panel, as the games do', () => {
     // Confusion, bind and the rest get a message-box line and no icon.
     const volatile = ['confusion', 'trap', 'silence', 'nightmare', 'infatuation', 'torment', 'embargo'];
@@ -542,51 +490,12 @@ describe('battleAt', () => {
     expect(shown).toBeGreaterThan(1000);
   });
 
-  it('still fells the opponent when nothing in the moveset can hit', () => {
-    // Four setup moves deal nothing all fight. The finisher swaps in the plain
-    // swing so the battle cannot stall, and the pool never sizes to zero.
-    const allStatus = [14, 97, 86, 92];
-    for (let k = 0; k < 300; k++) {
-      const b = battleAt(k, 'legendary', allStatus, 130, { mySpeciesId: 6 });
-      expect(b.foeMaxHp, `${k}`).toBeGreaterThan(0);
-      expect(b.turns.length).toBeGreaterThan(0);
-      expect(b.turns.length).toBeLessThanOrEqual(MAX_TURNS);
-      expect(b.turns.at(-1)!.foeHpAfter).toBe(0);
-      // The felling blow is never a status move.
-      expect(b.turns.at(-1)!.moveId).toBeNull();
-    }
-  });
-
-  it('never lets a lingering ailment be the thing that fells', () => {
-    for (let k = 0; k < 400; k++) {
-      const b = battleAt(k, 'rare', [92, 53], 19, { mySpeciesId: 25 });
-      b.turns.forEach((t, i) => {
-        if (i < b.turns.length - 1) expect(t.foeHpAfter, `${k}/${i}`).toBeGreaterThan(0);
-      });
-    }
-  });
-
-  it('lets the wild one hit back, but never past the floor', () => {
-    let sawCounter = false;
-    for (let k = 0; k < 500; k++) {
-      const b = battleAt(k, 'legendary', strong);
-      for (const t of b.turns) {
-        if (t.counter > 0) sawCounter = true;
-        expect(t.myHpAfter).toBeGreaterThan(0);
-        expect(t.myHpAfter).toBeLessThanOrEqual(b.myMaxHp);
-      }
-      // The felling blow draws no counter.
-      expect(b.turns.at(-1)!.counter).toBe(0);
-    }
-    expect(sawCounter).toBe(true);
-  });
-
-  it('only lets the opponent use moves its species could be taught', () => {
+  it('only lets the opponent use moves its species learns by Lv.50, or by machine', () => {
     let picks = 0;
     let stab = 0;
     for (let k = 0; k < 2000; k++) {
       const foe = 1 + ((k * 7919) % 1025);
-      const legal = new Set(learnableMoves(foe));
+      const legal = new Set([...learnableMoves(foe), ...levelUpMoves(foe).filter(([lv]) => lv <= 50).map(([, id]) => id)]);
       const types = speciesInfo(foe)?.types ?? [];
       for (const t of battleAt(k, 'rare', strong, foe, { mySpeciesId: 25 }).turns) {
         if (t.foeMoveId === null) continue;
@@ -644,7 +553,8 @@ describe('battleAt', () => {
     let total = 0;
     for (const foe of [130, 92]) {
       for (let k = 0; k < 500; k++) {
-        for (const t of battleAt(k, 'rare', strong, foe, { mySpeciesId: 25 }).turns) {
+        // The floor alone: abilities change how long each fight runs.
+        for (const t of battleAt(k, 'rare', strong, foe, { mySpeciesId: 25, myAbility: null, foeAbility: null }).turns) {
           total++;
           if (t.effect === 0) immune++;
         }
@@ -668,6 +578,8 @@ describe('battleAt', () => {
     let total = 0;
     for (let k = 0; k < 800; k++) {
       for (const t of battleAt(k, 'rare', strong, 19, { mySpeciesId: 25 }).turns) {
+        // A turn spent recharging from 파괴광선 is not a pick.
+        if (!t.meActed || t.mySkip) continue;
         picks.set(t.moveId, (picks.get(t.moveId) ?? 0) + 1);
         total++;
       }
@@ -695,7 +607,8 @@ describe('battleAt', () => {
     const picks = new Map<number | null, number>();
     let total = 0;
     for (let k = 0; k < 600; k++) {
-      for (const t of battleAt(k, 'rare', withToxic, 227, { mySpeciesId: 25 }).turns) {
+      // Pidgeot: Normal/Flying, so Earthquake is 0x and Toxic still lands.
+      for (const t of battleAt(k, 'rare', withToxic, 18, { mySpeciesId: 25 }).turns) {
         picks.set(t.moveId, (picks.get(t.moveId) ?? 0) + 1);
         total++;
       }
@@ -706,58 +619,10 @@ describe('battleAt', () => {
     expect(toxic).toBeGreaterThan(quake * 5);
   });
 
-  /**
-   * Termination, when the chart says every single option is pointless.
-   *
-   * Four Normal moves against a Ghost. Every weight is the 0x floor, so the
-   * draw still resolves; every turn but the last deals nothing; and the finisher
-   * — which ignores the chart and cannot miss — is what ends it.
-   */
-  it('ends even when everything it knows is immune', () => {
-    const normalOnly = [63, 70, 36, 5];
-    for (let k = 0; k < 300; k++) {
-      const b = battleAt(k, 'rare', normalOnly, 92, { mySpeciesId: 25 });
-      expect(b.turns.length, `${k}`).toBeLessThanOrEqual(MAX_TURNS);
-      expect(b.turns.at(-1)!.foeHpAfter, `${k}`).toBe(0);
-      for (const t of b.turns.slice(0, -1)) {
-        expect(t.effect, `${k}`).toBe(0);
-        expect(t.damage, `${k}`).toBe(0);
-      }
-    }
-  });
-
-  /**
-   * A good matchup really does end the fight sooner.
-   *
-   * `foeMaxHp` is drawn from `swingPower`, which is chart-blind, so the pool is
-   * the same size whoever is standing in it. Sizing it to the chart-aware swing
-   * instead would cancel the whole feature — the fight would simply be
-   * re-lengthened to the same six turns and picking well would buy nothing.
-   */
-  it('does not re-size the opponent to cancel a good matchup', () => {
-    for (const k of [0, 7, 42, 91, 500]) {
-      const sized = battleAt(k, 'rare', strong).foeMaxHp;
-      expect(battleAt(k, 'rare', strong, 130).foeMaxHp, `${k}`).toBe(sized);
-      expect(battleAt(k, 'rare', strong, 92).foeMaxHp, `${k}`).toBe(sized);
-    }
-  });
-
   it('falls back to a plain swing for a species with no attacking machine move', () => {
     // Ditto learns nothing from a machine at all.
     for (const t of battleAt(4, 'common', strong, 132, { mySpeciesId: 6 }).turns) {
       expect(t.foeMoveId).toBeNull();
-    }
-  });
-
-  it('gives the opponent a turn on every exchange but the one it goes down on', () => {
-    for (let k = 0; k < 300; k++) {
-      const b = battleAt(k, 'legendary', strong, 130, { mySpeciesId: 6 });
-      b.turns.forEach((t, i) => {
-        expect(t.foeActed, `${k}/${i}`).toBe(i < b.turns.length - 1);
-      });
-      const last = b.turns.at(-1)!;
-      expect(last.foeMoveId).toBeNull();
-      expect(last.counter).toBe(0);
     }
   });
 
@@ -772,43 +637,6 @@ describe('battleAt', () => {
       for (const t of battleAt(k, 'rare', strong, 130, { mySpeciesId: 6 }).turns) seen.add(t.foeEffect);
     }
     expect(seen.size).toBeGreaterThan(1);
-  });
-
-  it('keeps the counter inside the envelope it was tuned in', () => {
-    // The foe's move varies its damage; it must not run away with it. The mean
-    // is what trainer balance was measured against.
-    //
-    // `sum / n > 0` used to be the whole assertion here, which was blind to the
-    // one thing that can actually go wrong: the opponent now avoids the moves
-    // that do nothing to me, so it hits for more on average. That is a PRICE,
-    // paid on purpose and measured — 30.9 -> 33.4 HP a swing, about +8% — and
-    // the band below is what stops the next tweak to FOE_MATCHUP_WEIGHT
-    // spending more of it without anyone noticing. The dial for this is that
-    // table, never foeMult or FOE_MULT_MAX.
-    let sum = 0;
-    let n = 0;
-    let sawZero = false;
-    let sawBig = false;
-    for (let k = 0; k < 1500; k++) {
-      const foe = 1 + ((k * 7919) % 1025);
-      const me = 1 + ((k * 104729) % 1025);
-      const b = battleAt(k, 'rare', strong, foe, { mySpeciesId: me });
-      for (const t of b.turns) {
-        if (!t.foeActed) continue;
-        n++;
-        sum += t.counter;
-        if (t.counter === 0) sawZero = true;
-        if (t.foeEffect > 1) sawBig = true;
-        // Ceiling: FOE_MULT_MAX 2.5, times the 1.3 top of the jitter.
-        expect(t.counter, `${foe}/${me}`).toBeLessThanOrEqual(Math.ceil(b.myMaxHp * 2.5 * 1.3));
-      }
-    }
-    expect(n).toBeGreaterThan(2000);
-    // An immune matchup really is zero, not the old Math.max(1, ...).
-    expect(sawZero).toBe(true);
-    expect(sawBig).toBe(true);
-    expect(sum / n).toBeGreaterThan(32);
-    expect(sum / n).toBeLessThan(35);
   });
 
   /**
@@ -829,7 +657,8 @@ describe('battleAt', () => {
     for (let k = 0; k < 1500; k++) {
       const foe = 1 + ((k * 7919) % 1025);
       const me = 1 + ((k * 104729) % 1025);
-      for (const t of battleAt(k, 'rare', strong, foe, { mySpeciesId: me }).turns) {
+      // The chart alone: an ability that drinks a move in is a different lesson.
+      for (const t of battleAt(k, 'rare', strong, foe, { mySpeciesId: me, myAbility: null, foeAbility: null }).turns) {
         if (!t.foeActed || t.foeMoveId === null) continue;
         picks++;
         effSum += t.foeEffect;
@@ -848,10 +677,551 @@ describe('battleAt', () => {
     // so the bar must not move either.
     for (let k = 0; k < 400; k++) {
       for (const t of battleAt(k, 'rare', strong, 19, { mySpeciesId: 130 }).turns) {
+        const quiet = t.foeEvents.some((e) => e.k === 'charge' || e.k === 'blocked' || e.k === 'future');
+        const swung = t.foeActed && !t.foeMissed && !t.foeSkip && t.foeSelfEffect === null && !t.foeAilment && !quiet;
         if (t.foeActed && t.foeEffect === 0) expect(t.counter).toBe(0);
-        if (t.foeActed && t.foeEffect > 0) expect(t.counter).toBeGreaterThan(0);
+        if (swung && t.foeEffect > 0) expect(t.counter).toBeGreaterThan(0);
       }
     }
+  });
+
+  // ── Level-50 stats ──────────────────────────────────────────────────────
+
+  it('computes level-50 stats from base stats, with no IVs and no EVs', () => {
+    // 이상해씨: 45/49/49/65/65/45. HP is base + 60, everything else base + 5.
+    expect(battleStats([45, 49, 49, 65, 65, 45])).toEqual({
+      hp: 105,
+      atk: 54,
+      def: 54,
+      spa: 70,
+      spd: 70,
+      spe: 50,
+    });
+    // 껍질몬 is the games' one exception: always 1 HP.
+    expect(battleStats([1, 90, 45, 30, 30, 40]).hp).toBe(1);
+  });
+
+  it('sizes both bars from the species, not from the moveset', () => {
+    // 꼬렛 (HP 30) against 잠만보 (HP 160).
+    const b = battleAt(1, 'common', [], 19, { mySpeciesId: 143 });
+    expect(b.foeMaxHp).toBe(90);
+    expect(b.myMaxHp).toBe(220);
+    expect(battleAt(1, 'common', strong, 19, { mySpeciesId: 143 }).foeMaxHp).toBe(90);
+  });
+
+  it('ends with somebody down, at the turn cap, or with the wild one gone', () => {
+    for (let k = 0; k < 400; k++) {
+      const foe = 1 + ((k * 7919) % 1025);
+      const b = battleAt(k, 'rare', strong, foe, { mySpeciesId: 1 + ((k * 104729) % 1025) });
+      const last = b.turns.at(-1)!;
+      // 드래곤테일 in a wild fight blows the companion clean out of it.
+      const fled = b.exit === 'fled';
+      expect(last.foeHpAfter === 0 || last.myHpAfter === 0 || b.turns.length === MAX_TURNS || fled, `${k}`).toBe(true);
+      expect(b.won).toBe(last.foeHpAfter === 0 && last.myHpAfter > 0);
+      // Nobody moves once they are down.
+      b.turns.slice(0, -1).forEach((t) => expect(t.foeHpAfter > 0 && t.myHpAfter > 0).toBe(true));
+    }
+  });
+
+  it('can be lost, wild or not', () => {
+    // 꼬렛 with nothing taught against 망나뇽. Nothing props the companion up.
+    let lost = 0;
+    for (let k = 0; k < 200; k++) {
+      if (!battleAt(k, 'rare', [], 149, { mySpeciesId: 19 }).won) lost++;
+    }
+    expect(lost).toBeGreaterThan(190);
+  });
+
+  it('wins more for a stronger species with the same moves', () => {
+    const rate = (me: number) => {
+      let won = 0;
+      for (let k = 0; k < 600; k++) {
+        const foe = 1 + ((k * 7919) % 1025);
+        if (battleAt(k, 'rare', strong, foe, { mySpeciesId: me }).won) won++;
+      }
+      return won / 600;
+    };
+    // 캐터피 against 망나뇽, carrying the very same four machines.
+    expect(rate(149)).toBeGreaterThan(rate(10) + 0.3);
+  });
+
+  it('lets the faster side move first', () => {
+    // 쥬피썬더 (Speed 130) against 잠만보 (Speed 30), and the other way round.
+    for (let k = 0; k < 100; k++) {
+      for (const t of battleAt(k, 'rare', [87], 143, { mySpeciesId: 135 }).turns) {
+        if (t.myStatus !== 'paralysis') expect(t.foeFirst, `${k}`).toBe(false);
+      }
+      for (const t of battleAt(k, 'rare', [89], 135, { mySpeciesId: 143 }).turns) {
+        if (t.foeStatus !== 'paralysis') expect(t.foeFirst, `${k}`).toBe(true);
+      }
+    }
+  });
+
+  it('hits harder off the stat the move uses', () => {
+    // Hyper Beam is special: 후딘 (Sp. Atk 135) against 괴력몬 (Sp. Atk 65).
+    const mean = (me: number) => {
+      let total = 0;
+      let n = 0;
+      for (let k = 0; k < 300; k++) {
+        for (const t of battleAt(k, 'rare', [63], 143, { mySpeciesId: me }).turns) {
+          if (t.meActed && !t.missed && !t.mySkip) {
+            total += t.damage;
+            n++;
+          }
+        }
+      }
+      return total / n;
+    };
+    expect(mean(65)).toBeGreaterThan(mean(68) * 1.5);
+  });
+
+  it('lets one side act and the other fall before its turn', () => {
+    for (let k = 0; k < 300; k++) {
+      const b = battleAt(k, 'rare', strong, 130, { mySpeciesId: 6 });
+      b.turns.forEach((t, i) => {
+        const last = i === b.turns.length - 1;
+        // Both halves happen on every turn but the last.
+        if (!last) {
+          expect(t.meActed && t.foeActed, `${k}/${i}`).toBe(true);
+          return;
+        }
+        // On the last, a half that never came belongs to whoever went down
+        // before its slot — and it did nothing.
+        if (!t.meActed) {
+          expect(t.foeFirst && t.myHpAfter === 0, `${k}`).toBe(true);
+          expect(t.damage).toBe(0);
+        }
+        if (!t.foeActed) {
+          expect(!t.foeFirst && t.foeHpAfter === 0, `${k}`).toBe(true);
+          expect(t.counter).toBe(0);
+        }
+      });
+    }
+  });
+
+  // ── Status conditions ───────────────────────────────────────────────────
+
+  /** Every turn of `n` fights of `me` against `foe`, starting under `status`. */
+  // Without abilities: these measure what a condition does, and 속보 or 유연
+  // would measure the ability instead.
+  const under = (status: Condition, me: number, foe: number, moves: number[], n = 400) =>
+    Array.from({ length: n }, (_, k) =>
+      battleAt(k, 'rare', moves, foe, { mySpeciesId: me, startStatus: status, myAbility: null, foeAbility: null }),
+    );
+
+  it('paralysis halves Speed and costs a turn about one time in four', () => {
+    // 쥬피썬더 paralysed is 67 against 꼬렛's 77, so it now moves second.
+    let skipped = 0;
+    let turns = 0;
+    for (const b of under('paralysis', 135, 19, [87])) {
+      for (const t of b.turns) {
+        if (t.myStatus !== 'paralysis') continue;
+        expect(t.foeFirst).toBe(true);
+        if (!t.meActed) continue;
+        turns++;
+        if (t.mySkip === 'paralysis') skipped++;
+      }
+    }
+    expect(skipped / turns).toBeGreaterThan(0.18);
+    expect(skipped / turns).toBeLessThan(0.32);
+  });
+
+  it('sleep costs one to three turns and then wears off', () => {
+    for (const b of under('sleep', 143, 19, [89])) {
+      const awake = b.turns.findIndex((t) => t.meActed && t.mySkip !== 'sleep');
+      const slept = b.turns.slice(0, awake < 0 ? undefined : awake).filter((t) => t.mySkip === 'sleep').length;
+      expect(slept).toBeGreaterThanOrEqual(1);
+      expect(slept).toBeLessThanOrEqual(3);
+      // The first turn it gets to move is the turn it woke up on.
+      if (awake >= 0) expect(b.turns[awake].myCured).toBe('sleep');
+    }
+  });
+
+  it('freezes solid until a one-in-five thaw', () => {
+    let frozen = 0;
+    let thawed = 0;
+    for (const b of under('freeze', 143, 19, [89])) {
+      for (const t of b.turns) {
+        if (t.mySkip === 'freeze') frozen++;
+        if (t.myCured === 'freeze') thawed++;
+      }
+    }
+    const rate = thawed / (thawed + frozen);
+    expect(rate).toBeGreaterThan(0.14);
+    expect(rate).toBeLessThan(0.26);
+  });
+
+  it('burns: half the damage of a physical move, and a sixteenth each turn', () => {
+    // Seed for seed the draws are the same, so the burned hit is the plain one halved.
+    for (let k = 0; k < 200; k++) {
+      // A foe held to Hyper Beam, so no bind stacks its own chip on top.
+      const plain = battleAt(k, 'rare', [89], 143, { mySpeciesId: 76, foeMoves: [63] });
+      const burnt = battleAt(k, 'rare', [89], 143, { mySpeciesId: 76, foeMoves: [63], startStatus: 'burn' });
+      const a = plain.turns[0];
+      const b = burnt.turns[0];
+      if (a.meActed && b.meActed && !a.missed && a.damage > 1) {
+        expect(b.damage).toBe(Math.max(1, Math.floor(a.damage / 2)));
+      }
+      for (const t of burnt.turns) {
+        if (t.myHpAfter > 0) expect(t.myResidual).toBe(Math.floor(burnt.myMaxHp / 16));
+      }
+    }
+  });
+
+  it('leaves a special move alone under a burn', () => {
+    for (let k = 0; k < 100; k++) {
+      const plain = battleAt(k, 'rare', [63], 143, { mySpeciesId: 76 });
+      const burnt = battleAt(k, 'rare', [63], 143, { mySpeciesId: 76, startStatus: 'burn' });
+      expect(burnt.turns[0].damage).toBe(plain.turns[0].damage);
+    }
+  });
+
+  it('poisons for an eighth, and 맹독 for a sixteenth more every turn', () => {
+    for (const b of under('poison', 143, 19, [89], 50)) {
+      for (const t of b.turns) if (t.myHpAfter > 0) expect(t.myResidual).toBe(Math.floor(b.myMaxHp / 8));
+    }
+    for (const b of under('toxic', 143, 19, [89], 50)) {
+      b.turns.forEach((t, i) => {
+        if (t.myHpAfter > 0) expect(t.myResidual).toBe(Math.floor((b.myMaxHp * (i + 1)) / 16));
+      });
+    }
+  });
+
+  it('lets the chip itself fell', () => {
+    // No more "clings at 1": a 맹독 is allowed to finish the job.
+    let felledByChip = 0;
+    for (const b of under('toxic', 10, 143, [], 300)) {
+      const last = b.turns.at(-1)!;
+      if (last.myHpAfter === 0 && last.myResidual > 0) felledByChip++;
+    }
+    expect(felledByChip).toBeGreaterThan(0);
+  });
+
+  it('confuses: now and then it hits itself instead', () => {
+    // A named foe carrying nothing but 이상한빛.
+    let selfHits = 0;
+    for (let k = 0; k < 300; k++) {
+      for (const t of battleAt(k, 'rare', [89], 143, { mySpeciesId: 76, foeMoves: [109] }).turns) {
+        if (t.mySkip === 'confusion') {
+          selfHits++;
+          expect(t.mySelfHit).toBeGreaterThan(0);
+          expect(t.damage).toBe(0);
+        }
+      }
+    }
+    expect(selfHits).toBeGreaterThan(20);
+  });
+
+  it('respects the type immunities', () => {
+    // 전기자석파 does nothing to a Ground type, 맹독 nothing to Steel. A player
+    // knows that, so neither is ever thrown at them.
+    for (let k = 0; k < 200; k++) {
+      for (const t of battleAt(k, 'rare', [86, 87], 50, { mySpeciesId: 25 }).turns) {
+        expect(t.moveId).not.toBe(86);
+      }
+      for (const t of battleAt(k, 'rare', [92, 89], 81, { mySpeciesId: 76 }).turns) {
+        expect(t.moveId).not.toBe(92);
+      }
+    }
+    // And the condition itself cannot land on the type that is immune to it.
+    for (let k = 0; k < 400; k++) {
+      for (const t of battleAt(k, 'rare', [53], 126, { mySpeciesId: 6 }).turns) {
+        expect(t.ailment).not.toBe('burn');
+      }
+    }
+  });
+
+  it('holds one non-volatile condition at a time', () => {
+    const NON_VOLATILE = new Set(['burn', 'poison', 'toxic', 'paralysis', 'sleep', 'freeze']);
+    for (let k = 0; k < 600; k++) {
+      const foe = 1 + ((k * 7919) % 1025);
+      const b = battleAt(k, 'rare', [92, 86, 53, 87], foe, { mySpeciesId: 135 });
+      let before: string | null = null;
+      for (const t of b.turns) {
+        if (t.ailment && NON_VOLATILE.has(t.ailment)) expect(before, `${k}`).toBeNull();
+        before = t.foeStatus;
+      }
+    }
+  });
+
+  it('keeps a landed condition on the plate until it lifts', () => {
+    let k = 0;
+    let b = battleAt(k, 'rare', [86, 53], 143, { mySpeciesId: 25 });
+    while (!b.turns.some((t) => t.ailment === 'paralysis') && k < 100) {
+      b = battleAt(++k, 'rare', [86, 53], 143, { mySpeciesId: 25 });
+    }
+    const at = b.turns.findIndex((t) => t.ailment === 'paralysis');
+    expect(at).toBeGreaterThanOrEqual(0);
+    for (let i = at; i < b.turns.length; i++) expect(b.turns[i].foeStatus, `turn ${i}`).toBe('paralysis');
+    for (let i = 0; i < at; i++) expect(b.turns[i].foeStatus).toBeNull();
+  });
+
+  it('heals everything and sleeps two turns on 잠자기', () => {
+    let rested = 0;
+    for (let k = 0; k < 300; k++) {
+      const b = battleAt(k, 'rare', [156, 89], 68, { mySpeciesId: 143 });
+      b.turns.forEach((t, i) => {
+        if (t.moveId !== 156 || t.selfEffect !== 'heal') return;
+        rested++;
+        expect(t.myStatus === 'sleep' || t.myHpAfter === 0).toBe(true);
+        // The next two turns it sleeps, if the fight lasts that long.
+        for (const u of b.turns.slice(i + 1, i + 3)) if (u.meActed) expect(u.mySkip).toBe('sleep');
+      });
+    }
+    expect(rested).toBeGreaterThan(0);
+  });
+
+  it('ends at the turn cap when nothing can hurt anything', () => {
+    // Normal moves against a Ghost, from a Ghost that cannot hurt a Normal
+    // type back. Nobody wins; the cap is what stops it.
+    // Two ghost moves, so it has the PP to last — with one it would run dry
+    // and 발버둥, which is typeless and hurts anybody.
+    const b = battleAt(3, 'rare', [], 92, { mySpeciesId: 19, foeMoves: [247, 421] });
+    expect(b.turns).toHaveLength(MAX_TURNS);
+    expect(b.exit).toBe('stall');
+    expect(b.won).toBe(false);
+  });
+
+  // ── Weather, terrain, screens, stages, priority ─────────────────────────
+
+  /** Every turn of `n` seeded fights, with the field as it stood when the turn began. */
+  const turnsOf = (n: number, moves: number[], foe: number, opts: Parameters<typeof battleAt>[4]) =>
+    Array.from({ length: n }, (_, k) => battleAt(k, 'rare', moves, foe, opts)).flatMap((b) =>
+      b.turns.map((t, i) => ({ t, before: i > 0 ? b.turns[i - 1].field : null, b })),
+    );
+
+  it('lets the rain make Water moves hit half again as hard', () => {
+    // 거북왕 with 비바라기 and 파도타기, into a 잠만보 that only knows 몸통박치기.
+    let wet = 0;
+    let wetN = 0;
+    let dry = 0;
+    let dryN = 0;
+    // No abilities: 급류 at a third of the bar would measure itself, not the rain.
+    for (const { t, before } of turnsOf(600, [240, 57], 143, { mySpeciesId: 9, foeMoves: [34], myAbility: null, foeAbility: null })) {
+      if (t.moveId !== 57 || !t.meActed || t.mySkip || t.missed || t.crit || t.damage === 0) continue;
+      if (t.foeHpAfter === 0) continue; // a finishing blow is clipped to what was left
+      if (before?.weather === 'rain') {
+        wet += t.damage;
+        wetN++;
+      } else if (!before?.weather) {
+        dry += t.damage;
+        dryN++;
+      }
+    }
+    expect(wetN).toBeGreaterThan(20);
+    expect(dryN).toBeGreaterThan(20);
+    expect(wet / wetN / (dry / dryN)).toBeGreaterThan(1.35);
+    expect(wet / wetN / (dry / dryN)).toBeLessThan(1.65);
+  });
+
+  it('chips all but the spared types in a sandstorm, for five turns', () => {
+    // 단단지 is Bug/Rock: sand leaves it alone and grinds the 잠만보 down.
+    let chipped = 0;
+    for (let k = 0; k < 60; k++) {
+      const b = battleAt(k, 'rare', [201], 143, { mySpeciesId: 213 });
+      const set = b.turns.findIndex((t) => t.myEvents.some((e) => e.k === 'weather'));
+      if (set < 0) continue;
+      for (const t of b.turns) {
+        for (const e of t.endEvents) {
+          if (e.k === 'weather-chip') {
+            expect(e.on).toBe('foe');
+            chipped++;
+          }
+        }
+      }
+      // Five end phases, counting the one it went up on — if the fight lasts that long.
+      const ended = b.turns.findIndex((t) => t.endEvents.some((e) => e.k === 'weather-end'));
+      if (ended >= 0) expect(ended - set).toBe(4);
+    }
+    expect(chipped).toBeGreaterThan(20);
+  });
+
+  it('never re-uses a weather that is already up', () => {
+    for (let k = 0; k < 200; k++) {
+      for (const t of battleAt(k, 'rare', [240, 57], 143, { mySpeciesId: 9 }).turns) {
+        if (t.moveId === 240 && t.meActed && !t.mySkip && !t.missed) expect(t.selfEffect).not.toBe('failed');
+      }
+    }
+  });
+
+  it('powers up a grounded Electric move on 일렉트릭필드', () => {
+    // 라이츄 lays the field and throws 10만볼트 at a 잠만보 held to 몸통박치기.
+    let on = 0;
+    let onN = 0;
+    let off = 0;
+    let offN = 0;
+    for (const { t, before } of turnsOf(600, [604, 85], 143, { mySpeciesId: 26, foeMoves: [34] })) {
+      if (t.moveId !== 85 || !t.meActed || t.mySkip || t.missed || t.crit || t.foeHpAfter === 0) continue;
+      if (before?.terrain === 'electric') {
+        on += t.damage;
+        onN++;
+      } else if (!before?.terrain) {
+        off += t.damage;
+        offN++;
+      }
+    }
+    expect(onN).toBeGreaterThan(20);
+    expect(on / onN / (off / offN)).toBeGreaterThan(1.2);
+    expect(on / onN / (off / offN)).toBeLessThan(1.4);
+  });
+
+  it('halves physical hits behind 리플렉터, unless they crit', () => {
+    // 후딘 puts up a Reflect against a 잠만보 that only knows 지진.
+    let behind = 0;
+    let behindN = 0;
+    let open = 0;
+    let openN = 0;
+    for (const { t, before } of turnsOf(600, [115, 94], 143, { mySpeciesId: 65, foeMoves: [89] })) {
+      if (!t.foeActed || t.foeSkip || t.foeMissed || t.foeCrit || t.counter === 0 || t.myHpAfter === 0) continue;
+      const up = !!before?.mine.reflect || (t.foeFirst === false && t.myEvents.some((e) => e.k === 'screen'));
+      if (up) {
+        behind += t.counter;
+        behindN++;
+      } else if (!before?.mine.reflect) {
+        open += t.counter;
+        openN++;
+      }
+    }
+    expect(behindN).toBeGreaterThan(20);
+    expect(behind / behindN / (open / openN)).toBeGreaterThan(0.4);
+    expect(behind / behindN / (open / openN)).toBeLessThan(0.6);
+  });
+
+  it('lets the slower side move first under 트릭룸', () => {
+    // 야도란 (Speed 30) against 쥬피썬더 (130), which only knows 10만볼트.
+    let seen = 0;
+    for (const { t, before } of turnsOf(300, [433, 94], 135, { mySpeciesId: 80, foeMoves: [85] })) {
+      if (!before || before.trickRoom === 0 || t.moveId === 433) continue;
+      if (t.myStatus === 'paralysis' || t.foeStatus === 'paralysis') continue;
+      seen++;
+      expect(t.foeFirst).toBe(false);
+    }
+    expect(seen).toBeGreaterThan(10);
+  });
+
+  it('puts a higher-priority move first, whatever the speeds', () => {
+    // 잠만보's 방어 is +4 against a 쥬피썬더 that is four times faster.
+    let seen = 0;
+    for (const { t } of turnsOf(300, [182, 89], 135, { mySpeciesId: 143, foeMoves: [85] })) {
+      if (t.moveId !== 182 || !t.meActed) continue;
+      seen++;
+      expect(t.foeFirst).toBe(false);
+    }
+    expect(seen).toBeGreaterThan(10);
+  });
+
+  it('blocks the other move with 방어', () => {
+    let blocked = 0;
+    for (const { t } of turnsOf(300, [182, 89], 135, { mySpeciesId: 143, foeMoves: [85] })) {
+      if (t.myEvents.some((e) => e.k === 'protect')) {
+        expect(t.counter).toBe(0);
+        if (t.foeActed && !t.foeSkip) {
+          expect(t.foeEvents).toContainEqual({ k: 'blocked' });
+          blocked++;
+        }
+      }
+    }
+    expect(blocked).toBeGreaterThan(10);
+  });
+
+  it('moves stages the way the data says, on the side it says', () => {
+    const first = (moves: number[], foe = 143, me = 34) => {
+      for (let k = 0; k < 50; k++) {
+        const t = battleAt(k, 'rare', moves, foe, { mySpeciesId: me }).turns.find(
+          (x) => x.moveId === moves[0] && x.meActed && !x.mySkip && !x.missed,
+        );
+        if (t) return t.myEvents;
+      }
+      return [];
+    };
+    expect(first([14, 89])).toContainEqual({ k: 'stat', on: 'user', stat: 'atk', delta: 2, tried: 2 });
+    expect(first([103, 89])).toContainEqual({ k: 'stat', on: 'target', stat: 'def', delta: -2, tried: -2 });
+    expect(first([347, 94], 143, 65)).toEqual([
+      { k: 'stat', on: 'user', stat: 'spa', delta: 1, tried: 1 },
+      { k: 'stat', on: 'user', stat: 'spd', delta: 1, tried: 1 },
+    ]);
+    // 오버히트 costs its user two stages of special attack.
+    expect(first([315], 143, 6)).toContainEqual({ k: 'stat', on: 'user', stat: 'spa', delta: -2, tried: -2 });
+  });
+
+  it('heals off 기가드레인 and hurts itself on 이판사판태클', () => {
+    let drained = 0;
+    let recoiled = 0;
+    for (const { t } of turnsOf(300, [202, 38], 143, { mySpeciesId: 3 })) {
+      for (const e of t.myEvents) {
+        if (e.k === 'drain') {
+          drained++;
+          expect(e.hp).toBeLessThanOrEqual(Math.max(1, Math.floor(t.damage / 2)));
+        }
+        if (e.k === 'recoil') {
+          recoiled++;
+          // A third of what it dealt — or whatever HP it had left, if less.
+          expect(e.hp).toBeLessThanOrEqual(Math.max(1, Math.floor((t.damage * 33) / 100)));
+        }
+      }
+    }
+    expect(drained).toBeGreaterThan(10);
+    expect(recoiled).toBeGreaterThan(10);
+  });
+
+  it('lands a 2–5 hit move 2, 3, 4 and 5 times at 35/35/15/15', () => {
+    const count = [0, 0, 0, 0, 0, 0];
+    let n = 0;
+    for (const { t } of turnsOf(1500, [331], 143, { mySpeciesId: 3 })) {
+      const hits = t.myEvents.find((e) => e.k === 'hits');
+      if (!hits || hits.k !== 'hits' || t.foeHpAfter === 0) continue;
+      count[hits.n]++;
+      n++;
+    }
+    expect(count[2] / n).toBeGreaterThan(0.3);
+    expect(count[3] / n).toBeGreaterThan(0.3);
+    expect(count[4] / n).toBeLessThan(0.2);
+    expect(count[5] / n).toBeLessThan(0.2);
+  });
+
+  it('only flinches a side that has not moved yet', () => {
+    // A named foe with nothing but 스톤샤워 (30% flinch).
+    let flinched = 0;
+    for (const { t } of turnsOf(600, [89], 142, { mySpeciesId: 143, foeMoves: [157] })) {
+      if (t.mySkip === 'flinch') {
+        flinched++;
+        expect(t.foeFirst).toBe(true);
+      }
+    }
+    expect(flinched).toBeGreaterThan(10);
+  });
+
+  it('owes a turn after 파괴광선, and charges 솔라빔 unless the sun is out', () => {
+    for (let k = 0; k < 50; k++) {
+      const b = battleAt(k, 'rare', [63], 143, { mySpeciesId: 149 });
+      b.turns.forEach((t, i) => {
+        const next = b.turns[i + 1];
+        if (t.meActed && !t.mySkip && !t.missed && t.damage > 0 && next?.meActed) expect(next.mySkip).toBe('recharge');
+      });
+    }
+    const solar = battleAt(1, 'rare', [76], 143, { mySpeciesId: 3 });
+    expect(solar.turns[0].myEvents).toContainEqual({ k: 'charge', moveId: 76 });
+    expect(solar.turns[0].damage).toBe(0);
+  });
+
+  it('fells its user with 대폭발', () => {
+    const b = battleAt(1, 'rare', [153], 143, { mySpeciesId: 76 });
+    const t = b.turns.find((x) => x.myEvents.some((e) => e.k === 'self-ko'))!;
+    expect(t).toBeDefined();
+    expect(t.myHpAfter).toBe(0);
+    expect(b.won).toBe(false);
+  });
+
+  it('deals exactly fifty with 지구던지기', () => {
+    let seen = 0;
+    for (const { t } of turnsOf(100, [69], 143, { mySpeciesId: 68 })) {
+      // Clipped only by what the target had left.
+      if (t.meActed && !t.mySkip && !t.missed && t.foeHpAfter > 0) {
+        expect(t.damage).toBe(50);
+        seen++;
+      }
+    }
+    expect(seen).toBeGreaterThan(20);
   });
 
   it('is seeded apart from the encounter roll', () => {
@@ -868,39 +1238,73 @@ describe('form boosts in battle', () => {
   const MEGA_ZARD_X = 10034;
   const GMAX_ZARD = 10196;
 
-  /**
-   * The one invariant that matters most here.
-   *
-   * Every form option multiplies a number that has ALREADY been drawn, so a
-   * battle fought with the identity values has to be the very same battle,
-   * turn for turn. If this fails, an option took a draw and every past
-   * encounter just changed — which is what the GOLDEN table above would then
-   * also catch, more loudly and less usefully.
-   */
-  it('changes nothing at their defaults', () => {
-    for (const seq of [0, 7, 42, 91]) {
-      const plain = battleAt(seq, 'rare', strong, 19);
-      const identity = battleAt(seq, 'rare', strong, 19, {
-        myPower: 1,
-        counterMult: 1,
-        counterMultTurns: Infinity,
-      });
-      expect(identity).toEqual(plain);
+  it('fights a mega with its own base stats and types', () => {
+    const zard = formById(MEGA_ZARD_X)!;
+    const opts = formOpts(zard);
+    expect(opts.myStats).toEqual(zard.stats);
+    expect(opts.myTypes).toEqual(zard.types);
+    // 메가리자몽X trades special attack for attack: its Earthquake lands harder.
+    let plain = 0;
+    let mega = 0;
+    for (let k = 0; k < 200; k++) {
+      plain += battleAt(k, 'rare', [89], 143, { mySpeciesId: 6 }).turns[0].damage;
+      mega += battleAt(k, 'rare', [89], 143, { mySpeciesId: 6, ...opts }).turns[0].damage;
     }
+    expect(mega).toBeGreaterThan(plain * 1.3);
   });
 
-  it('gives a fused companion its own type chart, and nothing else', () => {
+  it('gives a fused companion its own stats and type chart', () => {
     // A fusion is not a battle transformation — it is what this Pokemon now is.
-    // Without this a fused Necrozma reads Psychic/Steel on the panel and fights
-    // as plain Psychic, which is a lie the type chart tells.
     const dusk = formById(10155)!;
     expect(dusk.kind).toBe('fusion');
-    expect(formOpts(null, dusk)).toEqual({ myTypes: dusk.types });
-
+    expect(formOpts(null, dusk)).toEqual({ myTypes: dusk.types, myStats: dusk.stats, myWeightKg: dusk.weightKg });
     // And a battle form on top of it wins: that is the shape actually swinging.
     const ultra = formById(10157)!;
     expect(formOpts(ultra, dusk).myTypes).toEqual(ultra.types);
-    expect(formOpts(ultra, dusk).myPower).toBe(ultra.power);
+    expect(formOpts(ultra, dusk).myStats).toEqual(ultra.stats);
+  });
+
+  it('asks a gigantamax for toughness rather than power', () => {
+    const g = formById(GMAX_ZARD)!;
+    const opts = formOpts(g);
+    // The base stats are untouched, as in the games.
+    expect(g.stats).toEqual([78, 84, 78, 109, 85, 100]);
+    expect(opts.counterMult).toBe(0.5);
+    expect(opts.counterMultTurns).toBe(3);
+  });
+
+  it('halves incoming damage for exactly three turns', () => {
+    let early = 0;
+    let earlyPlain = 0;
+    let late = 0;
+    let latePlain = 0;
+    for (let k = 0; k < 300; k++) {
+      const plain = battleAt(k, 'rare', [], 143, { mySpeciesId: 143 });
+      const big = battleAt(k, 'rare', [], 143, { mySpeciesId: 143, counterMult: 0.5, counterMultTurns: 3 });
+      for (let i = 0; i < Math.min(plain.turns.length, big.turns.length); i++) {
+        if (i < 3) {
+          early += big.turns[i].counter;
+          earlyPlain += plain.turns[i].counter;
+        } else if (i === 3) {
+          late += big.turns[i].counter;
+          latePlain += plain.turns[i].counter;
+        }
+      }
+    }
+    expect(early / earlyPlain).toBeGreaterThan(0.4);
+    expect(early / earlyPlain).toBeLessThan(0.6);
+    expect(late / latePlain).toBeGreaterThan(0.8);
+  });
+
+  it('is worth fights won', () => {
+    let plain = 0;
+    let big = 0;
+    for (let k = 0; k < 400; k++) {
+      const foe = 1 + ((k * 7919) % 1025);
+      if (battleAt(k, 'rare', strong, foe, { mySpeciesId: 6 }).won) plain++;
+      if (battleAt(k, 'rare', strong, foe, { mySpeciesId: 6, ...formOpts(formById(GMAX_ZARD)) }).won) big++;
+    }
+    expect(big).toBeGreaterThan(plain);
   });
 
   it('does nothing when no form is worn', () => {
@@ -912,60 +1316,11 @@ describe('form boosts in battle', () => {
     }
   });
 
-  it('lets a mega hit harder and so end the fight sooner', () => {
-    const opts = formOpts(formById(MEGA_ZARD_X));
-    expect(opts.myPower).toBeGreaterThan(1);
-    // The opponent's pool is sized to the untouched swing, deliberately, so the
-    // extra damage really does buy turns rather than being sized back out.
-    const plain = battleAt(3, 'rare', strong, 19);
-    const mega = battleAt(3, 'rare', strong, 19, opts);
-    expect(mega.foeMaxHp).toBe(plain.foeMaxHp);
-    expect(mega.turns[0].damage).toBeGreaterThan(plain.turns[0].damage);
-    expect(mega.turns.length).toBeLessThanOrEqual(plain.turns.length);
-  });
-
   it('gives a mega its own type chart', () => {
     // Mega Charizard X is Fire/Dragon, which the base species is not.
     expect(formOpts(formById(MEGA_ZARD_X)).myTypes).toEqual(['fire', 'dragon']);
   });
 
-  it('asks a gigantamax for toughness rather than power', () => {
-    const opts = formOpts(formById(GMAX_ZARD));
-    expect(opts.myPower).toBeUndefined(); // no stat change, as in the games
-    expect(opts.counterMult).toBe(0.5);
-    expect(opts.counterMultTurns).toBe(3);
-  });
-
-  it('halves incoming damage for exactly three turns', () => {
-    // The guard on its own, with no type override — the chart is tested above,
-    // and mixing the two hides one behind the other. (It did: Charizard's
-    // Fire/Flying doubles one counter, which cancelled the halving exactly.)
-    const args = { floor: false, counterHit: 20, budget: MAX_TURNS } as const;
-    const plain = battleAt(11, 'rare', [], 19, args);
-    const big = battleAt(11, 'rare', [], 19, {
-      ...args,
-      counterMult: 0.5,
-      counterMultTurns: 3,
-    });
-    const took = (b: typeof plain, i: number) => b.turns[i]?.counter ?? 0;
-    // Turn 0 can be a 1-point floor either way, so compare where there is room.
-    for (let i = 0; i < 3; i++) {
-      if (took(plain, i) > 2) expect(took(big, i)).toBeLessThan(took(plain, i));
-    }
-    // And once it lapses the numbers line back up exactly, because nothing else
-    // about the fight differs.
-    for (let i = 3; i < plain.turns.length; i++) {
-      expect(took(big, i)).toBe(took(plain, i));
-    }
-  });
-
-  it('is worth turns in a fight that can actually be lost', () => {
-    const args = { floor: false, counterHit: 20, budget: MAX_TURNS } as const;
-    const plain = battleAt(11, 'rare', [], 19, args);
-    const big = battleAt(11, 'rare', [], 19, { ...args, counterMult: 0.5, counterMultTurns: 3 });
-    // The point of the whole thing: it stands up longer against a trainer.
-    expect(big.turns.length).toBeGreaterThan(plain.turns.length);
-  });
 });
 
 describe('huntCap', () => {

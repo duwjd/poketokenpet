@@ -17,8 +17,8 @@ import { fileURLToPath } from 'node:url';
 import { loadState, saveState } from '../server/store.ts';
 import { buy, consumeItem, type ItemId, type ProductId } from '../server/shop.ts';
 import { partyAction } from '../server/party.ts';
-import { forget, setHuntEnabled, setHuntUncapped, teach } from '../server/hunt.ts';
-import { rename, setShowBattleForm } from '../server/game.ts';
+import { forget, relearn, setHuntEnabled, setHuntUncapped, teach } from '../server/hunt.ts';
+import { flipUpsideDown, lifetimeOf, rename, setShowBattleForm } from '../server/game.ts';
 import { challengeAction, setAskChallenge } from '../server/challenge.ts';
 import { fuseShards, hatchLegendEgg, spendLegendItem } from '../server/legends.ts';
 import {
@@ -98,6 +98,10 @@ async function runShopAction(action: string, id: string, slot: number | null = n
                   ? rename(state, id)
                   : action === 'form'
                     ? setShowBattleForm(state, id === 'on')
+                    : action === 'flip'
+                      ? flipUpsideDown(state, id === 'on')
+                      : action === 'relearn'
+                        ? relearn(state, Number(id), slot, lifetimeOf(state))
                     : action === 'challenge'
                       ? challengeAction(state, id, Date.now())
                       : action === 'askchallenge'

@@ -27,6 +27,10 @@
  *   src/ui-panel.png        10x10  list rows and cards, 3px slices
  *   src/ui-btn.png          10x10  a raised button
  *   src/ui-btn-down.png     10x10  the same button, pressed
+ *   src/ui-btn-primary.png  10x10  the one button a screen wants pressed
+ *   src/ui-btn-primary-down.png   the same, pressed
+ *   src/ui-gauge.png         6x6   the sunken well a meter fills, 2px slices
+ *   src/ui-panel-on.png     10x10  a selected row or card: the panel, tinted
  *   ...and a *-dark.png beside each of those, for a dark panel
  *
  * Three files rather than one sheet because `border-image-source` slices the
@@ -87,6 +91,37 @@ const DARK = {
   fill: [37, 42, 45, 255] as RGBA,
   hilite: [58, 66, 71, 255] as RGBA,
 };
+
+/**
+ * The primary button: the same frame, filled with the panel's accent teal.
+ *
+ * One fill in both themes, as `--on-accent` is one colour in both: #2c7a6f
+ * holds white text at 5.1:1, and a lighter night teal would not. Only the
+ * outline and the lit edge follow the theme, so it sits on either ground.
+ */
+const PRIMARY = {
+  ink: LIGHT.ink,
+  shade: [22, 84, 76, 255] as RGBA,
+  fill: [44, 122, 111, 255] as RGBA,
+  hilite: [96, 168, 156, 255] as RGBA,
+};
+const PRIMARY_DARK = { ...PRIMARY, ink: DARK.ink };
+
+/**
+ * The inside of a meter. `fill` is the empty track and `shade` the one-pixel
+ * shadow along its top and left, which is what makes a well read as sunk.
+ */
+const WELL = { ...LIGHT, fill: [232, 235, 231, 255] as RGBA, shade: [176, 184, 180, 255] as RGBA };
+const WELL_DARK = { ...DARK, fill: [27, 32, 35, 255] as RGBA, shade: [12, 14, 16, 255] as RGBA };
+
+/**
+ * A selected row or card. The frame image paints the fill, so "the fill
+ * changes" has to be a frame of its own: the panel, tinted a step toward the
+ * accent. The ▶ cursor beside it is what says selected; this is what says it
+ * from across the screen.
+ */
+const ON = { ...LIGHT, fill: [224, 239, 234, 255] as RGBA, hilite: [198, 224, 216, 255] as RGBA };
+const ON_DARK = { ...DARK, fill: [30, 54, 50, 255] as RGBA, hilite: [42, 72, 66, 255] as RGBA };
 
 /** The palette being drawn with. Swapped per output file, the way `canvas()` swaps the raster. */
 let INK: RGBA = LIGHT.ink;
@@ -239,6 +274,24 @@ function plain(S: number, radius: number, lift: boolean) {
 }
 
 /**
+ * A meter's well: a square outline and a sunken inside.
+ *
+ * Square, where every other frame clips its corners: the fill inside a meter
+ * runs to the frame, and a clipped corner would leave a notch the fill does not
+ * reach. Sliced at 2 — the outline plus the shadow row — so what a meter fills
+ * is exactly the middle.
+ */
+function well(S: number) {
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const edge = x === 0 || y === 0 || x === S - 1 || y === S - 1;
+      const sunk = x === 1 || y === 1;
+      set(x, y, edge ? INK : sunk ? SHADE : FILL);
+    }
+  }
+}
+
+/**
  * The exclamation balloon.
  *
  * The games' emote is a small white balloon with a heavy dark outline, a bold
@@ -379,6 +432,22 @@ async function main() {
   await write('ui-panel-dark.png', 10, 10, dark(() => plain(10, 2, false)));
   await write('ui-btn-dark.png', 10, 10, dark(() => plain(10, 2, true)));
   await write('ui-btn-down-dark.png', 10, 10, dark(() => plain(10, 2, false)));
+
+  // Added with the design system (docs/DESIGN-SYSTEM.md). Same corner and
+  // slice as the plain button, so the two can sit in one row.
+  const using = (p: typeof LIGHT, draw: () => void) => () => {
+    palette(p);
+    draw();
+    palette(LIGHT);
+  };
+  await write('ui-btn-primary.png', 10, 10, using(PRIMARY, () => plain(10, 2, true)));
+  await write('ui-btn-primary-down.png', 10, 10, using(PRIMARY, () => plain(10, 2, false)));
+  await write('ui-btn-primary-dark.png', 10, 10, using(PRIMARY_DARK, () => plain(10, 2, true)));
+  await write('ui-btn-primary-down-dark.png', 10, 10, using(PRIMARY_DARK, () => plain(10, 2, false)));
+  await write('ui-gauge.png', 6, 6, using(WELL, () => well(6)));
+  await write('ui-gauge-dark.png', 6, 6, using(WELL_DARK, () => well(6)));
+  await write('ui-panel-on.png', 10, 10, using(ON, () => plain(10, 2, false)));
+  await write('ui-panel-on-dark.png', 10, 10, using(ON_DARK, () => plain(10, 2, false)));
 }
 
 main().catch((e) => {

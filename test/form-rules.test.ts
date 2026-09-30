@@ -276,7 +276,7 @@ describe('retiring a fused companion', () => {
   it('files it under the base species, with the form as decoration', () => {
     const out = retireInto([], mon({ formId: BLACK, nickname: '검둥이' }), 0);
     expect(out).toEqual([
-      { speciesId: KYUREM, shiny: false, firstSeenAt: 0, nickname: '검둥이', formId: BLACK },
+      { speciesId: KYUREM, shiny: false, firstSeenAt: 0, nickname: '검둥이', formId: BLACK, abilitySlot: expect.any(Number) },
     ]);
   });
 

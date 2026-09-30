@@ -422,7 +422,7 @@ describe('panel tabs', () => {
     await ready();
     await user.click(screen.getByRole('tab', { name: '설정' }));
     // The label names the CAP's state; the id names what to do to it.
-    await user.click(screen.getByRole('button', { name: '적용 중' }));
+    await user.click(screen.getByRole('switch', { name: '사냥 상한' }));
     expect(posts).toContainEqual(expect.objectContaining({ action: 'huntcap', id: 'off' }));
   });
 
@@ -431,7 +431,7 @@ describe('panel tabs', () => {
     render(<App />);
     await ready();
     await user.click(screen.getByRole('tab', { name: '설정' }));
-    await user.click(screen.getByRole('button', { name: '켜짐' }));
+    await user.click(screen.getByRole('switch', { name: '자동사냥' }));
     // The action is followed by a state refresh, so find the shop call itself.
     const calls = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
     const shop = calls.filter(([url]) => String(url) === '/api/shop').at(-1)!;
@@ -581,7 +581,7 @@ describe('panel tabs', () => {
     await user.click(screen.getByRole('tab', { name: '가방' }));
     expect(screen.getByText('고르면 여기에 설명이 나옵니다.')).toBeTruthy();
     await user.hover(screen.getByRole('button', { name: /이상한사탕/ }));
-    expect(screen.getByText('지금 단계 진행도를 25% 채웁니다.')).toBeTruthy();
+    expect(screen.getByText('레벨이 1 오릅니다. 알일 때는 부화까지를 25% 채웁니다.')).toBeTruthy();
   });
 
   it('marks a one-time item as owned instead of pricing it again', async () => {
@@ -647,7 +647,7 @@ describe('panel tabs', () => {
 
     // Pointing at a row still wins, and letting go gives the effects back.
     await user.hover(screen.getByRole('button', { name: /이상한사탕/ }));
-    expect(screen.getByText('지금 단계 진행도를 25% 채웁니다.')).toBeTruthy();
+    expect(screen.getByText('레벨이 1 오릅니다. 알일 때는 부화까지를 25% 채웁니다.')).toBeTruthy();
     await user.unhover(screen.getByRole('button', { name: /이상한사탕/ }));
     expect(screen.getByText('지금 걸린 효과')).toBeTruthy();
   });
@@ -837,7 +837,7 @@ describe('panel tabs', () => {
     await ready();
     expect(screen.getByText('배틀에서')).toBeTruthy();
     expect(screen.getAllByText('메가리자몽X').length).toBeGreaterThan(0);
-    await user.click(screen.getByRole('button', { name: '꺼짐' }));
+    await user.click(screen.getByRole('switch', { name: '배틀 모습으로 보기' }));
     expect(posts).toContainEqual(expect.objectContaining({ action: 'form', id: 'on' }));
   });
 
@@ -1289,15 +1289,15 @@ describe('panel tabs', () => {
     expect(document.querySelector('.matchups [data-type="ground"]')).toBeTruthy();
   });
 
-  it('says the base stats are not what the battle reads', async () => {
+  it('says how the battle reads the base stats', async () => {
     const user = userEvent.setup();
     render(<App />);
     await ready();
     await user.click(screen.getByRole('tab', { name: '도감' }));
     await user.click(screen.getByRole('button', { name: /리자몽/ }));
     await waitFor(() => expect(screen.getByText('534')).toBeTruthy());
-    // Without this line a stat chart implies a mechanic this app does not have.
-    expect(screen.getByText(/배틀은 종족값을 읽지 않고/)).toBeTruthy();
+    // The chart is what the fight is fought from; the line says on what terms.
+    expect(screen.getByText(/레벨 50, 개체값 없이 이 종족값으로/)).toBeTruthy();
   });
 
   it('omits the record rows it has nothing to put in', async () => {
@@ -1758,7 +1758,7 @@ describe('the legendaries', () => {
 
     // The heading stays 도감 — the chips say which of its two views you are on.
     expect(screen.getByRole('heading', { level: 2, name: '도감' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '전설 목록' }).className).toContain('on');
+    expect(screen.getByRole('button', { name: '전설 목록' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('heading', { level: 3, name: /1세대/ })).toBeTruthy();
     expect(screen.getByText('프리져')).toBeTruthy();
     expect(screen.getByText('관동 도감 40종')).toBeTruthy();
@@ -1880,6 +1880,18 @@ describe('a leader waiting for an answer', () => {
     expect(posted.some((b) => b.includes('"accept:brock"'))).toBe(true);
   });
 
+  it('keeps the outcome off screen until the battle has played it', async () => {
+    // The reply to an accept used to go straight into the toast — "회색배지를
+    // 받았습니다!" over a scene that had not even started. Nothing is toasted
+    // now, and the card goes away rather than vanishing only on a win.
+    payload = offered;
+    render(<App />);
+    await waitFor(() => screen.getByRole('tablist'));
+    await userEvent.click(screen.getByRole('button', { name: '도전' }));
+    await waitFor(() => expect(document.querySelector('.offer')).toBeNull());
+    expect(document.querySelector('.flash')).toBeNull();
+  });
+
   it('sends a refusal when 나중에 is pressed', async () => {
     payload = offered;
     render(<App />);
@@ -1994,8 +2006,8 @@ describe('the badge case across regions', () => {
     // broken. This is the only place the tab shows the campaign across regions.
     expect(rows.map((li) => li.querySelector('.num')!.textContent)).toEqual(['1/8', '0/8']);
     // And the gauge is the count, drawn.
-    const fills = rows.map((li) => (li.querySelector('.track i') as HTMLElement).style.width);
-    expect(fills).toEqual(['12.5%', '0%']);
+    const fills = rows.map((li) => (li.querySelector('.px-gauge') as HTMLElement).style.getPropertyValue('--v'));
+    expect(fills).toEqual(['12.5', '0']);
   });
 
   it('marks the line the case belongs to, and only that one', async () => {

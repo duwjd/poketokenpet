@@ -1345,14 +1345,10 @@ const SPECIES_ABILITY: Record<number, number[]> = {
 /**
  * speciesId -> [HP, 공격, 방어, 특수공격, 특수방어, 스피드].
  *
- * DISPLAY ONLY, and there is a test that keeps it that way. server/hunt.ts
- * models damage from move power and type effectiveness and must go on doing so:
- * the GOLDEN tables in test/hunt.test.ts are a promise that no fight changes,
- * and teaching the battle to read these would move every number in them.
- *
- * The one place a base stat is already allowed to matter is server/forms.ts's
- * `power` — measured from these totals at generation time, which is exactly
- * why the totals are worth showing on the card.
+ * What every fight is fought from. server/fight.ts turns these into level-50
+ * stats (`battleStats`: no IVs, no EVs, a neutral nature), so the numbers on
+ * the dex card are exactly what the battle uses — and the only place they
+ * live, which test/payload-shape.test.ts holds.
  */
 const STATS: Record<number, number[]> = {
   1: [45,49,49,65,65,45],

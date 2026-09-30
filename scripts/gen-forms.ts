@@ -41,7 +41,7 @@ const Q_FORMS = `{
     pokemon_species_id
     height
     weight
-    pokemonstats { base_stat }
+    pokemonstats(order_by: { stat_id: asc }) { base_stat }
     pokemontypes(order_by: { slot: asc }) { slot type { name } }
     pokemonforms {
       form_name
@@ -342,6 +342,7 @@ async function run() {
     from: number[];
     types: string[];
     power: number;
+    stats: number[];
     heightM: number;
     weightKg: number;
     stone?: { ko: string; sprite: string | null };
@@ -406,6 +407,7 @@ async function run() {
       // Rounded to three places: 625/525 is 1.190476..., and a full float in a
       // generated file is noise in every future diff.
       power: Math.round((bst(r.pokemonstats) / bb) * 1000) / 1000,
+      stats: r.pokemonstats.map((x) => x.base_stat),
       heightM: r.height / 10,
       weightKg: r.weight / 10,
     };
@@ -575,6 +577,14 @@ export type Form = {
    * doubles HP, which this app expresses as halved incoming damage instead.
    */
   power: number;
+  /**
+   * This form's own six base stats, [HP, 공격, 방어, 특수공격, 특수방어, 스피드].
+   *
+   * What the battle computes a transformed companion from — a mega is not its
+   * base species times a ratio, it is a different spread (메가리자몽X trades
+   * special attack for attack). Same order as server/dexdata.ts's STATS.
+   */
+  stats: number[];
   heightM: number;
   weightKg: number;
   /** Mega only: the stone that opens it. \`sprite\` is null where PokeAPI has no icon. */

@@ -548,8 +548,16 @@ export function legendRow(speciesId: number): LegendRow | null {
   return LEGENDS.find((l) => l.id === speciesId) ?? null;
 }
 
-/** How hard the fight is, by tier. Multiplied onto the opponent exactly as a trainer's grit is. */
-export const TIER_GRIT: Record<LegendTier, number> = { sub: 1.6, box: 2.0, myth: 2.4 };
+/**
+ * How hard the fight is, by tier. Multiplied onto the opponent exactly as a trainer's grit is.
+ *
+ * Measured against a final-stage partner holding its four best moves, with the
+ * legendary carrying its own transcribed four (server/legendmoves.ts): about
+ * 60% won against a 준전설, 35% against a box legendary, 30% against a mythical.
+ * Every one of them can be lost, and every one can be won — the hardest,
+ * 아르세우스, still falls about one time in twenty.
+ */
+export const TIER_GRIT: Record<LegendTier, number> = { sub: 0.86, box: 0.86, myth: 1.11 };
 
 /** The signature-item name, for a message. */
 export function itemKo(slug: string): string {

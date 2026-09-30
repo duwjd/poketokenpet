@@ -13,7 +13,7 @@ import {
   type Rarity,
 } from '../server/game.ts';
 import {
-  GROUPS, GROUP_KO, PASSIVE, PRODUCTS, UNIQUE, buy, consumeItem, currentRequirement, priceOf, wallet,
+  GROUPS, GROUP_KO, PASSIVE, PRODUCTS, UNIQUE, buy, candyGrant, consumeItem, priceOf, wallet,
 } from '../server/shop.ts';
 import { migrate } from '../server/store.ts';
 
@@ -159,16 +159,21 @@ describe('consumeItem', () => {
     expect(r.state.bonusTokens).toBeGreaterThan(0);
   });
 
-  it('rare candy always grants 25% of the CURRENT requirement', () => {
-    // A fixed multiple would under-deliver badly on rare/late-stage companions.
+  it('rare candy raises the companion exactly one level, whatever its rarity', () => {
+    // A fixed multiple would under-deliver badly on rare companions.
     for (const seed of [1, 7, 21, 33]) {
       const hatched = advance(base(), H, mulberry32(seed)).state;
       const withCandy = { ...hatched, inventory: { 'rare-candy': 1 } };
-      const before = progress(withCandy, H).ratio;
+      const before = progress(withCandy, H).level;
       const after = consumeItem(withCandy, 'rare-candy', H).state;
-      const gained = progress(after, H + (after.bonusTokens - withCandy.bonusTokens)).ratio - before;
-      expect(gained).toBeCloseTo(0.25, 5);
+      expect(progress(after, H + (after.bonusTokens - withCandy.bonusTokens)).level).toBe(before + 1);
     }
+  });
+
+  it('rare candy on an egg brings the hatch a quarter closer', () => {
+    const egg = base({ inventory: { 'rare-candy': 1 } });
+    const after = consumeItem(egg, 'rare-candy', 0).state;
+    expect(progress(after, after.bonusTokens).ratio).toBeCloseTo(0.25, 5);
   });
 
   it('shiny charm arms the next hatch and is consumed by it', () => {
@@ -254,14 +259,14 @@ describe('buying an egg', () => {
 
 describe('the rare candy is priced off what it grants', () => {
   /*
-   * The bug this replaced: price was a flat 0.4 thresholds while the effect is
-   * 25% of the CURRENT milestone, which runs from 4x to 100x. So the same
-   * button was a 0.6x loss during the egg phase and a 62.5x windfall on a
-   * legendary about to graduate.
+   * The bug this replaced: price was a flat 0.4 thresholds while the effect
+   * scales with what it is used on. So the same button was a loss during the
+   * egg phase and a windfall on a legendary. It is priced off `candyGrant` —
+   * a level of THIS companion, or a quarter of the hatch.
    */
   const candyOn = (over: Partial<GameState>) => {
     const s = base(over);
-    return { paid: price('rare-candy', s), got: Math.round(currentRequirement(s) * 0.25) };
+    return { paid: price('rare-candy', s), got: candyGrant(s) };
   };
 
   it('costs a fixed share of the milestone, whatever the milestone is', () => {
@@ -271,9 +276,9 @@ describe('the rare candy is priced off what it grants', () => {
 
     // Wildly different absolute prices...
     expect(partner.paid).not.toBe(eggPhase.paid);
-    // ...but the same deal. 0.3 out for 0.25 in, everywhere.
+    // ...but the same deal. 1.2 out for 1 in, everywhere.
     for (const c of [eggPhase, partner]) {
-      expect(c.paid / c.got).toBeCloseTo(0.3 / 0.25, 5);
+      expect(c.paid / c.got).toBeCloseTo(1.2, 2);
     }
   });
 

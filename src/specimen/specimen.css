@@ -1,0 +1,81 @@
+/*
+ * The specimen page's own layout — the scaffolding around the components, not
+ * part of the system. Dev only; see specimen.html.
+ */
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--fg);
+  font: var(--fs-md) / var(--lh-md) var(--face-md);
+}
+.sp {
+  width: 420px;
+  padding: var(--s4) var(--s4) var(--s6);
+}
+.sp-head h1 {
+  margin: 0;
+  font: var(--fs-xl) / var(--lh-xl) var(--face-md);
+  font-weight: var(--font-bold);
+}
+.sp-head p { margin: var(--s2) 0 0; color: var(--muted); font: var(--fs-sm) / var(--lh-sm) var(--face-sm); }
+.sp-label { margin: var(--s4) 0 var(--s2); color: var(--muted); font: var(--fs-sm) / var(--lh-sm) var(--face-sm); }
+.sp-row { display: flex; align-items: center; gap: var(--s2); }
+.sp-wrap { flex-wrap: wrap; }
+.sp-mt { margin-top: var(--s3); }
+.sp-gap { width: var(--s4); }
+.sp-stack { display: grid; gap: var(--s3); margin-top: var(--s3); }
+
+.sp-swatches { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2) var(--s3); }
+.sp-swatches li { display: grid; grid-template-columns: 16px auto 1fr; align-items: center; gap: var(--s2); font: var(--fs-sm) / var(--lh-sm) var(--face-sm); }
+.sp-swatches i { width: 16px; height: 16px; border: var(--bw-1) solid var(--fg); }
+.sp-swatches span { color: var(--muted); }
+.sp-pair { padding: var(--s1) var(--s3); border: var(--bw-1) solid currentColor; }
+.sp-chip { display: inline-block; width: 24px; height: 12px; border: var(--bw-1) solid var(--fg); }
+
+.sp-type { margin: 0 0 var(--s2); }
+.sp-inline { margin-top: var(--s3); }
+
+.sp-space { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
+.sp-space li { display: grid; grid-template-columns: 40px 1fr; align-items: center; font: var(--fs-sm) / var(--lh-sm) var(--face-sm); }
+.sp-space i { height: 8px; background: var(--accent); }
+
+.sp-frames { display: flex; flex-wrap: wrap; gap: var(--s3); margin-top: var(--s4); }
+.sp-frame {
+  display: inline-grid;
+  place-items: center;
+  width: 80px;
+  height: 32px;
+  font: var(--fs-sm) / var(--lh-sm) var(--face-sm);
+  border: 3px solid transparent;
+  border-image-slice: var(--ui-slice-small) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+}
+.sp-frame--panel { border-image-source: var(--ui-panel); }
+.sp-frame--panel-on { border-image-source: var(--ui-panel-on); }
+.sp-frame--btn { border-image-source: var(--ui-btn); }
+.sp-frame--btn-down { border-image-source: var(--ui-btn-down); }
+.sp-frame--btn-primary { border-image-source: var(--ui-btn-primary); color: var(--on-accent); }
+.sp-frame--well {
+  border: 2px solid transparent;
+  border-image-source: var(--ui-gauge);
+  border-image-slice: var(--ui-slice-gauge) fill;
+  image-rendering: pixelated;
+}
+@media (prefers-color-scheme: dark) {
+  .sp-frame--well { border-image-source: var(--ui-gauge-dark); }
+  .sp-frame--panel { border-image-source: var(--ui-panel-dark); }
+  .sp-frame--panel-on { border-image-source: var(--ui-panel-on-dark); }
+  .sp-frame--btn { border-image-source: var(--ui-btn-dark); }
+  .sp-frame--btn-down { border-image-source: var(--ui-btn-down-dark); }
+  .sp-frame--btn-primary { border-image-source: var(--ui-btn-primary-dark); }
+}
+
+/* Where a sprite would be. Never a real one: sprites are not bundled. */
+.sp-art { background: repeating-conic-gradient(var(--line) 0 25%, var(--track) 0 50%) 0 0 / 8px 8px; }
+
+/* A stand-in for the lit battle diorama. */
+.sp-lit { padding: var(--s4); background: linear-gradient(#bfe3f2, #cfe8b8); }
+
+/* The toast is fixed in the app; here it sits in the flow. */
+.sp-static { position: static; animation: none; }

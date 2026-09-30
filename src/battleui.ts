@@ -5,6 +5,14 @@ import btn from './ui-btn.png';
 import btnDark from './ui-btn-dark.png';
 import btnDown from './ui-btn-down.png';
 import btnDownDark from './ui-btn-down-dark.png';
+import btnPrimary from './ui-btn-primary.png';
+import btnPrimaryDown from './ui-btn-primary-down.png';
+import btnPrimaryDark from './ui-btn-primary-dark.png';
+import btnPrimaryDownDark from './ui-btn-primary-down-dark.png';
+import gauge from './ui-gauge.png';
+import gaugeDark from './ui-gauge-dark.png';
+import panelOn from './ui-panel-on.png';
+import panelOnDark from './ui-panel-on-dark.png';
 import panel from './ui-panel.png';
 import panelDark from './ui-panel-dark.png';
 import plate from './ui-plate.png';
@@ -58,6 +66,23 @@ export const UI_BTN_DARK = btnDark;
 export const UI_BTN_DOWN = btnDown;
 export const UI_BTN_DOWN_DARK = btnDownDark;
 
+/**
+ * The design system's additions (docs/DESIGN-SYSTEM.md): the accent-filled
+ * primary button in its two states, the sunken well a meter fills, and the
+ * tinted panel a selected row sits in.
+ */
+export const UI_BTN_PRIMARY = btnPrimary;
+export const UI_BTN_PRIMARY_DOWN = btnPrimaryDown;
+export const UI_BTN_PRIMARY_DARK = btnPrimaryDark;
+export const UI_BTN_PRIMARY_DOWN_DARK = btnPrimaryDownDark;
+export const UI_GAUGE = gauge;
+export const UI_GAUGE_DARK = gaugeDark;
+/** A selected row or card: the panel frame, tinted toward the accent. */
+export const UI_PANEL_ON = panelOn;
+export const UI_PANEL_ON_DARK = panelOnDark;
+/** The well is an outline and a shadow row: 2px. */
+export const UI_SLICE_GAUGE = 2;
+
 /** `plain()` draws a single-pixel edge, so these slice at 3. */
 export const UI_SLICE_SMALL = 3;
 
@@ -98,6 +123,15 @@ export const battleUiVars = (): Record<string, string> => ({
   '--ui-btn-dark': `url("${UI_BTN_DARK}")`,
   '--ui-btn-down': `url("${UI_BTN_DOWN}")`,
   '--ui-btn-down-dark': `url("${UI_BTN_DOWN_DARK}")`,
+  '--ui-btn-primary': `url("${UI_BTN_PRIMARY}")`,
+  '--ui-btn-primary-down': `url("${UI_BTN_PRIMARY_DOWN}")`,
+  '--ui-btn-primary-dark': `url("${UI_BTN_PRIMARY_DARK}")`,
+  '--ui-btn-primary-down-dark': `url("${UI_BTN_PRIMARY_DOWN_DARK}")`,
+  '--ui-gauge': `url("${UI_GAUGE}")`,
+  '--ui-gauge-dark': `url("${UI_GAUGE_DARK}")`,
+  '--ui-slice-gauge': `${UI_SLICE_GAUGE}`,
+  '--ui-panel-on': `url("${UI_PANEL_ON}")`,
+  '--ui-panel-on-dark': `url("${UI_PANEL_ON_DARK}")`,
   '--ui-slice-small': `${UI_SLICE_SMALL}`,
   '--ui-bang': `url("${UI_BANG}")`,
   '--ui-sign': `url("${UI_SIGN}")`,

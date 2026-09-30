@@ -55,6 +55,14 @@ export type Form = {
    * doubles HP, which this app expresses as halved incoming damage instead.
    */
   power: number;
+  /**
+   * This form's own six base stats, [HP, 공격, 방어, 특수공격, 특수방어, 스피드].
+   *
+   * What the battle computes a transformed companion from — a mega is not its
+   * base species times a ratio, it is a different spread (메가리자몽X trades
+   * special attack for attack). Same order as server/dexdata.ts's STATS.
+   */
+  stats: number[];
   heightM: number;
   weightKg: number;
   /** Mega only: the stone that opens it. `sprite` is null where PokeAPI has no icon. */
@@ -73,6 +81,14 @@ export const FORMS: Form[] = [
       "ice"
     ],
     "power": 1.061,
+    "stats": [
+      125,
+      170,
+      100,
+      120,
+      90,
+      95
+    ],
     "heightM": 3.3,
     "weightKg": 325,
     "kind": "fusion",
@@ -92,6 +108,14 @@ export const FORMS: Form[] = [
       "ice"
     ],
     "power": 1.061,
+    "stats": [
+      125,
+      120,
+      90,
+      170,
+      100,
+      95
+    ],
     "heightM": 3.6,
     "weightKg": 325,
     "kind": "fusion",
@@ -111,6 +135,14 @@ export const FORMS: Form[] = [
       "poison"
     ],
     "power": 1.19,
+    "stats": [
+      80,
+      100,
+      123,
+      122,
+      120,
+      80
+    ],
     "heightM": 2.4,
     "weightKg": 155.5,
     "kind": "mega",
@@ -133,6 +165,14 @@ export const FORMS: Form[] = [
       "dragon"
     ],
     "power": 1.187,
+    "stats": [
+      78,
+      130,
+      111,
+      130,
+      85,
+      100
+    ],
     "heightM": 1.7,
     "weightKg": 110.5,
     "kind": "mega",
@@ -155,6 +195,14 @@ export const FORMS: Form[] = [
       "flying"
     ],
     "power": 1.187,
+    "stats": [
+      78,
+      104,
+      78,
+      159,
+      115,
+      100
+    ],
     "heightM": 1.7,
     "weightKg": 100.5,
     "kind": "mega",
@@ -176,6 +224,14 @@ export const FORMS: Form[] = [
       "water"
     ],
     "power": 1.189,
+    "stats": [
+      79,
+      103,
+      120,
+      135,
+      115,
+      78
+    ],
     "heightM": 1.6,
     "weightKg": 101.1,
     "kind": "mega",
@@ -197,6 +253,14 @@ export const FORMS: Form[] = [
       "psychic"
     ],
     "power": 1.2,
+    "stats": [
+      55,
+      50,
+      65,
+      175,
+      105,
+      150
+    ],
     "heightM": 1.2,
     "weightKg": 48,
     "kind": "mega",
@@ -219,6 +283,14 @@ export const FORMS: Form[] = [
       "poison"
     ],
     "power": 1.2,
+    "stats": [
+      60,
+      65,
+      80,
+      170,
+      95,
+      130
+    ],
     "heightM": 1.4,
     "weightKg": 40.5,
     "kind": "mega",
@@ -240,6 +312,14 @@ export const FORMS: Form[] = [
       "normal"
     ],
     "power": 1.204,
+    "stats": [
+      105,
+      125,
+      100,
+      60,
+      100,
+      100
+    ],
     "heightM": 2.2,
     "weightKg": 100,
     "kind": "mega",
@@ -262,6 +342,14 @@ export const FORMS: Form[] = [
       "flying"
     ],
     "power": 1.2,
+    "stats": [
+      65,
+      155,
+      120,
+      65,
+      90,
+      105
+    ],
     "heightM": 1.7,
     "weightKg": 59,
     "kind": "mega",
@@ -284,6 +372,14 @@ export const FORMS: Form[] = [
       "dark"
     ],
     "power": 1.185,
+    "stats": [
+      95,
+      155,
+      109,
+      70,
+      130,
+      81
+    ],
     "heightM": 6.5,
     "weightKg": 305,
     "kind": "mega",
@@ -306,6 +402,14 @@ export const FORMS: Form[] = [
       "flying"
     ],
     "power": 1.194,
+    "stats": [
+      80,
+      135,
+      85,
+      70,
+      95,
+      150
+    ],
     "heightM": 2.1,
     "weightKg": 79,
     "kind": "mega",
@@ -328,6 +432,14 @@ export const FORMS: Form[] = [
       "fighting"
     ],
     "power": 1.147,
+    "stats": [
+      106,
+      190,
+      100,
+      154,
+      100,
+      130
+    ],
     "heightM": 2.3,
     "weightKg": 127,
     "kind": "mega",
@@ -349,6 +461,14 @@ export const FORMS: Form[] = [
       "psychic"
     ],
     "power": 1.147,
+    "stats": [
+      106,
+      150,
+      70,
+      194,
+      120,
+      140
+    ],
     "heightM": 1.5,
     "weightKg": 33,
     "kind": "mega",
@@ -371,6 +491,14 @@ export const FORMS: Form[] = [
       "dragon"
     ],
     "power": 1.196,
+    "stats": [
+      90,
+      95,
+      105,
+      165,
+      110,
+      45
+    ],
     "heightM": 1.4,
     "weightKg": 61.5,
     "kind": "mega",
@@ -393,6 +521,14 @@ export const FORMS: Form[] = [
       "steel"
     ],
     "power": 1.2,
+    "stats": [
+      70,
+      150,
+      140,
+      65,
+      100,
+      75
+    ],
     "heightM": 2,
     "weightKg": 125,
     "kind": "mega",
@@ -415,6 +551,14 @@ export const FORMS: Form[] = [
       "fighting"
     ],
     "power": 1.2,
+    "stats": [
+      80,
+      185,
+      115,
+      40,
+      105,
+      75
+    ],
     "heightM": 1.7,
     "weightKg": 62.5,
     "kind": "mega",
@@ -437,6 +581,14 @@ export const FORMS: Form[] = [
       "fire"
     ],
     "power": 1.2,
+    "stats": [
+      75,
+      90,
+      90,
+      140,
+      90,
+      115
+    ],
     "heightM": 1.9,
     "weightKg": 49.5,
     "kind": "mega",
@@ -459,6 +611,14 @@ export const FORMS: Form[] = [
       "dark"
     ],
     "power": 1.167,
+    "stats": [
+      100,
+      164,
+      150,
+      95,
+      120,
+      71
+    ],
     "heightM": 2.5,
     "weightKg": 255,
     "kind": "mega",
@@ -481,6 +641,14 @@ export const FORMS: Form[] = [
       "fighting"
     ],
     "power": 1.189,
+    "stats": [
+      80,
+      160,
+      80,
+      130,
+      80,
+      100
+    ],
     "heightM": 1.9,
     "weightKg": 52,
     "kind": "mega",
@@ -503,6 +671,14 @@ export const FORMS: Form[] = [
       "fairy"
     ],
     "power": 1.193,
+    "stats": [
+      68,
+      85,
+      65,
+      165,
+      135,
+      100
+    ],
     "heightM": 1.6,
     "weightKg": 48.4,
     "kind": "mega",
@@ -525,6 +701,14 @@ export const FORMS: Form[] = [
       "fairy"
     ],
     "power": 1.263,
+    "stats": [
+      50,
+      105,
+      125,
+      55,
+      95,
+      50
+    ],
     "heightM": 1,
     "weightKg": 23.5,
     "kind": "mega",
@@ -546,6 +730,14 @@ export const FORMS: Form[] = [
       "steel"
     ],
     "power": 1.189,
+    "stats": [
+      70,
+      140,
+      230,
+      60,
+      80,
+      50
+    ],
     "heightM": 2.2,
     "weightKg": 395,
     "kind": "mega",
@@ -568,6 +760,14 @@ export const FORMS: Form[] = [
       "psychic"
     ],
     "power": 1.244,
+    "stats": [
+      60,
+      100,
+      85,
+      80,
+      85,
+      100
+    ],
     "heightM": 1.3,
     "weightKg": 31.5,
     "kind": "mega",
@@ -589,6 +789,14 @@ export const FORMS: Form[] = [
       "electric"
     ],
     "power": 1.211,
+    "stats": [
+      70,
+      75,
+      80,
+      135,
+      80,
+      135
+    ],
     "heightM": 1.8,
     "weightKg": 44,
     "kind": "mega",
@@ -610,6 +818,14 @@ export const FORMS: Form[] = [
       "ghost"
     ],
     "power": 1.22,
+    "stats": [
+      64,
+      165,
+      75,
+      93,
+      83,
+      75
+    ],
     "heightM": 1.2,
     "weightKg": 13,
     "kind": "mega",
@@ -631,6 +847,14 @@ export const FORMS: Form[] = [
       "dark"
     ],
     "power": 1.215,
+    "stats": [
+      65,
+      150,
+      60,
+      115,
+      60,
+      115
+    ],
     "heightM": 1.2,
     "weightKg": 49,
     "kind": "mega",
@@ -653,6 +877,14 @@ export const FORMS: Form[] = [
       "ground"
     ],
     "power": 1.167,
+    "stats": [
+      108,
+      170,
+      115,
+      120,
+      95,
+      92
+    ],
     "heightM": 1.9,
     "weightKg": 95,
     "kind": "mega",
@@ -675,6 +907,14 @@ export const FORMS: Form[] = [
       "steel"
     ],
     "power": 1.19,
+    "stats": [
+      70,
+      145,
+      88,
+      140,
+      70,
+      112
+    ],
     "heightM": 1.3,
     "weightKg": 57.5,
     "kind": "mega",
@@ -697,6 +937,14 @@ export const FORMS: Form[] = [
       "ice"
     ],
     "power": 1.202,
+    "stats": [
+      90,
+      132,
+      105,
+      132,
+      105,
+      30
+    ],
     "heightM": 2.7,
     "weightKg": 185,
     "kind": "mega",
@@ -719,6 +967,14 @@ export const FORMS: Form[] = [
       "psychic"
     ],
     "power": 1.167,
+    "stats": [
+      80,
+      100,
+      120,
+      140,
+      150,
+      110
+    ],
     "heightM": 1.8,
     "weightKg": 52,
     "kind": "mega",
@@ -741,6 +997,14 @@ export const FORMS: Form[] = [
       "psychic"
     ],
     "power": 1.167,
+    "stats": [
+      80,
+      130,
+      100,
+      160,
+      120,
+      110
+    ],
     "heightM": 2.3,
     "weightKg": 70,
     "kind": "mega",
@@ -763,6 +1027,14 @@ export const FORMS: Form[] = [
       "ground"
     ],
     "power": 1.187,
+    "stats": [
+      100,
+      150,
+      110,
+      95,
+      110,
+      70
+    ],
     "heightM": 1.9,
     "weightKg": 102,
     "kind": "mega",
@@ -785,6 +1057,14 @@ export const FORMS: Form[] = [
       "dragon"
     ],
     "power": 1.189,
+    "stats": [
+      70,
+      110,
+      75,
+      145,
+      85,
+      145
+    ],
     "heightM": 1.9,
     "weightKg": 55.2,
     "kind": "mega",
@@ -807,6 +1087,14 @@ export const FORMS: Form[] = [
       "ghost"
     ],
     "power": 1.263,
+    "stats": [
+      50,
+      85,
+      125,
+      85,
+      115,
+      20
+    ],
     "heightM": 0.5,
     "weightKg": 161,
     "kind": "mega",
@@ -829,6 +1117,14 @@ export const FORMS: Form[] = [
       "fairy"
     ],
     "power": 1.204,
+    "stats": [
+      75,
+      110,
+      110,
+      110,
+      105,
+      80
+    ],
     "heightM": 1.5,
     "weightKg": 20.6,
     "kind": "mega",
@@ -851,6 +1147,14 @@ export const FORMS: Form[] = [
       "fighting"
     ],
     "power": 1.193,
+    "stats": [
+      68,
+      165,
+      95,
+      65,
+      115,
+      110
+    ],
     "heightM": 1.6,
     "weightKg": 56.4,
     "kind": "mega",
@@ -873,6 +1177,14 @@ export const FORMS: Form[] = [
       "fairy"
     ],
     "power": 1.225,
+    "stats": [
+      103,
+      60,
+      126,
+      80,
+      126,
+      50
+    ],
     "heightM": 1.5,
     "weightKg": 32,
     "kind": "mega",
@@ -895,6 +1207,14 @@ export const FORMS: Form[] = [
       "dark"
     ],
     "power": 1.217,
+    "stats": [
+      70,
+      140,
+      70,
+      110,
+      65,
+      105
+    ],
     "heightM": 2.5,
     "weightKg": 130.3,
     "kind": "mega",
@@ -917,6 +1237,14 @@ export const FORMS: Form[] = [
       "psychic"
     ],
     "power": 1.204,
+    "stats": [
+      95,
+      75,
+      180,
+      130,
+      80,
+      30
+    ],
     "heightM": 2,
     "weightKg": 120,
     "kind": "mega",
@@ -939,6 +1267,14 @@ export const FORMS: Form[] = [
       "ground"
     ],
     "power": 1.196,
+    "stats": [
+      75,
+      125,
+      230,
+      55,
+      95,
+      30
+    ],
     "heightM": 10.5,
     "weightKg": 740,
     "kind": "mega",
@@ -961,6 +1297,14 @@ export const FORMS: Form[] = [
       "flying"
     ],
     "power": 1.209,
+    "stats": [
+      83,
+      80,
+      80,
+      135,
+      80,
+      121
+    ],
     "heightM": 2.2,
     "weightKg": 50.5,
     "kind": "mega",
@@ -982,6 +1326,14 @@ export const FORMS: Form[] = [
       "ice"
     ],
     "power": 1.208,
+    "stats": [
+      80,
+      120,
+      80,
+      120,
+      80,
+      100
+    ],
     "heightM": 2.1,
     "weightKg": 350.2,
     "kind": "mega",
@@ -1004,6 +1356,14 @@ export const FORMS: Form[] = [
       "fairy"
     ],
     "power": 1.167,
+    "stats": [
+      50,
+      160,
+      110,
+      160,
+      110,
+      110
+    ],
     "heightM": 1.1,
     "weightKg": 27.8,
     "kind": "mega",
@@ -1026,6 +1386,14 @@ export const FORMS: Form[] = [
       "psychic"
     ],
     "power": 1.167,
+    "stats": [
+      80,
+      145,
+      150,
+      105,
+      110,
+      110
+    ],
     "heightM": 2.5,
     "weightKg": 942.9,
     "kind": "mega",
@@ -1047,6 +1415,14 @@ export const FORMS: Form[] = [
       "water"
     ],
     "power": 1.149,
+    "stats": [
+      100,
+      150,
+      90,
+      180,
+      160,
+      90
+    ],
     "heightM": 9.8,
     "weightKg": 430,
     "kind": "mega",
@@ -1069,6 +1445,14 @@ export const FORMS: Form[] = [
       "fire"
     ],
     "power": 1.149,
+    "stats": [
+      100,
+      180,
+      160,
+      150,
+      90,
+      90
+    ],
     "heightM": 5,
     "weightKg": 999.7,
     "kind": "mega",
@@ -1091,6 +1475,14 @@ export const FORMS: Form[] = [
       "flying"
     ],
     "power": 1.147,
+    "stats": [
+      105,
+      180,
+      100,
+      180,
+      100,
+      115
+    ],
     "heightM": 10.8,
     "weightKg": 392,
     "kind": "mega",
@@ -1113,6 +1505,14 @@ export const FORMS: Form[] = [
       "ground"
     ],
     "power": 1.217,
+    "stats": [
+      70,
+      120,
+      100,
+      145,
+      105,
+      20
+    ],
     "heightM": 2.5,
     "weightKg": 320.5,
     "kind": "mega",
@@ -1135,6 +1535,14 @@ export const FORMS: Form[] = [
       "fighting"
     ],
     "power": 1.208,
+    "stats": [
+      65,
+      136,
+      94,
+      54,
+      96,
+      135
+    ],
     "heightM": 1.3,
     "weightKg": 28.3,
     "kind": "mega",
@@ -1157,6 +1565,14 @@ export const FORMS: Form[] = [
       "flying"
     ],
     "power": 1.167,
+    "stats": [
+      95,
+      145,
+      130,
+      120,
+      90,
+      120
+    ],
     "heightM": 1.8,
     "weightKg": 112.6,
     "kind": "mega",
@@ -1179,6 +1595,14 @@ export const FORMS: Form[] = [
       "poison"
     ],
     "power": 1.253,
+    "stats": [
+      65,
+      150,
+      40,
+      15,
+      80,
+      145
+    ],
     "heightM": 1.4,
     "weightKg": 40.5,
     "kind": "mega",
@@ -1201,6 +1625,14 @@ export const FORMS: Form[] = [
       "steel"
     ],
     "power": 1.133,
+    "stats": [
+      97,
+      157,
+      127,
+      113,
+      109,
+      77
+    ],
     "heightM": 3.8,
     "weightKg": 460,
     "kind": "fusion",
@@ -1220,6 +1652,14 @@ export const FORMS: Form[] = [
       "ghost"
     ],
     "power": 1.133,
+    "stats": [
+      97,
+      113,
+      109,
+      157,
+      127,
+      77
+    ],
     "heightM": 4.2,
     "weightKg": 350,
     "kind": "fusion",
@@ -1239,6 +1679,14 @@ export const FORMS: Form[] = [
       "dragon"
     ],
     "power": 1.257,
+    "stats": [
+      97,
+      167,
+      97,
+      167,
+      97,
+      129
+    ],
     "heightM": 7.5,
     "weightKg": 230,
     "kind": "mega",
@@ -1258,6 +1706,14 @@ export const FORMS: Form[] = [
       "ice"
     ],
     "power": 1.36,
+    "stats": [
+      100,
+      165,
+      150,
+      85,
+      130,
+      50
+    ],
     "heightM": 2.4,
     "weightKg": 809.1,
     "kind": "fusion",
@@ -1277,6 +1733,14 @@ export const FORMS: Form[] = [
       "ghost"
     ],
     "power": 1.36,
+    "stats": [
+      100,
+      85,
+      80,
+      165,
+      100,
+      150
+    ],
     "heightM": 2.4,
     "weightKg": 53.6,
     "kind": "fusion",
@@ -1296,6 +1760,14 @@ export const FORMS: Form[] = [
       "poison"
     ],
     "power": 1,
+    "stats": [
+      80,
+      82,
+      83,
+      100,
+      100,
+      80
+    ],
     "heightM": 24,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1314,6 +1786,14 @@ export const FORMS: Form[] = [
       "flying"
     ],
     "power": 1,
+    "stats": [
+      78,
+      84,
+      78,
+      109,
+      85,
+      100
+    ],
     "heightM": 28,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1331,6 +1811,14 @@ export const FORMS: Form[] = [
       "water"
     ],
     "power": 1,
+    "stats": [
+      79,
+      83,
+      100,
+      85,
+      105,
+      78
+    ],
     "heightM": 25,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1349,6 +1837,14 @@ export const FORMS: Form[] = [
       "flying"
     ],
     "power": 1,
+    "stats": [
+      60,
+      45,
+      50,
+      90,
+      80,
+      70
+    ],
     "heightM": 17,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1366,6 +1862,14 @@ export const FORMS: Form[] = [
       "electric"
     ],
     "power": 1,
+    "stats": [
+      35,
+      55,
+      40,
+      50,
+      50,
+      90
+    ],
     "heightM": 21,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1383,6 +1887,14 @@ export const FORMS: Form[] = [
       "normal"
     ],
     "power": 1,
+    "stats": [
+      40,
+      45,
+      35,
+      40,
+      40,
+      90
+    ],
     "heightM": 33,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1400,6 +1912,14 @@ export const FORMS: Form[] = [
       "fighting"
     ],
     "power": 1,
+    "stats": [
+      90,
+      130,
+      80,
+      65,
+      85,
+      55
+    ],
     "heightM": 25,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1418,6 +1938,14 @@ export const FORMS: Form[] = [
       "poison"
     ],
     "power": 1,
+    "stats": [
+      60,
+      65,
+      60,
+      130,
+      75,
+      110
+    ],
     "heightM": 20,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1435,6 +1963,14 @@ export const FORMS: Form[] = [
       "water"
     ],
     "power": 1,
+    "stats": [
+      55,
+      130,
+      115,
+      50,
+      50,
+      75
+    ],
     "heightM": 19,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1453,6 +1989,14 @@ export const FORMS: Form[] = [
       "ice"
     ],
     "power": 1,
+    "stats": [
+      130,
+      85,
+      80,
+      85,
+      95,
+      60
+    ],
     "heightM": 24,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1470,6 +2014,14 @@ export const FORMS: Form[] = [
       "normal"
     ],
     "power": 1,
+    "stats": [
+      55,
+      55,
+      50,
+      45,
+      65,
+      55
+    ],
     "heightM": 18,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1487,6 +2039,14 @@ export const FORMS: Form[] = [
       "normal"
     ],
     "power": 1,
+    "stats": [
+      160,
+      110,
+      65,
+      65,
+      110,
+      30
+    ],
     "heightM": 35,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1504,6 +2064,14 @@ export const FORMS: Form[] = [
       "poison"
     ],
     "power": 1,
+    "stats": [
+      80,
+      95,
+      82,
+      60,
+      82,
+      75
+    ],
     "heightM": 21,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1521,6 +2089,14 @@ export const FORMS: Form[] = [
       "steel"
     ],
     "power": 1,
+    "stats": [
+      135,
+      143,
+      143,
+      80,
+      65,
+      34
+    ],
     "heightM": 25,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1538,6 +2114,14 @@ export const FORMS: Form[] = [
       "grass"
     ],
     "power": 1,
+    "stats": [
+      100,
+      125,
+      90,
+      60,
+      70,
+      85
+    ],
     "heightM": 28,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1555,6 +2139,14 @@ export const FORMS: Form[] = [
       "fire"
     ],
     "power": 1,
+    "stats": [
+      80,
+      116,
+      75,
+      65,
+      75,
+      119
+    ],
     "heightM": 27,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1572,6 +2164,14 @@ export const FORMS: Form[] = [
       "water"
     ],
     "power": 1,
+    "stats": [
+      70,
+      85,
+      65,
+      125,
+      65,
+      120
+    ],
     "heightM": 40,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1590,6 +2190,14 @@ export const FORMS: Form[] = [
       "steel"
     ],
     "power": 1,
+    "stats": [
+      98,
+      87,
+      105,
+      53,
+      85,
+      67
+    ],
     "heightM": 14,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1608,6 +2216,14 @@ export const FORMS: Form[] = [
       "psychic"
     ],
     "power": 1,
+    "stats": [
+      60,
+      45,
+      110,
+      80,
+      120,
+      90
+    ],
     "heightM": 14,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1626,6 +2242,14 @@ export const FORMS: Form[] = [
       "rock"
     ],
     "power": 1,
+    "stats": [
+      90,
+      115,
+      90,
+      48,
+      68,
+      74
+    ],
     "heightM": 24,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1644,6 +2268,14 @@ export const FORMS: Form[] = [
       "fire"
     ],
     "power": 1,
+    "stats": [
+      110,
+      80,
+      120,
+      80,
+      90,
+      30
+    ],
     "heightM": 42,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1662,6 +2294,14 @@ export const FORMS: Form[] = [
       "dragon"
     ],
     "power": 1,
+    "stats": [
+      70,
+      110,
+      80,
+      95,
+      60,
+      70
+    ],
     "heightM": 24,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1680,6 +2320,14 @@ export const FORMS: Form[] = [
       "dragon"
     ],
     "power": 1,
+    "stats": [
+      110,
+      85,
+      80,
+      100,
+      80,
+      30
+    ],
     "heightM": 24,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1697,6 +2345,14 @@ export const FORMS: Form[] = [
       "ground"
     ],
     "power": 1,
+    "stats": [
+      72,
+      107,
+      125,
+      65,
+      70,
+      71
+    ],
     "heightM": 22,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1715,6 +2371,14 @@ export const FORMS: Form[] = [
       "poison"
     ],
     "power": 1,
+    "stats": [
+      75,
+      98,
+      70,
+      114,
+      70,
+      75
+    ],
     "heightM": 24,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1733,6 +2397,14 @@ export const FORMS: Form[] = [
       "bug"
     ],
     "power": 1,
+    "stats": [
+      100,
+      115,
+      65,
+      90,
+      90,
+      65
+    ],
     "heightM": 75,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1751,6 +2423,14 @@ export const FORMS: Form[] = [
       "fairy"
     ],
     "power": 1,
+    "stats": [
+      57,
+      90,
+      95,
+      136,
+      103,
+      29
+    ],
     "heightM": 26,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1769,6 +2449,14 @@ export const FORMS: Form[] = [
       "fairy"
     ],
     "power": 1,
+    "stats": [
+      95,
+      120,
+      65,
+      95,
+      75,
+      60
+    ],
     "heightM": 32,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1786,6 +2474,14 @@ export const FORMS: Form[] = [
       "fairy"
     ],
     "power": 1,
+    "stats": [
+      65,
+      60,
+      75,
+      110,
+      121,
+      64
+    ],
     "heightM": 30,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1803,6 +2499,14 @@ export const FORMS: Form[] = [
       "steel"
     ],
     "power": 1,
+    "stats": [
+      122,
+      130,
+      69,
+      80,
+      69,
+      30
+    ],
     "heightM": 23,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1821,6 +2525,14 @@ export const FORMS: Form[] = [
       "dragon"
     ],
     "power": 1,
+    "stats": [
+      70,
+      95,
+      115,
+      120,
+      50,
+      85
+    ],
     "heightM": 43,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1839,6 +2551,14 @@ export const FORMS: Form[] = [
       "dark"
     ],
     "power": 1,
+    "stats": [
+      100,
+      130,
+      100,
+      63,
+      60,
+      97
+    ],
     "heightM": 29,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1857,6 +2577,14 @@ export const FORMS: Form[] = [
       "water"
     ],
     "power": 1,
+    "stats": [
+      100,
+      130,
+      100,
+      63,
+      60,
+      97
+    ],
     "heightM": 26,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1875,6 +2603,14 @@ export const FORMS: Form[] = [
       "poison"
     ],
     "power": 1,
+    "stats": [
+      75,
+      98,
+      70,
+      114,
+      70,
+      75
+    ],
     "heightM": 24,
     "weightKg": 1000,
     "kind": "gmax",
@@ -1893,6 +2629,14 @@ export const FORMS: Form[] = [
       "flying"
     ],
     "power": 1.207,
+    "stats": [
+      95,
+      80,
+      93,
+      135,
+      110,
+      70
+    ],
     "heightM": 1.7,
     "weightKg": 42.3,
     "kind": "mega",
@@ -1915,6 +2659,14 @@ export const FORMS: Form[] = [
       "poison"
     ],
     "power": 1.204,
+    "stats": [
+      80,
+      125,
+      85,
+      135,
+      95,
+      70
+    ],
     "heightM": 4.5,
     "weightKg": 125.5,
     "kind": "mega",
@@ -1937,6 +2689,14 @@ export const FORMS: Form[] = [
       "psychic"
     ],
     "power": 1.192,
+    "stats": [
+      60,
+      100,
+      105,
+      130,
+      105,
+      120
+    ],
     "heightM": 2.3,
     "weightKg": 80,
     "kind": "mega",
@@ -1959,6 +2719,14 @@ export const FORMS: Form[] = [
       "flying"
     ],
     "power": 1.167,
+    "stats": [
+      91,
+      124,
+      115,
+      145,
+      125,
+      100
+    ],
     "heightM": 2.2,
     "weightKg": 290,
     "kind": "mega",
@@ -1981,6 +2749,14 @@ export const FORMS: Form[] = [
       "fairy"
     ],
     "power": 1.19,
+    "stats": [
+      80,
+      92,
+      115,
+      143,
+      115,
+      80
+    ],
     "heightM": 2.4,
     "weightKg": 201,
     "kind": "mega",
@@ -2003,6 +2779,14 @@ export const FORMS: Form[] = [
       "dragon"
     ],
     "power": 1.189,
+    "stats": [
+      85,
+      160,
+      125,
+      89,
+      93,
+      78
+    ],
     "heightM": 2.3,
     "weightKg": 108.8,
     "kind": "mega",
@@ -2025,6 +2809,14 @@ export const FORMS: Form[] = [
       "flying"
     ],
     "power": 1.215,
+    "stats": [
+      65,
+      140,
+      110,
+      40,
+      100,
+      110
+    ],
     "heightM": 1.7,
     "weightKg": 40.4,
     "kind": "mega",
@@ -2047,6 +2839,14 @@ export const FORMS: Form[] = [
       "ghost"
     ],
     "power": 1.208,
+    "stats": [
+      70,
+      80,
+      70,
+      140,
+      100,
+      120
+    ],
     "heightM": 2.6,
     "weightKg": 29.6,
     "kind": "mega",
@@ -2069,6 +2869,14 @@ export const FORMS: Form[] = [
       "fighting"
     ],
     "power": 1.189,
+    "stats": [
+      110,
+      148,
+      75,
+      110,
+      110,
+      75
+    ],
     "heightM": 1.8,
     "weightKg": 180.3,
     "kind": "mega",
@@ -2091,6 +2899,14 @@ export const FORMS: Form[] = [
       "steel"
     ],
     "power": 1.197,
+    "stats": [
+      110,
+      165,
+      100,
+      65,
+      65,
+      103
+    ],
     "heightM": 0.9,
     "weightKg": 60,
     "kind": "mega",
@@ -2113,6 +2929,14 @@ export const FORMS: Form[] = [
       "poison"
     ],
     "power": 1.206,
+    "stats": [
+      60,
+      140,
+      149,
+      75,
+      99,
+      62
+    ],
     "heightM": 3.2,
     "weightKg": 230.5,
     "kind": "mega",
@@ -2135,6 +2959,14 @@ export const FORMS: Form[] = [
       "fighting"
     ],
     "power": 1.205,
+    "stats": [
+      65,
+      130,
+      135,
+      55,
+      135,
+      68
+    ],
     "heightM": 1.1,
     "weightKg": 31,
     "kind": "mega",
@@ -2156,6 +2988,14 @@ export const FORMS: Form[] = [
       "electric"
     ],
     "power": 1.194,
+    "stats": [
+      85,
+      145,
+      80,
+      135,
+      90,
+      80
+    ],
     "heightM": 3,
     "weightKg": 180,
     "kind": "mega",
@@ -2178,6 +3018,14 @@ export const FORMS: Form[] = [
       "fire"
     ],
     "power": 1.192,
+    "stats": [
+      60,
+      75,
+      110,
+      175,
+      110,
+      90
+    ],
     "heightM": 2.5,
     "weightKg": 69.6,
     "kind": "mega",
@@ -2200,6 +3048,14 @@ export const FORMS: Form[] = [
       "fighting"
     ],
     "power": 1.189,
+    "stats": [
+      88,
+      137,
+      172,
+      74,
+      115,
+      44
+    ],
     "heightM": 1.6,
     "weightKg": 90,
     "kind": "mega",
@@ -2222,6 +3078,14 @@ export const FORMS: Form[] = [
       "psychic"
     ],
     "power": 1.187,
+    "stats": [
+      75,
+      69,
+      72,
+      159,
+      125,
+      134
+    ],
     "heightM": 1.5,
     "weightKg": 39,
     "kind": "mega",
@@ -2244,6 +3108,14 @@ export const FORMS: Form[] = [
       "dark"
     ],
     "power": 1.189,
+    "stats": [
+      72,
+      125,
+      77,
+      133,
+      81,
+      142
+    ],
     "heightM": 1.5,
     "weightKg": 40,
     "kind": "mega",
@@ -2266,6 +3138,14 @@ export const FORMS: Form[] = [
       "normal"
     ],
     "power": 1.197,
+    "stats": [
+      86,
+      88,
+      92,
+      129,
+      86,
+      126
+    ],
     "heightM": 1.5,
     "weightKg": 93.3,
     "kind": "mega",
@@ -2287,6 +3167,14 @@ export const FORMS: Form[] = [
       "fairy"
     ],
     "power": 1.755,
+    "stats": [
+      74,
+      85,
+      87,
+      155,
+      148,
+      102
+    ],
     "heightM": 0.2,
     "weightKg": 100.8,
     "kind": "mega",
@@ -2309,6 +3197,14 @@ export const FORMS: Form[] = [
       "psychic"
     ],
     "power": 1.207,
+    "stats": [
+      86,
+      102,
+      88,
+      98,
+      120,
+      88
+    ],
     "heightM": 2.9,
     "weightKg": 69.8,
     "kind": "mega",
@@ -2331,6 +3227,14 @@ export const FORMS: Form[] = [
       "fighting"
     ],
     "power": 1.2,
+    "stats": [
+      72,
+      140,
+      130,
+      64,
+      106,
+      88
+    ],
     "heightM": 2.2,
     "weightKg": 100,
     "kind": "mega",
@@ -2353,6 +3257,14 @@ export const FORMS: Form[] = [
       "dragon"
     ],
     "power": 1.202,
+    "stats": [
+      65,
+      85,
+      105,
+      132,
+      163,
+      44
+    ],
     "heightM": 2.1,
     "weightKg": 100.3,
     "kind": "mega",
@@ -2375,6 +3287,14 @@ export const FORMS: Form[] = [
       "flying"
     ],
     "power": 1.2,
+    "stats": [
+      78,
+      137,
+      100,
+      74,
+      93,
+      118
+    ],
     "heightM": 1,
     "weightKg": 25,
     "kind": "mega",
@@ -2397,6 +3317,14 @@ export const FORMS: Form[] = [
       "ground"
     ],
     "power": 1.297,
+    "stats": [
+      216,
+      70,
+      91,
+      216,
+      85,
+      100
+    ],
     "heightM": 7.7,
     "weightKg": 610,
     "kind": "mega",
@@ -2419,6 +3347,14 @@ export const FORMS: Form[] = [
       "dragon"
     ],
     "power": 1.206,
+    "stats": [
+      78,
+      85,
+      110,
+      160,
+      116,
+      36
+    ],
     "heightM": 3,
     "weightKg": 240.5,
     "kind": "mega",
@@ -2440,6 +3376,14 @@ export const FORMS: Form[] = [
       "fighting"
     ],
     "power": 1.213,
+    "stats": [
+      65,
+      135,
+      135,
+      70,
+      65,
+      100
+    ],
     "heightM": 1.6,
     "weightKg": 99,
     "kind": "mega",
@@ -2461,6 +3405,14 @@ export const FORMS: Form[] = [
       "electric"
     ],
     "power": 1.206,
+    "stats": [
+      60,
+      135,
+      95,
+      90,
+      95,
+      110
+    ],
     "heightM": 1.2,
     "weightKg": 38,
     "kind": "mega",
@@ -2482,6 +3434,14 @@ export const FORMS: Form[] = [
       "electric"
     ],
     "power": 1.206,
+    "stats": [
+      60,
+      100,
+      55,
+      160,
+      80,
+      130
+    ],
     "heightM": 1,
     "weightKg": 26,
     "kind": "mega",
@@ -2504,6 +3464,14 @@ export const FORMS: Form[] = [
       "steel"
     ],
     "power": 1.22,
+    "stats": [
+      75,
+      50,
+      110,
+      135,
+      120,
+      65
+    ],
     "heightM": 1.2,
     "weightKg": 8,
     "kind": "mega",
@@ -2526,6 +3494,14 @@ export const FORMS: Form[] = [
       "ghost"
     ],
     "power": 1.215,
+    "stats": [
+      65,
+      154,
+      60,
+      75,
+      60,
+      151
+    ],
     "heightM": 1.2,
     "weightKg": 49,
     "kind": "mega",
@@ -2548,6 +3524,14 @@ export const FORMS: Form[] = [
       "flying"
     ],
     "power": 1.206,
+    "stats": [
+      85,
+      140,
+      100,
+      60,
+      90,
+      110
+    ],
     "heightM": 1.9,
     "weightKg": 50,
     "kind": "mega",
@@ -2569,6 +3553,14 @@ export const FORMS: Form[] = [
       "dragon"
     ],
     "power": 1.167,
+    "stats": [
+      108,
+      130,
+      85,
+      141,
+      85,
+      151
+    ],
     "heightM": 1.9,
     "weightKg": 99,
     "kind": "mega",
@@ -2591,6 +3583,14 @@ export const FORMS: Form[] = [
       "steel"
     ],
     "power": 1.19,
+    "stats": [
+      70,
+      100,
+      70,
+      164,
+      70,
+      151
+    ],
     "heightM": 1.3,
     "weightKg": 49.4,
     "kind": "mega",
@@ -2613,6 +3613,14 @@ export const FORMS: Form[] = [
       "steel"
     ],
     "power": 1.167,
+    "stats": [
+      91,
+      120,
+      106,
+      175,
+      141,
+      67
+    ],
     "heightM": 2.8,
     "weightKg": 570,
     "kind": "mega",
@@ -2634,6 +3642,14 @@ export const FORMS: Form[] = [
       "dark"
     ],
     "power": 1.167,
+    "stats": [
+      70,
+      120,
+      130,
+      165,
+      130,
+      85
+    ],
     "heightM": 3,
     "weightKg": 240,
     "kind": "mega",
@@ -2656,6 +3672,14 @@ export const FORMS: Form[] = [
       "ghost"
     ],
     "power": 1.207,
+    "stats": [
+      89,
+      159,
+      105,
+      70,
+      105,
+      55
+    ],
     "heightM": 4,
     "weightKg": 330,
     "kind": "mega",
@@ -2677,6 +3701,14 @@ export const FORMS: Form[] = [
       "psychic"
     ],
     "power": 1.215,
+    "stats": [
+      74,
+      48,
+      76,
+      143,
+      101,
+      124
+    ],
     "heightM": 0.8,
     "weightKg": 10.1,
     "kind": "mega",
@@ -2699,6 +3731,14 @@ export const FORMS: Form[] = [
       "ice"
     ],
     "power": 1.209,
+    "stats": [
+      97,
+      157,
+      122,
+      62,
+      107,
+      33
+    ],
     "heightM": 2.6,
     "weightKg": 252.8,
     "kind": "mega",
@@ -2721,6 +3761,14 @@ export const FORMS: Form[] = [
       "steel"
     ],
     "power": 1.189,
+    "stats": [
+      75,
+      150,
+      175,
+      70,
+      120,
+      40
+    ],
     "heightM": 2.3,
     "weightKg": 148,
     "kind": "mega",
@@ -2743,6 +3791,14 @@ export const FORMS: Form[] = [
       "fairy"
     ],
     "power": 1.167,
+    "stats": [
+      80,
+      125,
+      115,
+      170,
+      115,
+      95
+    ],
     "heightM": 1.3,
     "weightKg": 248.1,
     "kind": "mega",
@@ -2765,6 +3821,14 @@ export const FORMS: Form[] = [
       "fairy"
     ],
     "power": 1.167,
+    "stats": [
+      80,
+      125,
+      115,
+      170,
+      115,
+      95
+    ],
     "heightM": 1.3,
     "weightKg": 248.1,
     "kind": "mega",
@@ -2786,6 +3850,14 @@ export const FORMS: Form[] = [
       "electric"
     ],
     "power": 1.167,
+    "stats": [
+      88,
+      157,
+      75,
+      147,
+      80,
+      153
+    ],
     "heightM": 1.5,
     "weightKg": 44.5,
     "kind": "mega",
@@ -2808,6 +3880,14 @@ export const FORMS: Form[] = [
       "fire"
     ],
     "power": 1.206,
+    "stats": [
+      65,
+      138,
+      85,
+      138,
+      85,
+      75
+    ],
     "heightM": 1.2,
     "weightKg": 22,
     "kind": "mega",
@@ -2830,6 +3910,14 @@ export const FORMS: Form[] = [
       "poison"
     ],
     "power": 1.19,
+    "stats": [
+      83,
+      90,
+      105,
+      150,
+      96,
+      101
+    ],
     "heightM": 2.8,
     "weightKg": 77,
     "kind": "mega",
@@ -2852,6 +3940,14 @@ export const FORMS: Form[] = [
       "water"
     ],
     "power": 1.211,
+    "stats": [
+      68,
+      65,
+      90,
+      135,
+      125,
+      92
+    ],
     "heightM": 0.6,
     "weightKg": 24,
     "kind": "mega",
@@ -2874,6 +3970,14 @@ export const FORMS: Form[] = [
       "water"
     ],
     "power": 1.211,
+    "stats": [
+      68,
+      65,
+      90,
+      135,
+      125,
+      92
+    ],
     "heightM": 0.6,
     "weightKg": 24,
     "kind": "mega",
@@ -2896,6 +4000,14 @@ export const FORMS: Form[] = [
       "water"
     ],
     "power": 1.211,
+    "stats": [
+      68,
+      65,
+      90,
+      135,
+      125,
+      92
+    ],
     "heightM": 0.6,
     "weightKg": 24,
     "kind": "mega",
@@ -2918,6 +4030,14 @@ export const FORMS: Form[] = [
       "ice"
     ],
     "power": 1.167,
+    "stats": [
+      115,
+      175,
+      117,
+      105,
+      101,
+      87
+    ],
     "heightM": 2.1,
     "weightKg": 315,
     "kind": "mega",
@@ -2939,6 +4059,14 @@ export const FORMS: Form[] = [
       "psychic"
     ],
     "power": 1.215,
+    "stats": [
+      74,
+      48,
+      76,
+      143,
+      101,
+      124
+    ],
     "heightM": 0.8,
     "weightKg": 10.1,
     "kind": "mega",

@@ -1,0 +1,314 @@
+/*
+ * Design tokens — every value the panel's look is built from.
+ *
+ * This file is the foundation layer of the design system described in
+ * docs/DESIGN-SYSTEM.md. The first two blocks moved here unchanged from the top
+ * of App.css (names and values alike, so no rule that reads them moved); the
+ * blocks after them are new, and are what src/ui.css is written against.
+ *
+ * Loaded once from src/main.tsx, before any other sheet, so both windows (the
+ * panel and the floating pet) see the same :root.
+ */
+
+/*
+ * Neutral chrome, so eighteen type colours can live on top of it.
+ *
+ * This used to be a warm cream paper palette with a #d9773d accent. Two
+ * problems once type badges arrived: the warm cast tinted every type swatch
+ * towards orange, and that accent is within a few degrees of the Fire type's
+ * #EE8130 — an accented button next to a Fire badge read as the same thing.
+ *
+ * So the neutrals lost their warmth (they are very slightly cool now, which
+ * also stops the green grass looking pasted on) and the accent moved to a teal
+ * no type owns. Teal reads as interface rather than as an element.
+ */
+/*
+ * Two grounds, not one.
+ *
+ * `--bg` used to mean both "the page" and "what a type tint is mixed toward",
+ * which was fine while those were the same colour. They are not any more: the
+ * panel now works the way a DS screen does — a COLOURED field with cream
+ * windows on it — so the two meanings had to come apart.
+ *
+ *   --ground   the field the panel is laid on. Coloured, and per tab.
+ *   --surface  the inside of a window. What content actually sits on.
+ *
+ * Every `color-mix` below targets `--surface`, because a type badge lives
+ * inside a window. That is what preserves the eighteen type tints and the four
+ * rarity edges exactly as they were tuned — only the field behind them moved.
+ */
+:root {
+  --ground: #dfe7e1;
+  --surface: #f8f8f4;
+  --fg: #1f2220;
+  /* #737a77 until the design system: 4.1:1 on the surface, under the 4.5 floor. */
+  --muted: #5f6663;
+  --line: #cdd6d0;
+  --accent: #2c7a6f;
+  --track: #e8ebe7;
+
+  /*
+   * Colours that used to be typed out where they were needed.
+   *
+   * `--ink` and `--paper` are the two the 9-slice frames are drawn in, so a
+   * box's text has to match them exactly — writing #20232a in three places was
+   * three chances to drift. `--gold` is the warm figure colour in a message
+   * box, which is the only place this palette has a warm hue at all.
+   */
+  --ink: #20232a;
+  /*
+   * The same ink, under a name dark mode does not move.
+   *
+   * `--ink` flips light at night because the panel's frames flip with it. The
+   * scene and the shop counter do NOT flip — they are lit pictures at every
+   * hour and keep the bright frame — so the text on them needs the dark ink
+   * regardless of theme, and it cannot ask `--ink` for it.
+   */
+  --ink-lit: #20232a;
+  --paper: #f8f8f4;
+  --gold: #b4531d;
+  /* #a97a12 until the design system: 3.3:1 on the surface. */
+  --warn: #7e5a0c;
+  --err: #c0392b;
+  /* Text on an accent fill. Constant in both themes — the accent is dark
+     enough in light and light enough in dark for white to hold either way. */
+  --on-accent: #fff;
+
+  /*
+   * One spacing scale, replacing nineteen ad-hoc values.
+   *
+   * 4px is the unit: the body face is 12px, the frames are 3px, and pixel art
+   * has to land on whole pixels. Everything below is a multiple except --s1,
+   * which is the half-step for the inside of a control.
+   */
+  --s1: 2px;
+  --s2: 4px;
+  --s3: 8px;
+  --s4: 12px;
+  --s5: 20px;
+  --s6: 32px;
+
+  /*
+   * Two paddings, so every framed box starts its text on the same line.
+   *
+   * A frame is 3px, so `--pad-box` puts content 11px from the box edge — in every
+   * box, which is the thing that was not true before (rows at 15, bars at 13,
+   * the message window at 14). Two pixels of disagreement is what made a stack
+   * of boxes look untidy.
+   */
+  --pad-box: 8px;
+  --pad-tight: 4px;
+  /*
+   * Named `--pad-box`, not `--pad`.
+   *
+   * Scene.css declares `--pad` on :root too — it is the battle platform's
+   * GREEN — and it loads after this file, so a plain `--pad` here silently
+   * became #87a163. Every padding using it was then invalid, which is a thing
+   * that shows up as "the chips look cramped" rather than as an error.
+   * test/panel-css.test.ts now checks the two sheets share no token name.
+   */
+
+  /*
+   * Two control heights, set rather than derived.
+   *
+   * 24 is the floor: take 3px of frame off each side and 18px is left, which
+   * fits the 12px face with 3px above and below. Smaller and the glyphs touch
+   * the frame.
+   */
+  --ctl: 24px;
+  --ctl-lg: 32px;
+
+
+  /*
+   * Two reserved columns that are NOT spacing, and are named so nobody tunes
+   * them as if they were.
+   *
+   * --rail is the scrollbar's width, and the panel's horizontal padding is
+   * sized against it: --s2 + --rail = --s4, the tab bar's inset. That equation
+   * is what puts the content's left and right edges on the tab bar's, and
+   * test/panel-css.test.ts checks the arithmetic still adds up.
+   *
+   * --gutter-cursor is the column the menu cursor lives in. It used to be
+   * spelled --s5, which reads as "section spacing" and invited exactly the
+   * wrong edit.
+   */
+  --rail: 8px;
+  --gutter-cursor: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #14181a;
+    --surface: #252a2d;
+    --fg: #e8ebe6;
+    --muted: #8b918c;
+    --line: #39434a;
+    --accent: #4fb3a3;
+    --track: #1b2023;
+
+    --ink: #e8ebe6;
+    --paper: #252a2d;
+    --gold: #e0a06a;
+    --warn: #e0a52a;
+    --err: #e0685c;
+  }
+}
+
+/*
+ * The eighteen official type colours.
+ *
+ * Used as a tint rather than a fill: `color-mix` pulls each hue most of the way
+ * back toward the panel background, so a badge is recognisable without shouting.
+ * Eighteen saturated blocks in a 420px panel is a ransom note.
+ */
+:root {
+  --t-normal: #a8a77a;
+  --t-fire: #ee8130;
+  --t-water: #6390f0;
+  --t-electric: #d9b400;
+  --t-grass: #7ac74c;
+  --t-ice: #77c4c1;
+  --t-fighting: #c22e28;
+  --t-poison: #a33ea1;
+  --t-ground: #c99b45;
+  --t-flying: #a98ff3;
+  --t-psychic: #f95587;
+  --t-bug: #a6b91a;
+  --t-rock: #b6a136;
+  --t-ghost: #735797;
+  --t-dragon: #6f35fc;
+  --t-dark: #705746;
+  --t-steel: #9a9ab5;
+  --t-fairy: #d685ad;
+}
+
+/* ------------------------------------------------------------------------
+ * Added with the design system. Nothing outside src/ui.css reads these yet;
+ * the screens move onto them in the next pass (docs/DESIGN-SYSTEM.md, 이관).
+ * --------------------------------------------------------------------- */
+
+:root {
+  /*
+   * Type. The four sizes the Galmuri faces are drawn at — nothing else is
+   * crisp (see src/index.css). Line height is the size plus 4px, always a
+   * whole pixel, which is what keeps a column of rows on the 4px grid.
+   *
+   * 8px (Galmuri7) covers only 4,358 Hangul syllables: fixed labels only,
+   * never a name or anything a person typed.
+   */
+  --fs-xs: 8px;
+  --fs-sm: 10px;
+  --fs-md: 12px;
+  --fs-xl: 24px;
+  --lh-xs: 12px;
+  --lh-sm: 14px;
+  --lh-md: 16px;
+  --lh-xl: 28px;
+  /*
+   * With the same fallback as body: Galmuri has no emoji (the egg glyph, ✨)
+   * and the `font` shorthand below would otherwise drop the whole stack.
+   */
+  --face-fallback: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --face-xs: 'Galmuri7', var(--face-fallback);
+  --face-sm: 'Galmuri9', var(--face-fallback);
+  --face-md: 'Galmuri11', var(--face-fallback);
+  /*
+   * The one real bold: Galmuri11 Bold, declared in src/index.css. Bold at 10px
+   * or 8px has no face behind it and the browser smears one — use colour or
+   * the 24px size for emphasis there instead.
+   */
+  --font-bold: 700;
+
+  /*
+   * The three-colour text of a game window: ink, a 1px shadow down and to the
+   * right, and the fill. The shadow is a colour of its own, never black —
+   * Emerald's text is #626262 over a #D5D5CD shadow.
+   */
+  --ink-sh: #d5d5cd;
+  --text-sh: 1px 1px 0 var(--ink-sh);
+  /* The same shadow on a lit picture, which keeps daylight at every hour. */
+  --ink-sh-lit: #d5d5cd;
+  --text-sh-lit: 1px 1px 0 var(--ink-sh-lit);
+
+  /*
+   * Meaning, as pairs. Each colour comes with the shadow it is printed over,
+   * the way the games' menu palette pairs red with a pale orange and green
+   * with a pale green. `--x` is for text and marks, `--x-sh` for its shadow
+   * or a tinted fill behind it.
+   */
+  --ok: #276b31;
+  --ok-sh: #d9eed5;
+  --warn-sh: #f1e0ad;
+  --err-sh: #fcecea;
+
+  /*
+   * The HP bar, and every other meter that means "how much is left". Emerald's
+   * thresholds: green above half, yellow above a fifth, red below. These are
+   * the scene's own three (Scene.css), named. Lit pictures, so not themed.
+   */
+  --hp-hi: #4fa64f;
+  --hp-mid: #e0a52a;
+  --hp-lo: #d24b3f;
+
+  /* The four rarity edges, named. Today's values from App.css `--r`. */
+  --rar-common: #8d9691;
+  --rar-uncommon: #5aa06b;
+  --rar-rare: #4a80c4;
+  --rar-legendary: #c9a227;
+
+  /* Line weights. A pixel frame is 1, 2 or 4 — never 3, never a fraction. */
+  --bw-1: 1px;
+  --bw-2: 2px;
+  --bw-4: 4px;
+
+  /* The smallest thing a pointer is asked to hit (WCAG 2.2, 2.5.8). */
+  --hit: 24px;
+
+  /*
+   * A meter's outer height, frame included. One gauge, not four: the well's
+   * frame is 2px on top and bottom, so these leave an 8px and a 4px bar.
+   */
+  --gauge-h: 12px;
+  --gauge-hp-h: 8px;
+
+  /*
+   * Stacking. Named layers instead of numbers picked on the spot: the scene
+   * used 0 to 9 with no scale.
+   */
+  --z-base: 0;
+  --z-raised: 1;
+  --z-sticky: 2;
+  --z-overlay: 10;
+  --z-toast: 20;
+
+  /*
+   * Motion, counted in frames. The games move in whole frames and whole
+   * pixels with no easing curve, so durations are multiples of one 60Hz frame
+   * and the default timing function is a staircase.
+   */
+  --f1: 16.667ms;
+  --f2: 33.333ms;
+  --f4: 66.667ms;
+  --f8: 133.333ms;
+  --f16: 266.667ms;
+  --f32: 533.333ms;
+  --step: steps(4, end);
+  --step-blink: steps(1, end);
+
+  /*
+   * The keyboard cursor inside a framed control: a dotted line drawn inside
+   * the frame, as 98.css does, so it never collides with the neighbour.
+   */
+  --focus-w: 2px;
+  --focus-offset: -4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink-sh: #14181a;
+    --ok: #7cc98a;
+    --ok-sh: #1e3a24;
+    --warn-sh: #3d3014;
+    --err-sh: #3a1714;
+  }
+}

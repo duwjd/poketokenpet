@@ -8,8 +8,36 @@ import { euro, josa } from './josa.ts';
 import { fitScale } from './pixelFit.ts';
 import { stillPokemon } from './spriteName.ts';
 import './Scene.css';
+import { hpLevel } from './uikit.ts';
+
+import {
+  endLines,
+  fieldLabel,
+  halfLines,
+  pages,
+  type Half,
+  type SceneCured,
+  type SceneEndEvent,
+  type SceneEvent,
+  type SceneField,
+  type SceneSelf,
+  type SceneSkip,
+} from './battleText.ts';
+
+export type { SceneCured, SceneEndEvent, SceneEvent, SceneField, SceneSkip } from './battleText.ts';
 
 export type SceneTurn = {
+  /** The opponent moved first this turn — speed decided. */
+  foeFirst: boolean;
+  /** Whether I got a turn at all. False when I went down before my slot. */
+  meActed: boolean;
+  mySkip: SceneSkip | null;
+  myCured: SceneCured | null;
+  foeSkip: SceneSkip | null;
+  foeCured: SceneCured | null;
+  foeMissed: boolean;
+  foeCrit: boolean;
+  foeSelfEffect: SceneSelf;
   moveName: string;
   moveType: string;
   damage: number;
@@ -31,7 +59,7 @@ export type SceneTurn = {
   ailmentKo: string | null;
   foeAilmentKo: string | null;
   /** What a status move did for me when it inflicted nothing. */
-  selfEffect: 'boost' | 'heal' | 'guard' | 'failed' | null;
+  selfEffect: SceneSelf;
   /**
    * What is STILL on each side after this turn, as a badge label, or null.
    *
@@ -42,13 +70,45 @@ export type SceneTurn = {
   myStatusKo: string | null;
   counter: number;
   myHpAfter: number;
+  /** Everything else each half did — stages, weather, hits, recoil. See battleText.ts. */
+  myEvents: SceneEvent[];
+  foeEvents: SceneEvent[];
+  /** What happened once both had moved: weather and status chip, things wearing off. */
+  endEvents: SceneEndEvent[];
+  /** The field once this turn is over. Absent on fixtures that predate it. */
+  field?: SceneField;
 };
 
 export type SceneBattle = {
   foeMaxHp: number;
   myMaxHp: number;
+  /** The HP I came in with — below max in a trainer's later rounds. */
+  myStartHp: number;
+  /** The same for the opponent — below max when one comes back after being dragged out. */
+  foeStartHp?: number;
+  /** Which of each team is out this round. Absent means round order. */
+  mySlot?: number;
+  foeSlot?: number;
+  /** Hazards that struck the newcomers as this round began. */
+  entry?: SceneEndEvent[];
+  /** How the round ended. See RoundExit in server/fight.ts. */
+  exit?: SceneExit;
   turns: SceneTurn[];
+  /** Opponent down and me still standing. */
+  won: boolean;
 };
+
+/** How a round ended. */
+export type SceneExit =
+  | 'foe-down'
+  | 'me-down'
+  | 'both-down'
+  | 'foe-forced'
+  | 'foe-retreat'
+  | 'me-forced'
+  | 'me-retreat'
+  | 'fled'
+  | 'stall';
 
 export type SceneTrainerFight = {
   /**
@@ -101,6 +161,8 @@ export type SceneEncounter = {
   tokens: number;
   /** The TM that dropped, already named, or null. */
   moveName: string | null;
+  /** A wild fight's outcome, from the record. Absent on older entries, which were wins. */
+  won?: boolean;
   /** The blow-by-blow. Only the newest encounter carries one. */
   battle: SceneBattle | null;
   /** Set instead of `battle` when this encounter was a trainer. */
@@ -156,6 +218,13 @@ export type SceneProps = {
    * line just reads "—" and the bar sits still, which reads as a bug.
    */
   capped?: boolean;
+  /**
+   * Called when a fight starts and stops being on screen.
+   *
+   * The panel holds its toasts and the challenge card for the length of it,
+   * so nothing outside the scene announces the result before the scene does.
+   */
+  onPlaying?: (playing: boolean) => void;
 };
 
 /**
@@ -187,7 +256,7 @@ const TRAINER_TARGET = 80;
  * that says "거다이맥스했다!" shows a Pokemon exactly the size it just was.
  */
 const FORM_SCALE = 1.35;
-/** Turns a gigantamax lasts. Mirrors GMAX_TURNS in server/hunt.ts. */
+/** Turns a gigantamax lasts. Mirrors GMAX_TURNS in server/fight.ts. */
 const GMAX_TURNS = 3;
 
 type Phase =
@@ -225,6 +294,13 @@ type Phase =
   | 'turn'
   /** Theirs. Skipped on the exchange that fells them. */
   | 'counter'
+  /**
+   * The end of a turn: weather and status chip, and things wearing off.
+   * Only on a turn that has something to say there.
+   */
+  | 'field'
+  /** Hazards on the field, striking whoever has just come in. */
+  | 'arrive'
   | 'faint'
   | 'send'
   /**
@@ -264,6 +340,9 @@ const HOLD: Record<Exclude<Phase, 'travel'>, number> = {
   turn: 750,
   /** Their answer. A shade shorter than mine — it is the reply, not the setup. */
   counter: 700,
+  /** The weather's say, after both have moved. */
+  field: 900,
+  arrive: 900,
   faint: 1100,
   /** The beat where a trainer reaches for the next Pokemon. */
   send: 900,
@@ -280,6 +359,7 @@ const ORDER: Phase[] = [
   'enter',
   'intro',
   'form',
+  'arrive',
   'turn',
   'faint',
   'badge',
@@ -307,6 +387,7 @@ function skippable(p: Phase, s: State): boolean {
   // is asked about before the round check below — that check exists to stop
   // openings replaying, and this is not an opening.
   if (p === 'badge') return !s.enc?.trainerFight?.badgeKo;
+  if (p === 'arrive') return !(boutOf(s)?.entry?.length ?? 0);
   if (s.round > 0) return p === 'vs' || p === 'meet' || p === 'form';
   // Named battles only. `kind` is what separates 관장 웅 from 낚시꾼 동현, which
   // `trainerFight` alone cannot: both are trainers with a portrait and a team.
@@ -314,6 +395,104 @@ function skippable(p: Phase, s: State): boolean {
   if (p === 'meet') return !s.enc?.trainerFight;
   if (p === 'form') return !s.enc?.formKind;
   return false;
+}
+
+/** The round on screen, for a trainer or a wild encounter alike. */
+function boutOf(s: State): SceneBattle | null {
+  const rounds = s.enc?.trainerFight?.rounds;
+  return rounds ? (rounds[s.round] ?? null) : (s.enc?.battle ?? null);
+}
+
+/** The two halves of an exchange: mine is 'turn', theirs is 'counter'. */
+type Beat = 'turn' | 'counter';
+
+/**
+ * The beat a turn opens on — whoever moved first — or null when nothing in it
+ * is worth a beat.
+ *
+ * A turn cut by a switch can have one half, or none: the halves before the
+ * switch belong to the round that ended, the rest to the one that began. A
+ * record with no half left may still carry the end of the turn.
+ */
+function turnStart(t: SceneTurn | undefined): Phase | null {
+  if (!t) return null;
+  const first: Beat = t.foeFirst ? 'counter' : 'turn';
+  const second: Beat = t.foeFirst ? 'turn' : 'counter';
+  const acted = (b: Beat) => (b === 'turn' ? t.meActed : t.foeActed);
+  if (acted(first)) return first;
+  if (acted(second)) return second;
+  return (t.endEvents?.length ?? 0) > 0 ? 'field' : null;
+}
+
+/** The first turn from `i` on that has a beat, and that beat. */
+function nextTurn(turns: SceneTurn[], i: number): { turn: number; phase: Phase } | null {
+  for (let j = i; j < turns.length; j++) {
+    const phase = turnStart(turns[j]);
+    if (phase) return { turn: j, phase };
+  }
+  return null;
+}
+
+/** The half a turn opens on, for the field chip. */
+function firstBeat(t: SceneTurn | undefined): Beat {
+  const p = turnStart(t);
+  return p === 'counter' ? 'counter' : 'turn';
+}
+
+/** The half that follows `b` inside the same turn, or null when the turn is done. */
+function secondBeat(t: SceneTurn, b: Beat): Beat | null {
+  if (b === 'counter' && t.foeFirst && t.meActed) return 'turn';
+  if (b === 'turn' && !t.foeFirst && t.foeActed) return 'counter';
+  return null;
+}
+
+/** My half of a turn, for battleText.ts. */
+function myHalf(t: SceneTurn): Half {
+  return {
+    moveName: t.moveName,
+    skip: t.mySkip,
+    cured: t.myCured,
+    missed: t.missed,
+    ailmentKo: t.ailmentKo,
+    selfEffect: t.selfEffect,
+    effect: t.effect,
+    crit: t.crit,
+    events: t.myEvents ?? [],
+  };
+}
+
+/** Theirs. */
+function foeHalf(t: SceneTurn): Half {
+  return {
+    moveName: t.foeMoveName,
+    skip: t.foeSkip,
+    cured: t.foeCured,
+    missed: t.foeMissed,
+    ailmentKo: t.foeAilmentKo,
+    selfEffect: t.foeSelfEffect,
+    effect: t.foeEffect,
+    crit: t.foeCrit,
+    events: t.foeEvents ?? [],
+  };
+}
+
+/**
+ * What a beat of the fight says, as lines.
+ *
+ * One function for the render and the reducer: the render needs the words, the
+ * reducer only how many pages they fill, and the count cannot drift from the
+ * words if both come from here.
+ */
+function beatLines(t: SceneTurn, phase: Phase, me: string, foe: string): string[] {
+  if (phase === 'turn') return halfLines(me, foe, myHalf(t));
+  if (phase === 'counter') return halfLines(foe, me, foeHalf(t));
+  if (phase === 'field') return endLines(me, foe, t.endEvents ?? []);
+  return [];
+}
+
+/** What the arrival beat says: the hazards, as they strike. */
+function arriveLines(b: SceneBattle | null, me: string, foe: string): string[] {
+  return endLines(me, foe, b?.entry ?? []);
 }
 
 type Snapshot = SceneEncounter & {
@@ -368,20 +547,36 @@ function reduce(s: State, a: Action): State {
       const rounds = s.enc?.trainerFight?.rounds;
       const turns = rounds ? (rounds[s.round]?.turns ?? []) : (s.enc?.battle?.turns ?? []);
 
-      // An exchange is two beats: my swing, then their answer. The answer is
-      // skipped on the exchange that fells them, which is what keeps an N-turn
-      // fight at 2N-1 beats rather than a limp 2N with a dead one at the end.
-      if (s.phase === 'turn' && turns[s.turn]?.foeActed) {
-        return { ...s, phase: 'counter', step: s.step + 1 };
-      }
+      // An exchange is two beats, in the order speed put them: the faster
+      // side's, then the other's. A half that never came — that side was
+      // already down — is skipped, which keeps an N-turn fight at 2N-1 beats
+      // rather than a limp 2N with a dead one at the end.
+      //
       // Both halves land here. 'counter' is deliberately absent from ORDER — it
-      // is not a stage of the fight, it is the back half of one — so it MUST be
+      // is not a stage of the fight, it is one half of one — so it MUST be
       // handled before the ORDER walk below, exactly as 'send' is.
-      if (s.phase === 'turn' || s.phase === 'counter') {
-        if (s.turn < turns.length - 1) {
-          return { ...s, phase: 'turn', turn: s.turn + 1, step: s.step + 1 };
+      //
+      // A beat with more to say than the box holds pages first, the way the
+      // payout always has. Then, once both halves are done, the end of the turn
+      // gets a beat of its own if the weather or a condition has anything to
+      // say — a sandstorm that lands after both moves reads wrong over either.
+      if (s.phase === 'turn' || s.phase === 'counter' || s.phase === 'field') {
+        const t = turns[s.turn];
+        if (t && s.page < pages(beatLines(t, s.phase, '', '')).length - 1) {
+          return { ...s, page: s.page + 1, step: s.step + 1 };
         }
-        return { ...s, phase: 'faint', turn: 0, step: s.step + 1 };
+        const then = t && s.phase !== 'field' ? secondBeat(t, s.phase) : null;
+        if (then) return { ...s, phase: then, page: 0, step: s.step + 1 };
+        if (t && s.phase !== 'field' && (t.endEvents?.length ?? 0) > 0) {
+          return { ...s, phase: 'field', page: 0, step: s.step + 1 };
+        }
+        const nt = nextTurn(turns, s.turn + 1);
+        if (nt) return { ...s, phase: nt.phase, turn: nt.turn, page: 0, step: s.step + 1 };
+        return { ...s, phase: 'faint', turn: 0, page: 0, step: s.step + 1 };
+      }
+      // The hazards' say pages like any other beat.
+      if (s.phase === 'arrive' && s.page < pages(arriveLines(boutOf(s), '', '')).length - 1) {
+        return { ...s, page: s.page + 1, step: s.step + 1 };
       }
       // A trainer with more Pokemon reaches for the next one instead of paying out.
       if (s.phase === 'faint' && rounds && s.round < rounds.length - 1) {
@@ -399,11 +594,14 @@ function reduce(s: State, a: Action): State {
       if (i < 0 || i === ORDER.length - 1) return { ...IDLE, step: s.step + 1 };
       let j = i + 1;
       while (j < ORDER.length && skippable(ORDER[j], s)) j++;
+      // The fight opens on whoever is faster, which may be their half — or,
+      // for a round that has no beat at all, goes straight to its ending.
+      const opening = ORDER[j] === 'turn' ? nextTurn(turns, 0) : null;
       return {
-        phase: ORDER[j],
+        phase: ORDER[j] === 'turn' ? (opening?.phase ?? 'faint') : ORDER[j],
         enc: s.enc,
         round: s.round,
-        turn: 0,
+        turn: opening?.turn ?? 0,
         page: 0,
         step: s.step + 1,
       };
@@ -521,6 +719,11 @@ function rewardPages(enc: Snapshot | null): React.ReactNode[][] {
   const lines: React.ReactNode[] =
     fight && !fight.won
       ? [`${fight.name}에게 지고 말았다…`, '다음엔 이기겠어!']
+      : !fight && enc.won === false
+        ? [
+            '아무것도 얻지 못했다…',
+            ...(enc.batch > 1 ? [`자리를 비운 동안 ${enc.batch}번 싸웠다.`] : []),
+          ]
       : [
           ...(fight ? [`${fight.name}${josa(fight.name, '을', '를')} 이겼다!`] : []),
           /**
@@ -574,6 +777,7 @@ export default function Scene({
   fx,
   capped,
   skylineBg,
+  onPlaying,
 }: SceneProps) {
   const reduced = usePrefersReducedMotion();
   const [eggFailed, setEggFailed] = useState(false);
@@ -643,6 +847,15 @@ export default function Scene({
   }, [st.step, st.phase, reduced]);
 
   const playing = st.phase !== 'travel';
+  /**
+   * Tell the panel, on the edges only. A ref, so a parent that passes a fresh
+   * function every render does not re-announce the same state.
+   */
+  const onPlayingRef = useRef(onPlaying);
+  onPlayingRef.current = onPlaying;
+  useEffect(() => {
+    onPlayingRef.current?.(playing);
+  }, [playing]);
   const enc = st.enc;
   const cls = ['scene', playing && 'playing', playing && 'frozen'].filter(Boolean).join(' ');
   const inBattle =
@@ -655,6 +868,8 @@ export default function Scene({
       st.phase === 'form' ||
       st.phase === 'turn' ||
       st.phase === 'counter' ||
+      st.phase === 'field' ||
+      st.phase === 'arrive' ||
       st.phase === 'faint' ||
       st.phase === 'send' ||
       st.phase === 'reward');
@@ -706,33 +921,60 @@ export default function Scene({
    * shared index would drain my bar before I had been hit.
    */
   const framing =
-    st.phase === 'enter' || st.phase === 'intro' || st.phase === 'form' || st.phase === 'send';
-  const foeSettled = acting ? st.turn : framing ? -1 : turns.length - 1;
-  const mySettled =
-    st.phase === 'counter'
+    st.phase === 'enter' || st.phase === 'intro' || st.phase === 'form' || st.phase === 'send' || st.phase === 'arrive';
+  // Whichever half comes second in its turn is the one where the other side's
+  // bar has already moved — `foeFirst` flips which that is.
+  const foeSettled =
+    st.phase === 'turn' || st.phase === 'field'
       ? st.turn
-      : st.phase === 'turn'
-        ? st.turn - 1
+      : st.phase === 'counter'
+        ? now?.foeFirst
+          ? st.turn - 1
+          : st.turn
         : framing
           ? -1
           : turns.length - 1;
-  const foePct =
-    !bout || foeSettled < 0
-      ? 100
+  const mySettled =
+    st.phase === 'counter' || st.phase === 'field'
+      ? st.turn
+      : st.phase === 'turn'
+        ? now?.foeFirst
+          ? st.turn
+          : st.turn - 1
+        : framing
+          ? -1
+          : turns.length - 1;
+  /**
+   * What the foe's bar reads before the first blow of the round: full, unless
+   * this one was dragged out earlier and has come back — or the hazards took
+   * their share on the way in, which the arrival beat shows.
+   */
+  const foeRoundStart = bout ? (bout.foeStartHp ?? bout.foeMaxHp) : 0;
+  const entryHit = (on: 'me' | 'foe') =>
+    (bout?.entry ?? []).reduce((a, e) => a + (e.k === 'hazard-hit' && e.on === on ? e.hp : 0), 0);
+  const arrived = st.phase === 'arrive' && st.page >= pages(arriveLines(bout, '', '')).length - 1;
+  const foeFrame = foeRoundStart - (arrived || !framing ? entryHit('foe') : 0);
+  const foePct = !bout
+    ? 100
+    : foeSettled < 0
+      ? Math.round((foeFrame / bout.foeMaxHp) * 100)
       : Math.round(((turns[foeSettled]?.foeHpAfter ?? 0) / bout.foeMaxHp) * 100);
   /**
    * What my bar reads before their first answer of the round.
    *
    * Not a full bar: a trainer's team is fought without healing, so round two
-   * opens on whatever round one left. Backing it out of the first exchange
-   * (`myHpAfter + counter`) keeps that honest without SceneBattle having to
-   * carry a starting HP the server would then have to send.
+   * opens on whatever round one left.
    */
-  const myRoundStart = turns[0] ? turns[0].myHpAfter + turns[0].counter : (bout?.myMaxHp ?? 100);
+  const myRoundStart = (bout?.myStartHp ?? bout?.myMaxHp ?? 100) - (arrived ? entryHit('me') : 0);
   const myPct = !bout
     ? 100
     : Math.round(((mySettled < 0 ? myRoundStart : (turns[mySettled]?.myHpAfter ?? myRoundStart)) / bout.myMaxHp) * 100);
-  const hpClass = (pct: number) => (pct <= 20 ? 'crit' : pct <= 50 ? 'low' : '');
+  /**
+   * The bar's colour, decided the way the games decide it: on the pixels of a
+   * 48px bar, not on the ratio (hpLevel, src/uikit.ts). The class names are
+   * the scene's own; the thresholds are the design system's.
+   */
+  const hpClass = (pct: number) => ({ hi: '', mid: 'low', lo: 'crit' })[hpLevel(pct, 100)];
 
   /**
    * The standing status on each plate.
@@ -759,7 +1001,12 @@ export default function Scene({
   const blow = (() => {
     if (!now || !fx) return null;
     const mine = st.phase === 'turn';
-    if (mine ? now.missed : !now.foeActed) return null;
+    if (mine ? now.missed || !!now.mySkip : !now.foeActed || now.foeMissed || !!now.foeSkip) return null;
+    // Charging, bracing and bouncing off a Protect all land nothing.
+    const quiet = (mine ? now.myEvents : now.foeEvents)?.some(
+      (e) => e.k === 'charge' || e.k === 'blocked' || e.k === 'protect',
+    );
+    if (quiet) return null;
     const eff = mine ? now.effect : now.foeEffect;
     if (eff === 0) return null;
     const sprite = fx[mine ? now.moveType : now.foeMoveType];
@@ -771,15 +1018,44 @@ export default function Scene({
       kind: mine ? now.moveClass : now.foeMoveClass,
       /** Super-effective hits land bigger; a crit flashes twice. */
       strong: eff > 1,
-      crit: mine ? now.crit : false,
+      crit: mine ? now.crit : now.foeCrit,
     };
   })();
 
   /** Who is out right now, and what to draw for them. */
-  const foeName = fight ? (fight.team[st.round]?.name ?? '') : (enc?.wildName ?? '');
-  const foeSprite = fight ? (fight.team[st.round]?.sprite ?? null) : (enc?.wildSprite ?? null);
-  /** The companion went down rather than the opponent. */
-  const wiped = !!fight && !fight.won && st.round === fight.rounds.length - 1;
+  const foeSlot = bout?.foeSlot ?? st.round;
+  const foeName = fight ? (fight.team[foeSlot]?.name ?? '') : (enc?.wildName ?? '');
+  const foeSprite = fight ? (fight.team[foeSlot]?.sprite ?? null) : (enc?.wildSprite ?? null);
+  /** Their team members already down before this round, for the ball tray. */
+  const downBefore = new Set<number>();
+  (fight?.rounds ?? []).slice(0, st.round).forEach((r, i) => {
+    // A round with no recorded exit predates them, and was always a knockout.
+    if (!r.exit || r.exit === 'foe-down' || r.exit === 'both-down') downBefore.add(r.foeSlot ?? i);
+  });
+  /** How this round ended. Fixtures from before rounds had exits read as a knockout. */
+  const exit: SceneExit | undefined = bout?.exit;
+  /**
+   * The companion went down rather than the opponent.
+   *
+   * A wild fight can be lost too now. Read off the fight being shown, so the
+   * faint beat agrees with the bars it follows.
+   */
+  const lost = fight
+    ? !fight.won && st.round === fight.rounds.length - 1
+    : !!enc?.battle && !enc.battle.won;
+  /** Lost with my bar at zero: the companion is the one that goes down. */
+  const wiped = lost && (turns.at(-1)?.myHpAfter ?? 0) === 0;
+  /**
+   * Lost with both still standing. The fight ran into MAX_TURNS — a wild one
+   * wanders off, a trainer's Pokemon simply outlasted mine — or a wild fight
+   * was ended by 날려버리기 or 순간이동. Nobody faints.
+   */
+  const stalled = lost && !wiped;
+  /** Who goes down at the end of this round, as the sprites show it. */
+  const foeDown = exit ? exit === 'foe-down' || exit === 'both-down' : !lost;
+  const foeGone = foeDown || exit === 'foe-forced' || exit === 'foe-retreat';
+  const myDown = exit ? exit === 'me-down' || exit === 'both-down' : wiped;
+  const myGone = myDown || exit === 'me-forced' || exit === 'me-retreat';
 
   /**
    * When each name plate is on screen.
@@ -789,7 +1065,47 @@ export default function Scene({
    * payout unless you are the one that fell.
    */
   const showFoePlate =
-    st.phase === 'enter' || st.phase === 'intro' || st.phase === 'form' || acting;
+    st.phase === 'enter' || st.phase === 'intro' || st.phase === 'form' || acting || st.phase === 'field';
+
+  /**
+   * What the field is doing, for the chip at the top of the stage.
+   *
+   * The end-of-turn snapshot of the turn before — so rain that starts on my
+   * half shows up at that half, not a beat early — unless this turn has
+   * already changed the field in a half on screen or behind us.
+   */
+  const fieldNow = (() => {
+    if (!bout) return null;
+    if (st.phase === 'field') return turns[st.turn]?.field ?? null;
+    if (!acting) return framing ? null : (turns.at(-1)?.field ?? null);
+    const t = turns[st.turn];
+    const prev = st.turn > 0 ? (turns[st.turn - 1]?.field ?? null) : null;
+    if (!t) return prev;
+    const seen: SceneEvent[] = [];
+    const first = firstBeat(t);
+    const mineShown = st.phase === 'turn' || first === 'turn';
+    const theirsShown = st.phase === 'counter' || first === 'counter';
+    if (mineShown) seen.push(...(t.myEvents ?? []));
+    if (theirsShown) seen.push(...(t.foeEvents ?? []));
+    const changed = seen.some((e) => e.k === 'weather' || e.k === 'terrain' || e.k === 'trick-room');
+    return changed ? (t.field ?? prev) : prev;
+  })();
+  const fieldChip = fieldLabel(fieldNow);
+
+  /**
+   * What the send-out says: whoever is new since the last round. The first
+   * round of a trainer fight is their first Pokemon, as it always was.
+   */
+  const sendLines = (() => {
+    if (!fight) return [];
+    const prev = st.round > 0 ? fight.rounds[st.round - 1] : null;
+    const foeNew = !prev || (prev.foeSlot ?? st.round - 1) !== foeSlot;
+    const mineNew = !!prev && prev.mySlot !== undefined && prev.mySlot !== bout?.mySlot;
+    const out: string[] = [];
+    if (foeNew) out.push(`${fight.name}${josa(fight.name, '은', '는')} ${foeName}${josa(foeName, '을', '를')} 내보냈다!`);
+    if (mineNew) out.push(`가랏, ${myName}!`);
+    return out.length ? out : [`${fight.name}${josa(fight.name, '은', '는')} ${foeName}${josa(foeName, '을', '를')} 내보냈다!`];
+  })();
   const over = st.phase === 'faint' || st.phase === 'reward';
   const showMyPlate = (showFoePlate || over || st.phase === 'send') && !(wiped && over);
 
@@ -860,6 +1176,11 @@ export default function Scene({
         >
           <span className="scene-pad foe" />
           <span className="scene-pad mine" />
+
+          {/* The weather and the terrain, while they last. Text on a plate
+              rather than art: nothing upstream draws a weather icon, and a
+              plate reads in both themes. */}
+          {fieldChip && <span className="scene-field uiplate">{fieldChip}</span>}
 
           {/* The impact, over both Pokemon and under the message box.
 
@@ -1005,9 +1326,9 @@ export default function Scene({
             <span className="scene-who">
               <span className="scene-nm">{foeName}</span>
               {fight && (
-                <span className="scene-balls" aria-label={`남은 ${fight.team.length - st.round}마리`}>
+                <span className="scene-balls" aria-label={`남은 ${fight.team.length - downBefore.size}마리`}>
                   {fight.team.map((_, i) => (
-                    <i key={i} className={i < st.round ? 'out' : ''} />
+                    <i key={i} className={downBefore.has(i) ? 'out' : ''} />
                   ))}
                 </span>
               )}
@@ -1033,7 +1354,7 @@ export default function Scene({
               that just arrived, so it appears only to drop back out of frame. */}
           <div
             className={`scene-foe${st.phase === 'enter' ? ' entering' : ''}${
-              !wiped && (st.phase === 'faint' || st.phase === 'send' || st.phase === 'reward')
+              foeGone && (st.phase === 'faint' || st.phase === 'send' || st.phase === 'reward')
                 ? ' fainted'
                 : ''
             }`}
@@ -1047,9 +1368,7 @@ export default function Scene({
             )}
           </div>
 
-          {/* It does take hits — hunting just never loses, so the bar has a
-              floor. What it shows is that a legendary cost more than a Rattata
-              did. */}
+          {/* My bar. It can empty in any fight — a wild one included. */}
           <div
             className="scene-plate uiplate mine"
             role="group"
@@ -1078,7 +1397,7 @@ export default function Scene({
               next Pokemon does not re-throw yours. */}
           <div
             className={`scene-mine${st.phase === 'enter' && st.round === 0 ? ' entering' : ''}${
-              wiped && !acting ? ' fainted' : ''
+              myGone && (st.phase === 'faint' || st.phase === 'reward') ? ' fainted' : ''
             }`}
             /* Nobody is out yet while the trainer is being introduced — the
                companion is thrown on the 'enter' that follows. */
@@ -1113,11 +1432,21 @@ export default function Scene({
                    trainer round says this — the first one included, which is
                    both what the games do and one condition fewer here. */
             st.phase === 'send' || (fight && (st.phase === 'enter' || st.phase === 'intro')) ? (
-              <>
-                {fight!.name}
-                {josa(fight!.name, '은', '는')} {foeName}
-                {josa(foeName, '을', '를')} 내보냈다!
-              </>
+              /* Whoever is new this round is the one sent out: theirs, mine,
+                 or both after a double knockout. */
+              sendLines.map((line, i) => (
+                <Fragment key={i}>
+                  {i > 0 && <br />}
+                  {line}
+                </Fragment>
+              ))
+            ) : st.phase === 'arrive' ? (
+              (pages(arriveLines(bout, myName, foeName))[st.page] ?? []).map((line, i) => (
+                <Fragment key={i}>
+                  {i > 0 && <br />}
+                  {line}
+                </Fragment>
+              ))
             ) : st.phase === 'enter' || st.phase === 'intro' ? (
               /* Wild only: every trainer path is taken by the branch above. */
               <>
@@ -1134,56 +1463,47 @@ export default function Scene({
                   ? `${GMAX_TURNS}턴 동안 받는 피해가 절반이 된다!`
                   : '힘이 넘쳐흐른다!'}
               </>
-            ) : st.phase === 'turn' && now ? (
-              <>
-                {myName}의 {now.moveName}!
-                <br />
-                {/* One follow-up line, in the order the games say them. A
-                    status move deals nothing, so its line is the effect. */}
-                {now.missed
-                  ? '공격은 빗나갔다!'
-                  : now.ailmentKo
-                    ? `${foeName}${josa(foeName, '은', '는')} ${now.ailmentKo}`
-                    : now.selfEffect === 'boost'
-                      ? `${myName}의 기세가 올랐다!`
-                      : now.selfEffect === 'heal'
-                        ? `${myName}의 체력이 회복됐다!`
-                        : now.selfEffect === 'guard'
-                          ? `${foeName}의 기세가 꺾였다!`
-                          : now.selfEffect === 'failed'
-                            ? '하지만 실패했다!'
-                          : now.effect === 0
-                            ? '효과가 없는 것 같다…'
-                            : now.effect > 1
-                              ? '효과가 굉장했다!'
-                              : now.effect < 1
-                                ? '효과가 별로인 것 같다…'
-                                : now.crit
-                                  ? '급소에 맞았다!'
-                                  : ''}
-              </>
-            ) : st.phase === 'counter' && now ? (
-              /* Their half. This used to be a "반격" tacked onto the end of my
-                 line, because the opponent genuinely had no move to name. */
-              <>
-                {foeName}의 {now.foeMoveName}!
-                <br />
-                {now.foeAilmentKo
-                  ? `${myName}${josa(myName, '은', '는')} ${now.foeAilmentKo}`
-                  : now.foeEffect === 0
-                    ? '효과가 없는 것 같다…'
-                    : now.foeEffect > 1
-                      ? '효과가 굉장했다!'
-                      : now.foeEffect < 1
-                        ? '효과가 별로인 것 같다…'
-                        : ''}
-              </>
+            ) : (acting || st.phase === 'field') && turns[st.turn] ? (
+              /* Either half, or the end of the turn: two lines a page. */
+              (pages(beatLines(turns[st.turn], st.phase, myName, foeName))[st.page] ?? []).map((line, i) => (
+                <Fragment key={i}>
+                  {i > 0 && <br />}
+                  {line}
+                </Fragment>
+              ))
             ) : st.phase === 'faint' ? (
-              wiped ? (
+              stalled ? (
+                fight ? (
+                  <>
+                    {foeName}
+                    {josa(foeName, '을', '를')} 끝내 쓰러뜨리지 못했다…
+                  </>
+                ) : (
+                  <>
+                    {foeName}
+                    {josa(foeName, '은', '는')} 어딘가로 가 버렸다…
+                  </>
+                )
+              ) : wiped ? (
                 <>
                   {myName}
                   {josa(myName, '은', '는')} 눈앞이 캄캄해졌다…
                 </>
+              ) : exit === 'both-down' ? (
+                <>둘 다 쓰러졌다!</>
+              ) : exit === 'me-down' ? (
+                <>
+                  {myName}
+                  {josa(myName, '은', '는')} 쓰러졌다!
+                </>
+              ) : (exit === 'foe-forced' || exit === 'foe-retreat') && fight ? (
+                <>
+                  {fight.name}
+                  {josa(fight.name, '은', '는')} {foeName}
+                  {josa(foeName, '을', '를')} 불러들였다!
+                </>
+              ) : exit === 'me-forced' || exit === 'me-retreat' ? (
+                <>{myName}, 돌아와!</>
               ) : (
                 <>
                   {foeName}

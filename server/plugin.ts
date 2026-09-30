@@ -5,8 +5,8 @@ import { loadState, saveState } from './store.ts';
 import { fuseShards, hatchLegendEgg, spendLegendItem } from './legends.ts';
 import { buy, consumeItem, type ItemId, type ProductId } from './shop.ts';
 import { partyAction } from './party.ts';
-import { forget, setHuntEnabled, setHuntUncapped, teach } from './hunt.ts';
-import { rename, setShowBattleForm } from './game.ts';
+import { forget, relearn, setHuntEnabled, setHuntUncapped, teach } from './hunt.ts';
+import { flipUpsideDown, lifetimeOf, rename, setShowBattleForm } from './game.ts';
 import { challengeAction, setAskChallenge } from './challenge.ts';
 import { contentTypeFor, pruneCache, readSprite } from './sprites.ts';
 import { REFRESH_MS, buildState, dexIndex } from './state.ts';
@@ -84,6 +84,10 @@ async function runShopAction(body: PetAction) {
     result = setAskChallenge(state, body.id === 'on');
   } else if (body.action === 'form') {
     result = setShowBattleForm(state, body.id === 'on');
+  } else if (body.action === 'flip') {
+    result = flipUpsideDown(state, body.id === 'on');
+  } else if (body.action === 'relearn') {
+    result = relearn(state, Number(body.id), slot, lifetimeOf(state));
   } else if (body.action === 'legend') {
     result = spendLegendItem(state, body.id ?? '');
   } else if (body.action === 'legendegg') {

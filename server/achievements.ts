@@ -757,6 +757,41 @@ export const ACHIEVEMENTS: Achievement[] = [
     money: 16,
   },
   {
+    id: 'raise-level-50',
+    cat: 'raise',
+    ko: '반환점',
+    desc: '파트너가 Lv.50이 됐다.',
+    // A graduate reached 100, so anyone who has one is past this already.
+    metric: (s) => ({ have: Math.max(s.active?.level ?? 0, s.retiredCount > 0 ? 100 : 0), need: 50 }),
+    money: 1,
+  },
+  {
+    id: 'raise-hidden-ability',
+    cat: 'rare',
+    ko: '숨겨진 특성',
+    desc: '숨겨진 특성을 가진 포켓몬을 떠나보냈다.',
+    // Only an entry graduated since abilities existed records its slot; older
+    // ones cannot prove it either way, so this counts from here on.
+    metric: (s) => one(s.dex.some((d) => d.abilitySlot === 2)),
+    money: 3,
+  },
+  {
+    id: 'raise-item-evolve',
+    cat: 'raise',
+    ko: '돌의 힘',
+    desc: '도구를 써서 진화시켰다.',
+    metric: (s) => ({ have: s.itemEvolutions ?? 0, need: 1 }),
+    money: 1,
+  },
+  {
+    id: 'raise-item-evolve-10',
+    cat: 'raise',
+    ko: '진화 도구 수집가',
+    desc: '도구를 써서 열 번 진화시켰다.',
+    metric: (s) => ({ have: s.itemEvolutions ?? 0, need: 10 }),
+    money: 4,
+  },
+  {
     id: 'raise-nickname',
     cat: 'raise',
     ko: '이름을 지어줬다',

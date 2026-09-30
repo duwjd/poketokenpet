@@ -18,6 +18,10 @@ export type PetActionKind =
   | 'rename'
   /** Draw the battle form outside battle. 'on' shows it. */
   | 'form'
+  /** Hold the companion upside down for its next level-up (오케이징). 'on' flips it. */
+  | 'flip'
+  /** Put a level-up move it has learned back into the moveset. `slot` = which move to replace. */
+  | 'relearn'
   /**
    * Answer the named battle on offer. `accept:<id>` or `decline`.
    *

@@ -13,7 +13,18 @@ const css = readFileSync('src/App.css', 'utf8');
 const scene = readFileSync('src/Scene.css', 'utf8');
 const pet = readFileSync('src/PetApp.css', 'utf8');
 const index = readFileSync('src/index.css', 'utf8');
-const all = [css, scene, pet, index].join('\n');
+/** The design system's two layers: docs/DESIGN-SYSTEM.md. */
+const tokens = readFileSync('src/tokens.css', 'utf8');
+const ui = readFileSync('src/ui.css', 'utf8');
+const all = [css, scene, pet, index, tokens, ui].join('\n');
+
+/** A `var(--fs-*)` resolved to the px it stands for, so the size rules see through it. */
+const resolve = (v: string) => {
+  const m = v.match(/^var\((--fs-[a-z]+)\)$/);
+  if (!m) return v;
+  const d = tokens.match(new RegExp(`^\\s*${m[1]}:\\s*([^;]+);`, 'm'));
+  return d ? d[1].trim() : v;
+};
 
 describe('the item list', () => {
   /**
@@ -24,11 +35,13 @@ describe('the item list', () => {
    * so pointing at a line dyed the whole thing solid teal.
    */
   it('never gives a row the pill buttons\' fill', () => {
-    expect(css).toContain('.items button:not(.rowbtn)');
-    expect(css).toContain('.items button:not(.rowbtn):hover');
-    // And no unscoped form survives that would reach the row again.
-    expect(css).not.toMatch(/^\.items button \{/m);
-    expect(css).not.toMatch(/^\.items button:hover/m);
+    // The pills are `.px-btn` now. A row button must never be one, and no
+    // rule may style every button in a row the way `.items button` once did.
+    const app = readFileSync('src/App.tsx', 'utf8');
+    for (const m of app.matchAll(/className="([^"]*\browbtn\b[^"]*)"/g)) {
+      expect(m[1]).not.toMatch(/\bpx-btn\b/);
+    }
+    expect(css).not.toMatch(/^\.items button[ :{]/m);
   });
 
   it('gives a pointed-at row a surface, not the accent', () => {
@@ -82,7 +95,11 @@ describe('the clerk window', () => {
  * than left to whoever adds the next rule.
  */
 describe('type', () => {
-  const sizes = [...all.matchAll(/font-size:\s*([^;]+);/g)].map((m) => m[1].trim());
+  const sizes = [
+    ...[...all.matchAll(/font-size:\s*([^;]+);/g)].map((m) => m[1].trim()),
+    // The `font:` shorthand the components use: `font: var(--fs-md) / ...`.
+    ...[...all.matchAll(/\bfont:\s*(var\(--fs-[a-z]+\))/g)].map((m) => m[1]),
+  ].map(resolve);
 
   it('uses only the four sizes the faces are drawn at', () => {
     // 8 Galmuri7 · 10 Galmuri9 · 12 Galmuri11 · 24 Galmuri11 doubled.
@@ -117,7 +134,7 @@ describe('type', () => {
 describe('the pixel grid', () => {
   it('has no rounded corners anywhere', () => {
     // The one thing that cannot be drawn on a pixel grid.
-    for (const sheet of [css, scene, pet]) {
+    for (const sheet of [css, scene, pet, tokens, ui]) {
       expect(sheet).not.toMatch(/^\s*border-radius:/m);
     }
   });
@@ -168,7 +185,7 @@ describe('the pixel grid', () => {
    * would re-tint every one of them the moment a tab changed colour.
    */
   it('mixes type and rarity colours toward the surface, never the field', () => {
-    const mixes = [...css.matchAll(/color-mix\(in srgb, var\(--[tr]\)[^)]*\)/g)].map((m) => m[0]);
+    const mixes = [...(css + ui).matchAll(/color-mix\(in srgb, var\(--[tr]\)[^)]*\)/g)].map((m) => m[0]);
     expect(mixes.length).toBeGreaterThan(5);
     for (const m of mixes) {
       // A badge's fill and border mix toward the window it sits in; its TEXT
@@ -266,7 +283,8 @@ describe('token names across the two stylesheets', () => {
     new Set([...sheet.matchAll(/^\s*(--[\w-]+):/gm)].map((m) => m[1]));
 
   it('never collide', () => {
-    const shared = [...names(css)].filter((n) => names(scene).has(n));
+    const panel = new Set([...names(css), ...names(tokens)]);
+    const shared = [...panel].filter((n) => names(scene).has(n));
     expect(shared).toEqual([]);
   });
 });
@@ -286,7 +304,7 @@ describe('token names across the two stylesheets', () => {
  */
 describe('the horizontal margins', () => {
   const token = (name: string) => {
-    const m = css.match(new RegExp(`^\\s*${name}:\\s*([^;]+);`, 'm'));
+    const m = tokens.match(new RegExp(`^\\s*${name}:\\s*([^;]+);`, 'm'));
     if (!m) throw new Error(`no ${name}`);
     return Number(m[1].trim().replace('px', ''));
   };
@@ -360,5 +378,92 @@ describe('the pet at rest', () => {
     // screen, where invisibility is certain rather than a guess.
     expect(pet).toMatch(/\.pet-root\.asleep \.pet-stage[^{]*\{[^}]*content-visibility:\s*hidden/);
     expect(pet).not.toMatch(/\.pet-root\.paused[^{]*\{[^}]*content-visibility/);
+  });
+});
+
+/**
+ * The design system's own rules (docs/DESIGN-SYSTEM.md, 원칙).
+ *
+ * src/ui.css is the component layer every screen is moving onto, so it is held
+ * to the whole list from its first line rather than cleaned up afterwards.
+ */
+describe('the design system', () => {
+  /** Every rule block in a sheet, as [selector, body]. */
+  const blocks = (sheet: string) =>
+    [...sheet.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(
+      (m) => [m[1].trim(), m[2]] as const,
+    );
+
+  it('sizes component type only through the type tokens', () => {
+    const raw = [...ui.matchAll(/font(?:-size)?:\s*([^;]+);/g)]
+      .map((m) => m[1].trim())
+      .filter((v) => v !== 'inherit' && !/^var\(--fs-[a-z]+\)/.test(v));
+    expect(raw).toEqual([]);
+  });
+
+  it('never fakes a bold', () => {
+    // Galmuri11 Bold is the only bold face; a number here asks for one that is not there.
+    expect(ui).not.toMatch(/font-weight:\s*\d/);
+    expect(tokens).toContain('--font-bold: 700');
+    expect(index).toContain("url('galmuri/dist/Galmuri11-Bold.woff2')");
+  });
+
+  it('shows state with frames and colour, never opacity or blur', () => {
+    expect(ui).not.toMatch(/\bopacity:/);
+    expect(ui).not.toMatch(/blur\(/);
+    // A hard shadow only: no blur radius on any box-shadow.
+    for (const [, v] of ui.matchAll(/box-shadow:\s*([^;]+);/g)) {
+      expect(v, v).not.toMatch(/\d+px\s+\d+px\s+[1-9]\d*px/);
+    }
+  });
+
+  it('times motion in frames', () => {
+    const durations = [...ui.matchAll(/(?:transition|animation):\s*([^;]+);/g)]
+      .map((m) => m[1])
+      .filter((v) => v !== 'none');
+    expect(durations.length).toBeGreaterThan(0);
+    for (const d of durations) {
+      expect(d, d).toMatch(/var\(--f\d+\)/);
+      expect(d, d).not.toMatch(/\b\d*\.?\d+m?s\b/);
+      expect(d, d).not.toMatch(/ease|cubic-bezier/);
+    }
+  });
+
+  it('colours components only from tokens', () => {
+    const body = ui.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(body.match(/#[0-9a-fA-F]{3,8}\b/g)).toBeNull();
+    expect(body).not.toMatch(/rgba?\(/);
+  });
+
+  it('gives every pressable component a keyboard cursor', () => {
+    for (const c of ['.px-btn', '.px-chip', '.px-row', '.px-card', '.px-field', '.px-toggle', '.px-tab']) {
+      expect(ui, c).toContain(`${c}:focus-visible`);
+    }
+  });
+
+  it('stops its animations for reduced motion', () => {
+    const reduced = ui.slice(ui.indexOf('@media (prefers-reduced-motion: reduce)'));
+    expect(reduced.length).toBeGreaterThan(0);
+    for (const [sel] of blocks(ui)) {
+      const animated = blocks(ui).find(([s]) => s === sel)![1];
+      if (!/\b(?:animation|transition):/.test(animated) || sel.startsWith('@')) continue;
+      const name = sel.split(/[\s,:]/)[0];
+      expect(reduced, name).toContain(name);
+    }
+  });
+
+  it('keeps every frame on the pixel grid', () => {
+    for (const [sel, body] of blocks(ui)) {
+      // Where a frame is set up; a state that only swaps the image inherits the rest.
+      if (!body.includes('border-image-slice')) continue;
+      expect(body, sel).toContain('image-rendering: pixelated');
+    }
+  });
+
+  it('sets a dark frame for every framed component', () => {
+    const dark = ui.slice(ui.indexOf('@media (prefers-color-scheme: dark)'));
+    for (const c of ['.px-btn', '.px-chip', '.px-row', '.px-card', '.px-gauge', '.px-field', '.px-window', '.px-toast', '.px-banner', '.px-toggle-track']) {
+      expect(dark, c).toContain(c);
+    }
   });
 });

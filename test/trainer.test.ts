@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { advance, initialState, mulberry32, type GameState } from '../server/game.ts';
-import { HUNT_INTERVAL_MS, encounterAt, hunt } from '../server/hunt.ts';
+import { HUNT_INTERVAL_MS, MAX_TURNS, encounterAt, hunt } from '../server/hunt.ts';
 import { speciesInfo } from '../server/moves.ts';
 import {
   TRAINER_CHANCE,
-  TRAINER_ROUND_TURNS,
   trainerAt,
   trainerBattleAt,
   trainerReward,
@@ -152,16 +151,18 @@ describe('trainerAt', () => {
 });
 
 describe('trainerBattleAt', () => {
-  it('fights one round per team member when it wins', () => {
+  it('fells every one of the team when it wins', () => {
     for (let k = 0; k < 3000; k++) {
       const t = trainerAt(k);
       if (!t) continue;
       const b = trainerBattleAt(k, t, TAUGHT);
       if (!b.won) continue;
-      expect(b.rounds, t.name).toHaveLength(t.team.length);
       expect(b.lostAt).toBeNull();
-      // Every round it won ends with that opponent down.
-      for (const r of b.rounds) expect(r.turns.at(-1)!.foeHpAfter).toBe(0);
+      // Every one of the team goes down, each exactly once. A 유턴 can add a
+      // round without anybody falling, so rounds can outnumber the team.
+      const downs = b.rounds.filter((r) => r.exit === 'foe-down').map((r) => r.foeSlot);
+      expect(downs.sort(), t.name).toEqual(t.team.map((_, i) => i));
+      expect(b.rounds.length).toBeGreaterThanOrEqual(t.team.length);
     }
   });
 
@@ -169,17 +170,21 @@ describe('trainerBattleAt', () => {
     const k = findTrainer();
     const t = trainerAt(k)!;
     if (t.team.length < 2) return;
-    const b = trainerBattleAt(k, t, TAUGHT);
+    const b = trainerBattleAt(k, t, TAUGHT, 6);
     for (let i = 1; i < b.rounds.length; i++) {
-      const prevEnd = b.rounds[i - 1].turns.at(-1)!.myHpAfter;
-      const thisStart = b.rounds[i].turns[0];
-      // The round opens from where the last ended, so its first recorded HP is
-      // at most that — never a fresh bar.
-      expect(thisStart.myHpAfter).toBeLessThanOrEqual(prevEnd);
+      const prev = b.rounds[i - 1];
+      // The round opens exactly where the last ended — never a fresh bar —
+      // and so does whatever condition the companion was carrying.
+      expect(b.rounds[i].myStartHp).toBe(prev.turns.at(-1)!.myHpAfter);
+      // Sleep and freeze can lift on their own; the other three never do.
+      const carried = prev.myStatusAfter;
+      if (carried && carried !== 'sleep' && carried !== 'freeze') {
+        expect(b.rounds[i].turns[0].myStatus).toBe(carried);
+      }
     }
   });
 
-  it('can actually be lost, which a wild encounter cannot', () => {
+  it('can actually be lost', () => {
     let lost = 0;
     let fought = 0;
     for (let k = 0; k < 20_000; k++) {
@@ -216,18 +221,20 @@ describe('trainerBattleAt', () => {
       const b = trainerBattleAt(k, t, []);
       if (b.won) continue;
       expect(b.lostAt).not.toBeNull();
-      expect(b.rounds).toHaveLength(b.lostAt! + 1);
-      expect(b.rounds.length).toBeLessThanOrEqual(t.team.length);
+      const last = b.rounds.at(-1)!;
+      expect(b.lostAt).toBe(last.foeSlot);
+      // Nothing after the round it went down in.
+      expect(['me-down', 'both-down', 'stall']).toContain(last.exit);
     }
   });
 
-  it('keeps each round inside its turn budget', () => {
+  it('keeps each round inside the turn cap', () => {
     for (let k = 0; k < 5000; k++) {
       const t = trainerAt(k);
       if (!t) continue;
-      for (const r of trainerBattleAt(k, t, TAUGHT).rounds) {
+      for (const r of trainerBattleAt(k, t, TAUGHT, 6).rounds) {
         expect(r.turns.length).toBeGreaterThan(0);
-        expect(r.turns.length).toBeLessThanOrEqual(TRAINER_ROUND_TURNS);
+        expect(r.turns.length).toBeLessThanOrEqual(MAX_TURNS);
       }
     }
   });
@@ -331,7 +338,7 @@ describe('trainers inside hunt()', () => {
     let s = poor;
     for (let i = 1; i <= 200; i++) s = hunt(s, T0 + i * 96 * HUNT_INTERVAL_MS).state;
     expect(s.huntTokens).toBeLessThanOrEqual(H * 3);
-  });
+   }, 30_000);
 
   it('stays idempotent, trainers included', () => {
     // Two processes settling the same range must agree, or the replay the whole

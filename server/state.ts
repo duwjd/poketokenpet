@@ -9,6 +9,9 @@ import {
   formChances,
   displayIdOf,
   fusionsAvailable,
+  abilitySlotOf,
+  companionAbility,
+  levelOf,
   lifetimeOf,
   mulberry32,
   progress,
@@ -22,7 +25,9 @@ import { legendItem } from './legenddata.ts';
 import { LEGEND_GATES, SHARDS_PER_ITEM, itemKo, legendRow } from './legends.ts';
 import { formById, formsFrom, type Form } from './forms.ts';
 import { loadState, saveState } from './store.ts';
-import type { BattleTurn as BattleTurnRaw } from './hunt.ts';
+import type { Battle, BattleEvent, EndEvent } from './fight.ts';
+import { abilityKo, abilityOf } from './abilities.ts';
+import { STRUGGLE } from './battlefield.ts';
 import {
   HUNT_INTERVAL_MS,
   MOVE_SLOTS,
@@ -31,11 +36,14 @@ import {
   formOpts,
   hunt,
   huntCap,
+  legendBattleAt,
   moveMult,
   teachableNow,
 } from './hunt.ts';
 import { TYPE_KO, moveById, speciesInfo } from './moves.ts';
-import { PRODUCTS, UNIQUE, owns, priceOf, wallet, type ItemId } from './shop.ts';
+import { PRODUCTS, UNIQUE, owns, priceOf, shelved, wallet, type ItemId } from './shop.ts';
+import { friendshipAt, needsFlip, nextEvolutions } from './evolution.ts';
+import { unlockedMoves } from './learnset.ts';
 import { NAMES, NATURE_KO, speciesName } from './species.ts';
 import {
   cacheStats,
@@ -177,7 +185,7 @@ export async function buildState(mode: CountMode = 'activity') {
   // is separate. One definition, in game.ts — see lifetimeOf.
   const lifetimeTokens = lifetimeOf(state);
   const rng = mulberry32(Math.floor(lifetimeTokens) ^ 0x9e3779b9);
-  const advanced = advance(state, lifetimeTokens, rng);
+  const advanced = advance(state, lifetimeTokens, rng, new Date());
   let events: GameEvent[] = advanced.events;
   if (events.length) dirty = true;
   state = advanced.state;
@@ -210,6 +218,21 @@ export async function buildState(mode: CountMode = 'activity') {
    */
   const displayId = active ? displayIdOf(active) : null;
   const activeForm = active?.formId !== undefined ? formById(active.formId) : null;
+  /**
+   * The form knobs for replaying a recorded fight.
+   *
+   * The battle form is the one the entry recorded. The worn (fused) form is
+   * read live, which is only right while the companion is still the species
+   * that fought — a record naming another species fought without it.
+   */
+  const replayOpts = (form: Form | null, mine?: HuntEntry['mine']) => ({
+    ...formOpts(form, mine && mine.speciesId !== speciesId ? null : activeForm),
+    // Friendship as it stood when the fight was settled; an older entry has
+    // none, and was settled at the old constant, which is the default.
+    ...(mine?.friendship !== undefined ? { myFriendship: mine.friendship } : {}),
+    // The same for the ability: an entry from before abilities fought without one.
+    myAbility: mine && 'ability' in mine ? (mine.ability ?? null) : mine ? null : undefined,
+  });
   /** What it would turn into in a fight right now. Null when nothing would. */
   const battleForm = battleFormOf(state);
   /**
@@ -318,7 +341,7 @@ export async function buildState(mode: CountMode = 'activity') {
    * — see describeMove above — so the names have to be attached here.
    */
   const nameOf = (id: number | null) =>
-    id === null ? TACKLE.name : (moveById(id)?.ko ?? TACKLE.name);
+    id === null ? TACKLE.name : id === STRUGGLE ? '발버둥' : (moveById(id)?.ko ?? TACKLE.name);
   const typeOf = (id: number | null) =>
     id === null ? 'normal' : (moveById(id)?.type ?? 'normal');
   // Physical lands ON the target, special travels TO it, status stays home.
@@ -337,13 +360,15 @@ export async function buildState(mode: CountMode = 'activity') {
   const AILMENT_KO: Record<string, string> = {
     paralysis: '몸이 저려 잘 움직이지 못한다!',
     poison: '독에 걸렸다!',
+    toxic: '맹독을 입었다!',
+    sleep: '잠들어 버렸다!',
     burn: '화상을 입었다!',
     freeze: '얼어붙었다!',
     confusion: '혼란에 빠졌다!',
     trap: '옭아매였다!',
     nightmare: '악몽에 시달리고 있다!',
     infatuation: '헤롱헤롱해졌다!',
-    torment: '도발에 넘어갔다!',
+    torment: '트집을 잡혔다!',
     silence: '기술이 봉인됐다!',
     embargo: '도구를 쓸 수 없게 됐다!',
   };
@@ -360,6 +385,8 @@ export async function buildState(mode: CountMode = 'activity') {
    */
   const STATUS_BADGE: Record<string, string> = {
     poison: '독',
+    // The games draw 맹독 with the same PSN icon as poison.
+    toxic: '독',
     burn: '화상',
     paralysis: '마비',
     freeze: '얼음',
@@ -367,9 +394,36 @@ export async function buildState(mode: CountMode = 'activity') {
   };
   const badgeKo = (a: string | null) => (a === null ? null : (STATUS_BADGE[a] ?? null));
 
-  const dressTurns = (b: { foeMaxHp: number; myMaxHp: number; turns: BattleTurnRaw[] }) => ({
+  /** Every event that names a move carries its Korean too; the renderer never looks one up. */
+  const callName = (e: BattleEvent) =>
+    'moveId' in e
+      ? { ...e, moveKo: nameOf(e.moveId) }
+      : e.k === 'type'
+        ? { ...e, typesKo: e.types.map((t) => TYPE_KO[t]) }
+        : e.k === 'type-lost'
+          ? { ...e, typeKo: TYPE_KO[e.type] }
+          : 'ability' in e
+            ? { ...e, abilityKo: abilityKo(e.ability) }
+            : e;
+  /** The same for what happens between moves: an ability named, a move foreseen, a type taken. */
+  const endName = (e: EndEvent) =>
+    'ability' in e
+      ? { ...e, abilityKo: abilityKo(e.ability) }
+      : 'moveId' in e
+        ? { ...e, moveKo: nameOf(e.moveId) }
+        : e.k === 'end-type'
+          ? { ...e, typesKo: e.types.map((t) => TYPE_KO[t]) }
+          : e;
+  const dressTurns = (b: Battle) => ({
     foeMaxHp: b.foeMaxHp,
     myMaxHp: b.myMaxHp,
+    myStartHp: b.myStartHp,
+    foeStartHp: b.foeStartHp,
+    mySlot: b.mySlot,
+    foeSlot: b.foeSlot,
+    entry: b.entry.map(endName),
+    exit: b.exit,
+    won: b.won,
     turns: b.turns.map((t) => ({
       ...t,
       moveName: nameOf(t.moveId),
@@ -382,6 +436,11 @@ export async function buildState(mode: CountMode = 'activity') {
       foeAilmentKo: ailmentKo(t.foeAilment),
       foeStatusKo: badgeKo(t.foeStatus),
       myStatusKo: badgeKo(t.myStatus),
+      // 잠꼬대 names the move it reached for, and the renderer never looks a
+      // move up — so the name rides on the event.
+      myEvents: t.myEvents.map(callName),
+      foeEvents: t.foeEvents.map(callName),
+      endEvents: t.endEvents.map(endName),
     })),
   });
 
@@ -406,6 +465,7 @@ export async function buildState(mode: CountMode = 'activity') {
     form: Form | null,
     saved: { name: string },
     gym?: HuntEntry['gym'],
+    mine?: HuntEntry['mine'],
   ) => {
     /**
      * A gym leader is looked up by the id the entry RECORDED, never re-derived
@@ -424,7 +484,14 @@ export async function buildState(mode: CountMode = 'activity') {
     const row = gym ? gymById(gym.id) : null;
     const t = gym ? (row ? gymTrainer(row) : null) : trainerAt(seq);
     if (!t || !active || t.name !== saved.name) return null;
-    const fight = trainerBattleAt(seq, t, active.moves, speciesId ?? undefined, formOpts(form, activeForm));
+    // Who fought, off the record when it has one — see `HuntEntry.mine`.
+    const fight = trainerBattleAt(
+      seq,
+      t,
+      mine?.moves ?? active.moves,
+      mine?.speciesId ?? speciesId ?? undefined,
+      replayOpts(form, mine),
+    );
     return {
       /**
        * A leader and a kid on a route are the same three facts, and the scene
@@ -537,17 +604,45 @@ export async function buildState(mode: CountMode = 'activity') {
 
   // Same dressing as a trainer round. It used to be a second copy of the map
   // body, which is how the two paths drift the moment a field is added.
-  const battleFor = (seq: number, rarity: Rarity, wildId: number, form: Form | null) =>
+  const battleFor = (
+    seq: number,
+    rarity: Rarity,
+    wildId: number,
+    form: Form | null,
+    mine?: HuntEntry['mine'],
+  ) =>
     dressTurns(
-      battleAt(seq, rarity, active?.moves ?? [], wildId, {
-        mySpeciesId: speciesId ?? undefined,
-        // The battle form comes from the LOG entry, not from the bag: a key
-        // stone taken off tomorrow must not rewrite the fight being replayed
-        // from yesterday. The worn form is read live, exactly as `mySpeciesId`
-        // above already is.
-        ...formOpts(form, activeForm),
+      battleAt(seq, rarity, mine?.moves ?? active?.moves ?? [], wildId, {
+        // Who fought comes off the record when it has one — see
+        // `HuntEntry.mine`. The battle form comes from the LOG entry too, not
+        // from the bag: a key stone taken off tomorrow must not rewrite the
+        // fight being replayed from yesterday.
+        mySpeciesId: mine?.speciesId ?? speciesId ?? undefined,
+        ...replayOpts(form, mine),
       }),
     );
+
+  /**
+   * A legendary fight, replayed. Settled by the same `legendBattleAt` the hunt
+   * used, with who fought taken off the record.
+   *
+   * An entry from before the legendaries carried their own four was settled
+   * against a different moveset, so its replay can come out the other way.
+   * The recorded result is what happened; a replay that disagrees with it is
+   * not shown rather than shown lying.
+   */
+  const legendFor = (
+    seq: number,
+    legend: NonNullable<HuntEntry['legend']>,
+    form: Form | null,
+    mine?: HuntEntry['mine'],
+  ) => {
+    const b = legendBattleAt(seq, legend.speciesId, mine?.moves ?? active?.moves ?? [], {
+      mySpeciesId: mine?.speciesId ?? speciesId ?? undefined,
+      ...replayOpts(form, mine),
+    });
+    return b.won === legend.won ? dressTurns(b) : null;
+  };
 
   /** Where the pet is, with any shut legendary room passed over. */
   const here = stopFor(state.huntCount, state);
@@ -596,6 +691,27 @@ export async function buildState(mode: CountMode = 'activity') {
           weightKg: activeForm?.weightKg ?? speciesInfo(speciesId!)?.weightKg ?? 0,
           /** Progress burned since this companion hatched. */
           withYou: Math.max(0, lifetimeTokens - active.bornAt),
+          /** Its level, 1..100, as the tokens stand right now. */
+          level: levelOf(active, lifetimeTokens, state.hatchThreshold),
+          /** Friendship, which grows with the level. 은혜갚기 and several evolutions read it. */
+          friendship: friendshipAt(active.pathIds[0], levelOf(active, lifetimeTokens, state.hatchThreshold)),
+          /**
+           * What each next evolution needs, in words — "Lv.36", "천둥의돌",
+           * "친밀도 160 · 밤". Empty at the last stage. A species with several
+           * ways lists each; one with several branches lists each branch.
+           */
+          evolves: nextEvolutions(active.pathIds, active.stageIndex).map((e) => ({
+            to: e.to,
+            name: speciesName(e.to),
+            ways: e.ways,
+          })),
+          /** 오케이징: its next evolution needs holding it upside down, and whether it is. */
+          flip: needsFlip(active) ? { on: !!active.upsideDown } : null,
+          /** Its ability, and whether it is the hidden one. */
+          ability: (() => {
+            const slug = companionAbility(active);
+            return slug ? { ko: abilityKo(slug), hidden: abilitySlotOf(active) === 2 } : null;
+          })(),
           path: active.pathIds.map((id) => ({ id, name: speciesName(id) })),
           /** The permanent form it is wearing, if any. */
           form: activeForm && { id: activeForm.id, kind: activeForm.kind, ko: activeForm.ko },
@@ -779,7 +895,7 @@ export async function buildState(mode: CountMode = 'activity') {
           trainerFight:
             e.seq !== newestSeq ? null
             : e.league ? await leagueFor(e.seq, e.league)
-            : e.trainer ? await trainerFor(e.seq, form, e.trainer, e.gym)
+            : e.trainer ? await trainerFor(e.seq, form, e.trainer, e.gym, e.mine)
             : null,
           /**
            * The backdrop this fight happens on, newest entry only — the older
@@ -808,7 +924,9 @@ export async function buildState(mode: CountMode = 'activity') {
                     : biomeFor(speciesInfo(e.wildId)?.types ?? []),
                 ),
           battle:
-            e.seq === newestSeq && speciesId !== null && !e.trainer && !e.legend
+            e.seq === newestSeq && e.legend
+              ? legendFor(e.seq, e.legend, form, e.mine)
+              : e.seq === newestSeq && speciesId !== null && !e.trainer
               ? // Rarity is not stored on the log entry, but the species IS, and
                 // reading it from `wildId` is both cheaper and safer than
                 // replaying `encounterAt`: a legendary gate can substitute what
@@ -819,6 +937,7 @@ export async function buildState(mode: CountMode = 'activity') {
                   rarityOfSpecies(e.wildId),
                   e.wildId,
                   form,
+                  e.mine,
                 )
               : null,
           };
@@ -826,6 +945,20 @@ export async function buildState(mode: CountMode = 'activity') {
       ),
     },
     moves: known(await Promise.all((active?.moves ?? []).map(withIcon))),
+    /**
+     * Level-up moves it has learned and is not using right now — the games'
+     * move reminder. Putting one back is free; see `relearn` in server/hunt.ts.
+     */
+    relearnable: known(
+      await Promise.all(
+        (active
+          ? unlockedMoves(active.pathIds, active.stageIndex, levelOf(active, lifetimeTokens, state.hatchThreshold)).filter(
+              (id) => !active.moves.includes(id),
+            )
+          : []
+        ).map(withIcon),
+      ),
+    ),
     tms: known(
       await Promise.all(
         teachable.map(async (id) => {
@@ -867,6 +1000,8 @@ export async function buildState(mode: CountMode = 'activity') {
           rarity: rarityOfSpecies(d.speciesId),
           generation: generationOf(d.speciesId),
           types: (speciesInfo(d.speciesId)?.types ?? []).map((t) => ({ id: t, name: TYPE_KO[t] })),
+          /** The ability it graduated with, by name; null on an entry from before abilities. */
+          abilityKo: d.abilitySlot !== undefined ? abilityKo(abilityOf(d.speciesId, d.abilitySlot) ?? '') : null,
         };
       }),
     ),
@@ -880,7 +1015,7 @@ export async function buildState(mode: CountMode = 'activity') {
       /** The clerk sprite, or null while it is still downloading. */
       clerk,
       products: await Promise.all(
-        PRODUCTS.map(async (p) => ({
+        PRODUCTS.filter((p) => p.kind !== 'evo' || shelved(p, state) || (state.inventory[p.id] ?? 0) > 0).map(async (p) => ({
           id: p.id,
           name: p.name,
           desc: p.desc,
@@ -895,6 +1030,12 @@ export async function buildState(mode: CountMode = 'activity') {
            * on this rather than on a hardcoded id list.
            */
           award: p.award ?? false,
+          /**
+           * On the shelf right now. An evolution item is sold only while this
+           * companion's next evolution can use it; one already in the bag is
+           * still shipped so the bag can name it.
+           */
+          shelved: shelved(p, state),
           /** Null for items. Lets the shop rank the four eggs at a glance. */
           rarity: p.rarity,
           /**

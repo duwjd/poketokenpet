@@ -77,6 +77,7 @@ rm ~/.poketokenpet/state.json   # 게임만 초기화 (캐시는 유지)
 | `src/scenes/*.png` | `npm run gen:grass` |
 | `src/ui-*.png` | `npm run gen:ui` |
 | `docs/img/*.png` | `npm run gen:shots` |
+| `docs/img/ds-*.png` (디자인 시스템 견본) | `npm run gen:specimen` |
 
 반대로 `server/legends.ts`(전설 조우 조건), `server/achievements.ts`(업적 표),
 `server/gyms.ts`(관동 체육관 관장·배지·포켓몬리그), `server/shrines.ts`(전설 전용 공간)는

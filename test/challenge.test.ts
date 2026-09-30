@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { levelUpMoves, moveById } from '../server/moves.ts';
 import { HUNT_INTERVAL_MS, HUNT_OFFLINE_CAP, encounterAt, hunt, huntCap } from '../server/hunt.ts';
 import { advance, initialState, mulberry32, type GameState } from '../server/game.ts';
 import { migrate } from '../server/store.ts';
@@ -11,7 +12,9 @@ import {
   setAskChallenge,
 } from '../server/challenge.ts';
 import { KANTO, gymAt, gymById, standingGym } from '../server/gyms.ts';
-import { LEG_LENGTH } from '../src/journey.ts';
+import { LEG_LENGTH, STOPS } from '../src/journey.ts';
+
+const LAP = STOPS.length * LEG_LENGTH;
 
 const H = 10_000_000;
 const T0 = 1_700_000_000_000;
@@ -24,7 +27,7 @@ const base = (over: Partial<GameState> = {}): GameState => ({
 
 /** A hatched companion, hunting, with asking ON — the new default. */
 const hunting = (over: Partial<GameState> = {}): GameState => {
-  const hatched = advance(base({ lifetimeEarned: H }), H, mulberry32(1)).state;
+  const hatched = armed(advance(base({ lifetimeEarned: H }), H, mulberry32(1)).state);
   return { ...hatched, lifetimeEarned: 1_000_000_000, huntedAt: T0, ...over };
 };
 
@@ -44,6 +47,23 @@ const FIRST = (() => {
 
 /** Standing in front of 웅, asked rather than settled. */
 const asked = (over: Partial<GameState> = {}) => hunting({ huntCount: FIRST, ...over });
+
+/**
+ * Armed the way a companion walking gym to gym is: its four strongest moves
+ * learned by Lv.50. A fresh hatchling knows its Lv.1 moves and nothing else,
+ * and these tests are about how a named battle is settled, not about whether a
+ * newborn can take a leader.
+ */
+const armed = (s: GameState): GameState => {
+  const a = s.active!;
+  const moves = [...new Set(levelUpMoves(a.pathIds[a.stageIndex]).filter(([lv]) => lv <= 50).map(([, id]) => id))]
+    .map((id) => moveById(id)!)
+    .filter((m) => m.power > 0 && ![153, 120, 63, 416].includes(m.id))
+    .sort((x, y) => y.power - x.power)
+    .slice(0, 4)
+    .map((m) => m.id);
+  return { ...s, active: { ...a, moves } };
+};
 
 describe('the offer', () => {
   it('is there when a leader stands and asking is on', () => {
@@ -98,18 +118,26 @@ describe('hunt() with asking on', () => {
     expect(asking.huntTokens).toBeGreaterThan(0);
   });
 
-  it('leaves exactly one question after a whole offline catch-up', () => {
-    // The invariant the single slot exists for: the same leader stands twenty
-    // times in one 96-encounter pass.
+  it('leaves exactly one question after a catch-up inside his city', () => {
+    // The invariant the single slot exists for: the same leader stands three
+    // times in one leg, and a catch-up across all three still asks once.
     let stands = 0;
     const none = new Set<number>();
-    for (let k = FIRST; k < FIRST + HUNT_OFFLINE_CAP; k++) if (gymAt(k, none)) stands++;
-    expect(stands).toBeGreaterThan(10);
+    for (let k = FIRST; k < FIRST + LEG_LENGTH; k++) if (gymAt(k, none)?.id === 'brock') stands++;
+    expect(stands).toBe(3);
 
-    const s = settle(asked(), HUNT_OFFLINE_CAP);
+    const s = settle(asked(), 10);
     const p = pendingChallenge(s);
     expect(p).not.toBeNull();
     expect(pendingId(p!)).toBe('brock');
+  });
+
+  it('does not follow the pet out of his city', () => {
+    // The bug this replaced: with no badge held, 웅 used to stand at every
+    // later Kanto stop. Walk on past 회색시티 and he is gone.
+    const s = settle(asked(), HUNT_OFFLINE_CAP);
+    const p = pendingChallenge(s);
+    expect(p === null || pendingId(p) !== 'brock').toBe(true);
   });
 
   it('still settles a rematch on its own', () => {
@@ -163,6 +191,27 @@ describe('accepting', () => {
     expect(r.state.huntLog[0].seq).toBeGreaterThan(before);
     expect(r.state.huntCount).toBe(s.huntCount + 1);
     expect(r.state.huntLog[0].seq).toBe(r.state.huntCount - 1);
+  });
+
+  it('settles an owed backlog first, so the fight stays the newest entry', () => {
+    // Three encounters are due but no poll has settled them. Accepting must
+    // not leave them for the next buildState to stack on top of the fight —
+    // the scene replays huntLog[0] only, and the badge would change hands off
+    // screen.
+    const s = asked();
+    const now = T0 + 3 * HUNT_INTERVAL_MS;
+    const r = challengeAction(s, 'accept:brock', now);
+    expect(r.ok).toBe(true);
+    expect(r.state.huntLog[0].gym?.id).toBe('brock');
+    expect(hunt(r.state, now).state.huntLog[0].gym?.id).toBe('brock');
+  });
+
+  it('keeps the outcome out of its reply', () => {
+    // The panel used to toast "회색배지를 받았습니다!" before the battle had
+    // started playing. The scene tells the result; the reply only says a
+    // challenge was made, whichever way it went.
+    const r = challengeAction(asked(), 'accept:brock', T0);
+    expect(r.message).toBe('관장 웅에게 승부를 걸었습니다!');
   });
 
   it('never leaves the clock ahead of now', () => {
@@ -226,10 +275,13 @@ describe('declining', () => {
     expect(r.ok).toBe(true);
     expect(r.state.challenge).toEqual({ leg: legOf(FIRST), used: 0, declined: true });
     expect(pendingChallenge(r.state)).toBeNull();
-    // One leg on, and he is entitled to ask again.
+    // One leg on the pet is in the next town, and he is not there.
     const next = { ...r.state, huntCount: FIRST + LEG_LENGTH };
-    expect(standingGym(next.huntCount, new Set())).not.toBeNull();
-    expect(pendingChallenge(next)).not.toBeNull();
+    expect(standingGym(next.huntCount, new Set())?.id).not.toBe('brock');
+    // A lap on it is back in 회색시티, and he is entitled to ask again.
+    const lap = { ...r.state, huntCount: FIRST + LAP };
+    expect(standingGym(lap.huntCount, new Set())?.id).toBe('brock');
+    expect(pendingChallenge(lap)).not.toBeNull();
   });
 
   it('refuses when there is nothing to refuse', () => {

@@ -39,10 +39,13 @@ const maxed = () =>
       firstSeenAt: 0,
       ...(i === 1 ? { formId: 10_000 } : {}),
       ...(i === 2 ? { nickname: '코코리' } : {}),
+      ...(i === 3 ? { abilitySlot: 2 as const } : {}),
     })),
     active: { ...ALIVE, moves: [1, 2, 3, 4] },
     retiredCount: 200,
     trainerWins: 500,
+    // Stones and cords used, past the top of the 육성 ladder's item rows.
+    itemEvolutions: 20,
     // Every Kanto badge, and enough gym wins for the rematch row to have paid.
     //
     // The count is deliberately far past any threshold rather than sized to

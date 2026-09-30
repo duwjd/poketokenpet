@@ -1,4 +1,5 @@
 import { LEG_LENGTH, STOPS } from '../src/journey.ts';
+import { abilityOf } from './abilities.ts';
 import { rarityOfSpecies } from './dex.ts';
 import type { PartyMember } from './game.ts';
 import {
@@ -10,21 +11,11 @@ import {
   type RegionKo,
   type RegionRow,
 } from './gymdata.ts';
-import { BATTLE_MAX_HP, TACKLE, battleAt, type Battle, type BattleOpts } from './hunt.ts';
-import { TRAINER_ROUND_TURNS, type Trainer } from './trainer.ts';
+import { BATTLE_MAX_HP, fightAt, foeOf, mineOf, speciesStats, type Battle, type BattleOpts } from './fight.ts';
+import type { Trainer } from './trainer.ts';
 
 export { BADGE_IDS, MIN_LEAGUE_SIZE, REGIONS };
 export type { GymRow, LeagueRow, RegionKo, RegionRow };
-
-/**
- * Counter damage per turn in a league round, as a share of one party bar.
- *
- * The trainer share (0.085) unchanged. It is named separately only so the two
- * can be tuned apart later without one silently moving the other — the league
- * is twenty-six opponents against six bars, where the gyms are five against
- * one, and they will not stay balanced by the same number for ever.
- */
-const LEAGUE_COUNTER_SHARE = 0.085;
 
 /**
  * Where in a leg a challenge falls. Three of them, twenty-five minutes apart.
@@ -172,8 +163,9 @@ const INDEX: Map<string, RegionIndex> = new Map(
  *
  * `server/hunt.ts` checks the league branch ABOVE the gym branch, and argues
  * that is safe because a plateau is not a gym city, so the only leader who
- * could stand there is one still being pursued — and pursuit is only possible
- * below a full badge set, which is exactly when the league is shut. That
+ * could stand there is a `lateLock` one following the pet — and he follows
+ * only while his own badge is missing, which is exactly when the league is
+ * shut. That
  * argument generalises only under this invariant. Without it a leader pursuing
  * you through region B could stand at region A's plateau while A's league
  * runs, and the gym would be silently swallowed: a lost badge with nothing on
@@ -269,8 +261,7 @@ export function regionSwept(region: RegionRow, badges: ReadonlySet<number>): boo
  *  1. The region the pet is standing in, if it still owes badges. That is the
  *     campaign actually in progress.
  *  2. Otherwise the earliest-ordered region with badges still missing — the one
- *     you are behind on. A leader follows you through his region; a region
- *     follows you around the lap.
+ *     you are behind on. A region follows you around the lap.
  *  3. Otherwise the most recently cleared. Everything is swept, so show the
  *     latest conquest rather than an arbitrary first row.
  *
@@ -306,24 +297,19 @@ export function liveRegion(
 /**
  * The leader standing in the way right now, or null.
  *
- * The lowest-order leader who is eligible, unbeaten, and whose city is at or
- * behind the current stop. The last clause is what turns a fixed appointment
- * into a pursuit: 비주기's gym is the second stop in Kanto and he is the eighth
- * challenge, so without it the Earth Badge would always be a lap away. He
- * catches up instead, which is what the games have him do anyway — 상록체육관
- * is shut while you walk past it and opens once you hold the other seven.
+ * A leader stands in HIS OWN CITY and nowhere else: 웅 is at 회색시티, and a
+ * pet walking through 블루시티 meets 이슬, not 웅. Badges may be won in any
+ * order — losing to one leader never closes the road to the next city's — so
+ * the only thing that decides who is standing is where the pet is.
  *
- * Eligibility is one rule, not eight: a leader of order N wants N-1 badges
- * FROM HIS OWN REGION. That is the games' Viridian lock generalised, and it
- * costs nothing on the other seven because the standing leader is by
- * construction the lowest unbeaten one.
+ * The one exception is a `lateLock` leader, whom the games shut until the rest
+ * of the region is done. He is not there while any other badge of his region
+ * is missing, and once it is not, he follows the pet from his own city onward
+ * — 비주기's gym is the second stop in 관동, so a fixed appointment there would
+ * put the Earth Badge a whole lap away from the seventh badge.
  *
- * The per-region count is the one semantic change the region work makes here,
- * and it is the one that matters. This read the GLOBAL count, which is the same
- * number while Kanto is the only region and becomes a ladder that collapses the
- * moment a second one lands: a player carrying Kanto's eight into 성도 would
- * satisfy `held < order - 1` for all eight Johto leaders at once and be handed
- * the whole region's eligibility on arrival.
+ * Only an UNBEATEN leader stands. A beaten one spars at his city on
+ * REMATCH_OFFSET instead; see `gymAt`.
  */
 export function standingGym(seq: number, badges: ReadonlySet<number>): GymRow | null {
   const stop = stopIndexOf(seq);
@@ -331,13 +317,14 @@ export function standingGym(seq: number, badges: ReadonlySet<number>): GymRow | 
   if (!region) return null;
   const ix = INDEX.get(region.ko)!;
   const held = badgesInRegion(region, badges);
+  const others = region.gyms.length - 1;
   for (const g of ix.byOrder) {
-    if (badges.has(g.badge)) continue;
-    // Not enough badges for this one, and everyone before is beaten: nobody stands.
-    if (held < g.order - 1) return null;
-    return ix.stopOf.get(g.id)! <= stop ? g : null;
+    if (!g.lateLock || badges.has(g.badge)) continue;
+    if (held >= others && ix.stopOf.get(g.id)! <= stop) return g;
   }
-  return null;
+  const home = ix.byStop.get(stop);
+  if (!home || badges.has(home.badge) || home.lateLock) return null;
+  return home;
 }
 
 /**
@@ -437,16 +424,26 @@ export function encountersUntilLeague(huntCount: number, region: RegionRow): num
 }
 
 /**
+ * What a leader pays per Pokemon in his team, before GYM_BONUS.
+ *
+ * This used to be `3 × grit`, when grit was a rough price of the fight. It is
+ * a per-leader tuning dial now — ghost gyms need less of it than a Normal gym,
+ * because half the companions cannot touch a ghost at all — so it no longer
+ * says what a win is worth. Six is what the old column paid on average, so
+ * the roster as a whole pays what it did.
+ */
+const GYM_PER_POKEMON = 6;
+
+/**
  * What beating a leader is worth, as a multiplier on one ordinary encounter.
  *
- * `trainerReward`'s own formula times GYM_BONUS. That formula already scales
- * with the two things that make a leader hard, so there is nothing to invent —
- * and it still passes through `huntCap` at the call site, exactly as a route
- * trainer's payout does. No item roll here: a gym leader handing over an
+ * Scales with the team, which is what makes one leader a longer fight than
+ * another. It still passes through `huntCap` at the call site, exactly as a
+ * route trainer's payout does. No item roll here: a gym leader handing over an
  * everstone is odd, and the badge and its TM are the prize.
  */
-export function gymReward(row: Pick<GymRow, 'team' | 'grit'>): number {
-  return 3 * row.team.length * row.grit * GYM_BONUS;
+export function gymReward(row: Pick<GymRow, 'team'>): number {
+  return GYM_PER_POKEMON * row.team.length * GYM_BONUS;
 }
 
 // ── 포켓몬리그 ─────────────────────────────────────────────────────────────
@@ -547,19 +544,14 @@ export type LeagueRound = {
 /**
  * Fight one Elite Four member with a party of six.
  *
- * Composed from `battleAt` rather than folded into it, for the same three
- * reasons `trainerBattleAt` gives — the felling last turn, MAX_TURNS, the
- * global turn index. The one thing that is new is on my side of the field:
- * six bars instead of one, and a bar at zero hands over to the next.
+ * One `fightAt`, six against their team: a fallen member hands over to the
+ * next of mine still standing, and the field stays as it is through all of it.
  *
- * The turn budget is `TRAINER_ROUND_TURNS`, unchanged. Measured across sixty
- * thousand league losses, not one came from running out of turns — every
- * single one was an HP knockout — so a longer budget buys the opponent extra
- * counter-attacks and nothing else.
- *
- * HP arrives from the caller and leaves in the return, so it can carry across
- * the five encounters a full run takes without this function knowing about
- * them.
+ * HP arrives from the caller and leaves in the return as a SHARE of each
+ * member's bar, 0..BATTLE_MAX_HP — that is how `leagueRun.hp` has always been
+ * saved — and is turned into real HP only for the length of the fight. A
+ * member left on a sliver keeps at least 1, so a bar that is not empty never
+ * rounds itself to zero.
  */
 export function leagueRoundAt(
   seq: number,
@@ -568,55 +560,23 @@ export function leagueRoundAt(
   startHp: number[],
   boosts: BattleOpts = {},
 ): LeagueRound {
-  const hp = [...startHp];
-  const rounds: Battle[] = [];
-  const outFor: number[] = [];
-  let cur = hp.findIndex((h) => h > 0);
-  /** Global round index, so two rounds against the same opponent differ. */
-  let r = 0;
-
-  for (let i = 0; i < member.team.length; i++) {
-    const foe = member.team[i];
-    let felled = false;
-    // An opponent does not go away because one of my six ran out. It stays,
-    // and the next bar comes in against it — which is the whole reason six
-    // bars are worth more than one big one, and the reason this is a `while`
-    // rather than one round per opponent.
-    while (!felled) {
-      if (cur < 0) return { rounds, hp, won: false, outFor };
-      const me = party[cur];
-      const round = battleAt(LEAGUE_SEED_BASE + seq * 32 + r, rarityOfSpecies(foe), me.moves, foe, {
-        startHp: hp[cur],
-        budget: TRAINER_ROUND_TURNS,
-        targetTurns: TRAINER_ROUND_TURNS,
-        // A fixed pool, as a trainer round uses: what beats the league is the
-        // moveset you assembled, not how hard your species happens to swing.
-        swingRef: TACKLE.power,
-        floor: false,
-        counterHit: Math.max(1, Math.round(BATTLE_MAX_HP * LEAGUE_COUNTER_SHARE * member.grit)),
-        grit: member.grit,
-        mySpeciesId: me.speciesId,
+  const max = party.map((m) => speciesStats(m.speciesId)?.hp ?? 1);
+  if (!startHp.some((h) => h > 0)) return { rounds: [], hp: [...startHp], won: false, outFor: [] };
+  const fight = fightAt(
+    LEAGUE_SEED_BASE + seq * 32,
+    party.map((m, i) =>
+      mineOf(m.moves, {
         ...boosts,
-        // After the spread: see `trainerBattleAt`. A transcribed set wins.
-        foeMoves: member.teamMoves?.[i],
-      });
-      rounds.push(round);
-      outFor.push(cur);
-      r++;
-
-      const last = round.turns.at(-1);
-      hp[cur] = Math.max(0, last?.myHpAfter ?? hp[cur]);
-      felled = (last?.foeHpAfter ?? 0) === 0;
-      // Out of turns with the opponent still standing spends that bar. It is
-      // also what makes this loop terminate: every pass either fells an
-      // opponent or empties a bar, so the whole fight is at most
-      // `team.length + party.length` rounds.
-      if (!felled) hp[cur] = 0;
-      if (hp[cur] <= 0) cur = hp.findIndex((h) => h > 0);
-    }
-  }
-
-  return { rounds, hp, won: true, outFor };
+        mySpeciesId: m.speciesId,
+        // The slot its dex entry graduated with; an older party member fights with the first.
+        myAbility: abilityOf(m.speciesId, m.abilitySlot ?? 0),
+        startHp: startHp[i] > 0 ? Math.max(1, Math.round((startHp[i] / BATTLE_MAX_HP) * max[i])) : 0,
+      }),
+    ),
+    member.team.map((id, i) => foeOf(id, rarityOfSpecies(id), member.grit, member.teamMoves?.[i])),
+  );
+  const hp = fight.hp.map((h, i) => (h <= 0 ? 0 : Math.max(1, Math.round((h / max[i]) * BATTLE_MAX_HP))));
+  return { rounds: fight.rounds, hp, won: fight.won, outFor: fight.outFor };
 }
 
 /** What clearing the whole league is worth, as a multiplier on one encounter. */

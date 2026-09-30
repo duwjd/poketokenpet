@@ -97,6 +97,21 @@ function turn(o: {
   foeEffect?: number;
 }) {
   return {
+    // The battle engine's fields a quiet turn still has to carry — the scene
+    // reads every one of them, and an undefined here stopped the demo battle
+    // on its first beat. Nobody skips, cures or misses in the demo.
+    foeFirst: false,
+    meActed: true,
+    mySkip: null,
+    myCured: null,
+    foeSkip: null,
+    foeCured: null,
+    foeMissed: false,
+    foeCrit: false,
+    foeSelfEffect: null,
+    myEvents: [],
+    foeEvents: [],
+    endEvents: [],
     moveName: o.moveName,
     moveType: o.moveType,
     damage: o.damage,
@@ -131,6 +146,8 @@ function turn(o: {
 const BATTLE = {
   foeMaxHp: 148,
   myMaxHp: 162,
+  myStartHp: 162,
+  won: true,
   turns: [
     turn({ moveName: '화염방사', moveType: 'fire', damage: 41, effect: 1, foeHpAfter: 107, myHpAfter: 138 }),
     turn({ moveName: '섀도크루', moveType: 'ghost', damage: 62, effect: 2, foeHpAfter: 45, myHpAfter: 121 }),
@@ -194,7 +211,10 @@ export async function buildPayloads(): Promise<ShotPayloads> {
     'egg-legendary': 2_136_084_240,
   };
   const products = [];
-  for (const p of PRODUCTS) {
+  // Evolution items are shelved only for a companion that can use them; a
+  // 리자몽 at its last stage has none, and fetching forty-one icons for nothing
+  // would only slow the generator down.
+  for (const p of PRODUCTS.filter((x) => x.kind !== 'evo')) {
     products.push({
       id: p.id,
       name: p.name,
@@ -205,6 +225,7 @@ export async function buildPayloads(): Promise<ShotPayloads> {
       rarity: p.rarity,
       price: PRICE[p.id] ?? 26_701_053,
       owned: p.id === 'key-stone' || p.id === 'dynamax-band',
+      shelved: !p.award,
       sprite: p.sprite ? await ensureItemSprite(p.sprite) : p.kind === 'egg' ? eggIcon : null,
     });
   }
@@ -314,6 +335,11 @@ export async function buildPayloads(): Promise<ShotPayloads> {
       heightM: speciesInfo(ME)?.heightM ?? 1.7,
       weightKg: speciesInfo(ME)?.weightKg ?? 90.5,
       withYou: 612_400_000,
+      level: 62,
+      friendship: 255,
+      evolves: [],
+      flip: null,
+      ability: { ko: '선파워', hidden: true },
       path: [1, 2, 3].map((_, i) => {
         const chain = [4, 5, 6][i]!;
         return { id: chain, name: speciesName(chain) };
@@ -325,7 +351,7 @@ export async function buildPayloads(): Promise<ShotPayloads> {
       battleForm: null,
     },
     eggSprite: null,
-    progress: { phase: 'growing', have: 62_400_000, need: 100_000_000, ratio: 0.62 },
+    progress: { phase: 'final', have: 6_240_000, need: 10_000_000, ratio: 0.62, level: 62, total: 0.62 },
     dex,
     dexTotal: 1025,
     retiredCount: 12,
@@ -357,6 +383,7 @@ export async function buildPayloads(): Promise<ShotPayloads> {
       log,
     },
     moves,
+    relearnable: [],
     tms,
     unusableTmCount: 2,
     sprites: { bytes: 37_748_736, files: 764 },

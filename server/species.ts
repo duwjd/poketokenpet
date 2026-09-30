@@ -9595,6 +9595,95 @@ export const NATURE_KO: Record<string, string> = {
   "serious": "성실"
 };
 
+/**
+ * One way to evolve into a species. Every field present must hold; a species
+ * with several rules evolves when any one of them does. server/evolution.ts is
+ * what reads these, and docs/DESIGN.md says what each stand-in stands for.
+ *
+ * - `level`: at a level-up to at least this level.
+ * - `happiness`: friendship at least this, at a level-up.
+ * - `time`: only at this time of day (or under a full moon).
+ * - `item` (× `count`): used from the bag — a stone, or what the games have it
+ *   hold or be traded with. A plain trade is linking-cord.
+ * - `move` / `moveType`: knowing that move, or a move of that type.
+ * - `partySpecies` / `partyType`: with that in the league party.
+ * - `rain`, `upsideDown`, `steps`, `uses`, `recoil`, `damage`, `crits`,
+ *   `defeat`, `encounters`: the rest, each read from what the companion did.
+ * - `byPath`: gender, personality or stat balance — decided by the branch drawn at hatch.
+ */
+export type EvoRule = {
+  level?: number;
+  happiness?: number;
+  time?: 'day' | 'night' | 'dusk' | 'full-moon';
+  item?: string;
+  count?: number;
+  move?: number;
+  moveType?: string;
+  partySpecies?: number;
+  partyType?: string;
+  rain?: true;
+  upsideDown?: true;
+  steps?: number;
+  uses?: [number, number];
+  recoil?: number;
+  damage?: number;
+  crits?: number;
+  defeat?: [number, number];
+  encounters?: number;
+  byPath?: true;
+};
+
+/** speciesId -> the ways to evolve INTO it. Every non-root species on a path has at least one. */
+export const EVOLUTIONS: Record<number, EvoRule[]> = {"2":[{"level":16}],"3":[{"level":32}],"5":[{"level":16}],"6":[{"level":36}],"8":[{"level":16}],"9":[{"level":36}],"11":[{"level":7}],"12":[{"level":10}],"14":[{"level":7}],"15":[{"level":10}],"17":[{"level":18}],"18":[{"level":36}],"20":[{"level":20}],"22":[{"level":20}],"24":[{"level":22}],"25":[{"happiness":220}],"26":[{"item":"thunder-stone"}],"28":[{"level":22}],"30":[{"level":16}],"31":[{"item":"moon-stone"}],"33":[{"level":16}],"34":[{"item":"moon-stone"}],"35":[{"happiness":160}],"36":[{"item":"moon-stone"}],"38":[{"item":"fire-stone"}],"39":[{"happiness":160}],"40":[{"item":"moon-stone"}],"42":[{"level":22}],"44":[{"level":21}],"45":[{"item":"leaf-stone"}],"47":[{"level":24}],"49":[{"level":31}],"51":[{"level":26}],"53":[{"level":28}],"55":[{"level":33}],"57":[{"level":28}],"59":[{"item":"fire-stone"}],"61":[{"level":25}],"62":[{"item":"water-stone"}],"64":[{"level":16}],"65":[{"item":"linking-cord"}],"67":[{"level":28}],"68":[{"item":"linking-cord"}],"70":[{"level":21}],"71":[{"item":"leaf-stone"}],"73":[{"level":30}],"75":[{"level":25}],"76":[{"item":"linking-cord"}],"78":[{"level":40}],"80":[{"level":37}],"82":[{"level":30}],"85":[{"level":31}],"87":[{"level":34}],"89":[{"level":38}],"91":[{"item":"water-stone"}],"93":[{"level":25}],"94":[{"item":"linking-cord"}],"97":[{"level":26}],"99":[{"level":28}],"101":[{"level":30}],"103":[{"item":"leaf-stone"}],"105":[{"level":28}],"106":[{"level":20,"byPath":true}],"107":[{"level":20,"byPath":true}],"110":[{"level":35}],"112":[{"level":42}],"113":[{"time":"day","item":"oval-stone"}],"117":[{"level":32}],"119":[{"level":33}],"121":[{"item":"water-stone"}],"122":[{"move":102}],"124":[{"level":30}],"125":[{"level":30}],"126":[{"level":30}],"130":[{"level":20}],"134":[{"item":"water-stone"}],"135":[{"item":"thunder-stone"}],"136":[{"item":"fire-stone"}],"139":[{"level":40}],"141":[{"level":40}],"143":[{"happiness":160}],"148":[{"level":30}],"149":[{"level":55}],"153":[{"level":16}],"154":[{"level":32}],"156":[{"level":14}],"157":[{"level":36}],"159":[{"level":18}],"160":[{"level":30}],"162":[{"level":15}],"164":[{"level":20}],"166":[{"level":18}],"168":[{"level":22}],"169":[{"happiness":160}],"171":[{"level":27}],"176":[{"happiness":160}],"178":[{"level":25}],"180":[{"level":15}],"181":[{"level":30}],"182":[{"item":"sun-stone"}],"183":[{"happiness":160}],"184":[{"level":18}],"185":[{"move":102}],"186":[{"item":"kings-rock"}],"188":[{"level":18}],"189":[{"level":27}],"192":[{"item":"sun-stone"}],"195":[{"level":20}],"196":[{"happiness":160,"time":"day"}],"197":[{"happiness":160,"time":"night"}],"199":[{"item":"kings-rock"}],"202":[{"level":15}],"205":[{"level":31}],"208":[{"item":"metal-coat"}],"210":[{"level":23}],"212":[{"item":"metal-coat"}],"217":[{"level":30}],"219":[{"level":38}],"221":[{"level":33}],"224":[{"level":25}],"226":[{"partySpecies":223}],"229":[{"level":24}],"230":[{"item":"dragon-scale"}],"232":[{"level":25}],"233":[{"item":"up-grade"}],"237":[{"level":20,"byPath":true}],"242":[{"happiness":160}],"247":[{"level":30}],"248":[{"level":55}],"253":[{"level":16}],"254":[{"level":36}],"256":[{"level":16}],"257":[{"level":36}],"259":[{"level":16}],"260":[{"level":36}],"262":[{"level":18}],"264":[{"level":20}],"266":[{"level":7,"byPath":true}],"267":[{"level":10}],"268":[{"level":7,"byPath":true}],"269":[{"level":10}],"271":[{"level":14}],"272":[{"item":"water-stone"}],"274":[{"level":14}],"275":[{"item":"leaf-stone"}],"277":[{"level":22}],"279":[{"level":25}],"281":[{"level":20}],"282":[{"level":30}],"284":[{"level":22}],"286":[{"level":23}],"288":[{"level":18}],"289":[{"level":36}],"291":[{"level":20}],"292":[{"level":20}],"294":[{"level":20}],"295":[{"level":40}],"297":[{"level":24}],"301":[{"item":"moon-stone"}],"305":[{"level":32}],"306":[{"level":42}],"308":[{"level":37}],"310":[{"level":26}],"315":[{"happiness":160,"time":"day"}],"317":[{"level":26}],"319":[{"level":30}],"321":[{"level":40}],"323":[{"level":33}],"326":[{"level":32}],"329":[{"level":35}],"330":[{"level":45}],"332":[{"level":32}],"334":[{"level":35}],"340":[{"level":30}],"342":[{"level":30}],"344":[{"level":36}],"346":[{"level":40}],"348":[{"level":40}],"350":[{"item":"prism-scale"}],"354":[{"level":37}],"356":[{"level":37}],"358":[{"happiness":220,"time":"night"}],"362":[{"level":42}],"364":[{"level":32}],"365":[{"level":44}],"367":[{"item":"deep-sea-tooth"}],"368":[{"item":"deep-sea-scale"}],"372":[{"level":30}],"373":[{"level":50}],"375":[{"level":20}],"376":[{"level":45}],"388":[{"level":18}],"389":[{"level":32}],"391":[{"level":14}],"392":[{"level":36}],"394":[{"level":16}],"395":[{"level":36}],"397":[{"level":14}],"398":[{"level":34}],"400":[{"level":15}],"402":[{"level":10}],"404":[{"level":15}],"405":[{"level":30}],"407":[{"item":"shiny-stone"}],"409":[{"level":30}],"411":[{"level":30}],"413":[{"level":20,"byPath":true}],"414":[{"level":20,"byPath":true}],"416":[{"level":21,"byPath":true}],"419":[{"level":26}],"421":[{"level":25}],"423":[{"level":30}],"424":[{"move":458}],"426":[{"level":28}],"428":[{"happiness":160}],"429":[{"item":"dusk-stone"}],"430":[{"item":"dusk-stone"}],"432":[{"level":38}],"435":[{"level":34}],"437":[{"level":33}],"444":[{"level":24}],"445":[{"level":48}],"448":[{"happiness":160,"time":"day"}],"450":[{"level":34}],"452":[{"level":40}],"454":[{"level":37}],"457":[{"level":31}],"460":[{"level":40}],"461":[{"time":"night","item":"razor-claw"}],"462":[{"item":"thunder-stone"}],"463":[{"move":205}],"464":[{"item":"protector"}],"465":[{"move":246}],"466":[{"item":"electirizer"}],"467":[{"item":"magmarizer"}],"468":[{"item":"shiny-stone"}],"469":[{"move":246}],"470":[{"item":"leaf-stone"}],"471":[{"item":"ice-stone"}],"472":[{"time":"night","item":"razor-fang"}],"473":[{"move":246}],"474":[{"item":"dubious-disc"}],"475":[{"item":"dawn-stone","byPath":true}],"476":[{"item":"thunder-stone"}],"477":[{"item":"reaper-cloth"}],"478":[{"item":"dawn-stone","byPath":true}],"496":[{"level":17}],"497":[{"level":36}],"499":[{"level":17}],"500":[{"level":36}],"502":[{"level":17}],"503":[{"level":36}],"505":[{"level":20}],"507":[{"level":16}],"508":[{"level":32}],"510":[{"level":20}],"512":[{"item":"leaf-stone"}],"514":[{"item":"fire-stone"}],"516":[{"item":"water-stone"}],"518":[{"item":"moon-stone"}],"520":[{"level":21}],"521":[{"level":32}],"523":[{"level":27}],"525":[{"level":25}],"526":[{"item":"linking-cord"}],"528":[{"happiness":160}],"530":[{"level":31}],"533":[{"level":25}],"534":[{"item":"linking-cord"}],"536":[{"level":25}],"537":[{"level":36}],"541":[{"level":20}],"542":[{"happiness":220}],"544":[{"level":22}],"545":[{"level":30}],"547":[{"item":"sun-stone"}],"549":[{"item":"sun-stone"}],"552":[{"level":29}],"553":[{"level":40}],"555":[{"level":35}],"558":[{"level":34}],"560":[{"level":39}],"563":[{"level":34}],"565":[{"level":37}],"567":[{"level":37}],"569":[{"level":36}],"571":[{"level":30}],"573":[{"item":"shiny-stone"}],"575":[{"level":32}],"576":[{"level":41}],"578":[{"level":32}],"579":[{"level":41}],"581":[{"level":35}],"583":[{"level":35}],"584":[{"level":47}],"586":[{"level":34}],"589":[{"item":"linking-cord"}],"591":[{"level":39}],"593":[{"level":40}],"596":[{"level":36}],"598":[{"level":40}],"600":[{"level":38}],"601":[{"level":49}],"603":[{"level":39}],"604":[{"item":"thunder-stone"}],"606":[{"level":42}],"608":[{"level":41}],"609":[{"item":"dusk-stone"}],"611":[{"level":38}],"612":[{"level":48}],"614":[{"level":37}],"617":[{"item":"linking-cord"}],"620":[{"level":50}],"623":[{"level":43}],"625":[{"level":52}],"628":[{"level":54}],"630":[{"level":54}],"634":[{"level":50}],"635":[{"level":64}],"637":[{"level":59}],"651":[{"level":16}],"652":[{"level":36}],"654":[{"level":16}],"655":[{"level":36}],"657":[{"level":16}],"658":[{"level":36}],"660":[{"level":20}],"662":[{"level":17}],"663":[{"level":35}],"665":[{"level":9}],"666":[{"level":12}],"668":[{"level":35}],"670":[{"level":19}],"671":[{"item":"shiny-stone"}],"673":[{"level":32}],"675":[{"level":32,"partyType":"dark"}],"678":[{"level":25,"byPath":true}],"680":[{"level":35}],"681":[{"item":"dusk-stone"}],"683":[{"item":"sachet"}],"685":[{"item":"whipped-dream"}],"687":[{"level":30,"upsideDown":true}],"689":[{"level":39}],"691":[{"level":48}],"693":[{"level":37}],"695":[{"item":"sun-stone"}],"697":[{"level":39,"time":"day"}],"699":[{"level":39,"time":"night"}],"700":[{"happiness":160,"moveType":"fairy"}],"705":[{"level":40}],"706":[{"level":50,"rain":true}],"709":[{"item":"linking-cord"}],"711":[{"item":"linking-cord"}],"713":[{"level":37}],"715":[{"level":48}],"723":[{"level":17}],"724":[{"level":34}],"726":[{"level":17}],"727":[{"level":34}],"729":[{"level":17}],"730":[{"level":34}],"732":[{"level":14}],"733":[{"level":28}],"735":[{"level":20,"time":"day"}],"737":[{"level":20}],"738":[{"item":"thunder-stone"}],"740":[{"item":"ice-stone"}],"743":[{"level":25}],"745":[{"level":25,"time":"day"}],"748":[{"level":38}],"750":[{"level":30}],"752":[{"level":22}],"754":[{"level":34,"time":"day"}],"756":[{"level":24}],"758":[{"level":33,"byPath":true}],"760":[{"level":27}],"762":[{"level":18}],"763":[{"move":23}],"768":[{"level":30}],"770":[{"level":42}],"773":[{"happiness":160}],"783":[{"level":35}],"784":[{"level":45}],"790":[{"level":43}],"791":[{"level":53}],"792":[{"level":53}],"804":[{"move":406}],"809":[{"encounters":400}],"811":[{"level":16}],"812":[{"level":35}],"814":[{"level":16}],"815":[{"level":35}],"817":[{"level":16}],"818":[{"level":35}],"820":[{"level":24}],"822":[{"level":18}],"823":[{"level":38}],"825":[{"level":10}],"826":[{"level":30}],"828":[{"level":18}],"830":[{"level":20}],"832":[{"level":24}],"834":[{"level":22}],"836":[{"level":25}],"838":[{"level":18}],"839":[{"level":34}],"841":[{"item":"tart-apple"}],"842":[{"item":"sweet-apple"}],"844":[{"level":36}],"847":[{"level":26}],"849":[{"level":30}],"851":[{"level":28}],"853":[{"move":269}],"855":[{"item":"cracked-pot"}],"857":[{"level":32}],"858":[{"level":42}],"860":[{"level":32}],"861":[{"level":42}],"862":[{"level":35,"time":"night"}],"863":[{"level":28}],"864":[{"level":38}],"865":[{"crits":3}],"866":[{"level":42}],"867":[{"damage":49}],"869":[{"item":"strawberry-sweet","byPath":true}],"873":[{"happiness":160,"time":"night"}],"879":[{"level":34}],"886":[{"level":50}],"887":[{"level":60}],"892":[{"item":"scroll-of-darkness"}],"899":[{"uses":[828,20]}],"900":[{"item":"black-augurite"}],"901":[{"time":"full-moon","item":"peat-block"}],"902":[{"recoil":294,"byPath":true}],"903":[{"time":"day","item":"razor-claw"}],"904":[{"uses":[839,20]},{"move":839}],"907":[{"level":16}],"908":[{"level":36}],"910":[{"level":16}],"911":[{"level":36}],"913":[{"level":16}],"914":[{"level":36}],"916":[{"level":18,"byPath":true}],"918":[{"level":15}],"920":[{"level":24}],"922":[{"level":18}],"923":[{"steps":1000}],"925":[{"level":25,"byPath":true}],"927":[{"level":26}],"929":[{"level":25}],"930":[{"level":35}],"933":[{"level":24}],"934":[{"level":38}],"936":[{"item":"auspicious-armor"}],"937":[{"item":"malicious-armor"}],"939":[{"item":"thunder-stone"}],"941":[{"level":25}],"943":[{"level":30}],"945":[{"level":28}],"947":[{"steps":1000}],"949":[{"level":30}],"952":[{"item":"fire-stone"}],"954":[{"steps":1000}],"956":[{"level":35}],"958":[{"level":24}],"959":[{"level":38}],"961":[{"level":26}],"964":[{"level":38}],"966":[{"level":40}],"970":[{"level":35}],"972":[{"level":30,"time":"night"}],"975":[{"item":"ice-stone"}],"979":[{"uses":[889,20]}],"980":[{"level":20}],"981":[{"move":888}],"982":[{"move":887,"byPath":true}],"983":[{"defeat":[625,3]}],"997":[{"level":35}],"998":[{"level":54}],"1000":[{"item":"gimmighoul-coin","count":999}],"1011":[{"item":"syrupy-apple"}],"1013":[{"item":"unremarkable-teacup"}],"1018":[{"item":"metal-alloy"}],"1019":[{"move":913}]};
+
+/** Korean names of every item an evolution asks for, by PokeAPI slug. */
+export const EVO_ITEM_KO: Record<string, string> = {
+  "sun-stone": "태양의돌",
+  "moon-stone": "달의돌",
+  "fire-stone": "불꽃의돌",
+  "thunder-stone": "천둥의돌",
+  "water-stone": "물의돌",
+  "leaf-stone": "리프의돌",
+  "shiny-stone": "빛의돌",
+  "dusk-stone": "어둠의돌",
+  "dawn-stone": "각성의돌",
+  "oval-stone": "동글동글돌",
+  "kings-rock": "왕의징표석",
+  "deep-sea-tooth": "심해의이빨",
+  "deep-sea-scale": "심해의비늘",
+  "metal-coat": "금속코트",
+  "dragon-scale": "용의비늘",
+  "up-grade": "업그레이드",
+  "protector": "프로텍터",
+  "electirizer": "에레키부스터",
+  "magmarizer": "마그마부스터",
+  "dubious-disc": "괴상한패치",
+  "reaper-cloth": "영계의천",
+  "razor-claw": "예리한손톱",
+  "razor-fang": "예리한이빨",
+  "prism-scale": "고운비늘",
+  "whipped-dream": "휘핑팝",
+  "sachet": "향기주머니",
+  "ice-stone": "얼음의돌",
+  "strawberry-sweet": "딸기사탕공예",
+  "sweet-apple": "달콤한사과",
+  "tart-apple": "새콤한사과",
+  "cracked-pot": "깨진포트",
+  "scroll-of-darkness": "악의 족자",
+  "malicious-armor": "저주받은갑옷",
+  "gimmighoul-coin": "모으령의코인",
+  "auspicious-armor": "축복받은갑옷",
+  "syrupy-apple": "꿀맛사과",
+  "unremarkable-teacup": "범작찻잔",
+  "linking-cord": "연결의끈",
+  "black-augurite": "검은휘석",
+  "peat-block": "피트블록",
+  "metal-alloy": "복합금속"
+};
+
+/** Friendship each species starts at, by id. Index 0 is unused. */
+export const BASE_HAPPINESS: number[] = [0,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,140,140,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,140,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,35,35,35,35,35,35,0,100,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,140,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,35,35,70,35,70,70,70,70,70,70,70,70,70,70,70,70,70,70,35,70,70,70,70,70,70,70,70,70,70,70,70,35,35,70,70,70,70,70,70,70,70,70,70,70,70,140,35,35,35,35,35,35,0,0,100,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,35,35,35,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,35,70,35,35,35,70,70,70,70,70,70,70,70,70,70,70,35,35,70,70,70,70,70,70,70,70,70,70,70,35,35,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,35,35,35,35,70,70,35,70,70,70,70,70,70,70,70,70,70,70,35,35,35,35,35,35,35,35,35,90,90,0,0,0,100,0,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,100,70,70,70,70,70,70,70,70,70,70,70,70,100,70,70,70,70,70,70,100,70,70,0,140,35,35,70,70,70,70,70,70,70,70,70,140,35,70,70,70,70,70,70,70,70,70,70,70,100,70,70,70,70,70,70,70,35,70,70,70,70,70,70,70,70,35,35,70,70,70,35,70,35,70,70,140,140,140,0,0,100,0,0,100,70,70,0,100,0,100,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,35,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,35,35,35,70,70,70,70,70,70,70,70,70,70,70,35,35,70,70,70,35,35,70,70,35,35,35,70,70,35,35,35,90,90,0,0,90,0,35,100,0,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,35,35,35,70,70,70,70,70,70,70,70,70,0,0,0,70,100,100,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,0,0,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,140,50,50,50,50,50,50,50,50,50,50,50,0,0,0,50,50,0,35,35,35,35,100,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,20,0,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,20,20,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,0,0,0,0,0,0,0,0,0,0,0,0,50,50,50,50,50,0,0,0,0,0,0,0,0,0,0,50,50,50,0,0,0,50,50,50,0,0,0,0,50,0];
+
 export function speciesName(id: number, lang: 'ko' | 'en' = 'ko'): string {
   const n = NAMES[id];
   if (!n) return `#${id}`;

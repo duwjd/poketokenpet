@@ -66,6 +66,10 @@ export const STATE = {
     heightM: 0.6,
     weightKg: 13.5,
     withYou: 41_000_000,
+    level: 23,
+    friendship: 180,
+    evolves: [{ to: 6, name: '리자몽', ways: ['Lv.36'] }],
+    flip: null,
     path: [
       { id: 667, name: '레오꼬' },
       { id: 668, name: '화염레오' },
@@ -95,7 +99,7 @@ export const STATE = {
     battleForm: null as { id: number; kind: string; ko: string; sprite: string | null } | null,
   },
   eggSprite: null,
-  progress: { phase: 'growing', have: 8_000_000, need: 40_000_000, ratio: 0.2 },
+  progress: { phase: 'growing', have: 8_000_000, need: 40_000_000, ratio: 0.2, level: 23, total: 0.22 },
   dex: [
     {
       speciesId: 25,
@@ -144,9 +148,9 @@ export const STATE = {
     wallet: 43_000_000,
     clerk: 'npc-waitress.png' as string | null,
     products: [
-      { id: 'rare-candy', name: '이상한사탕', desc: '진행도 +25%', kind: 'item', group: 'growth', price: 32_041_264, sprite: 'item-rare-candy.png', owned: false },
-      { id: 'key-stone', name: '키스톤', desc: '배틀에서 메가진화', kind: 'item', group: 'evolution', price: 534_021_060, sprite: 'item-key-stone.png', owned: false },
-      { id: 'egg-legendary', name: '전설의 알', desc: '전설 보장', kind: 'egg', group: 'egg', price: 2_136_084_240, sprite: null, owned: false },
+      { id: 'rare-candy', name: '이상한사탕', desc: '진행도 +25%', kind: 'item', group: 'growth', price: 32_041_264, sprite: 'item-rare-candy.png', owned: false, shelved: true },
+      { id: 'key-stone', name: '키스톤', desc: '배틀에서 메가진화', kind: 'item', group: 'evolution', price: 534_021_060, sprite: 'item-key-stone.png', owned: false, shelved: true },
+      { id: 'egg-legendary', name: '전설의 알', desc: '전설 보장', kind: 'egg', group: 'egg', price: 2_136_084_240, sprite: null, owned: false, shelved: true },
     ],
   },
   bag: {
@@ -234,6 +238,20 @@ export const STATE = {
       power: 90,
       accuracy: 100,
       pp: 15,
+      damageClass: 'special',
+      sprite: 'item-tm-fire.png',
+    },
+  ],
+  relearnable: [
+    {
+      id: 52,
+      name: '불꽃세례',
+      nameEn: 'Ember',
+      type: 'fire',
+      typeName: '불꽃',
+      power: 40,
+      accuracy: 100,
+      pp: 25,
       damageClass: 'special',
       sprite: 'item-tm-fire.png',
     },

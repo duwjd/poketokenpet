@@ -25,7 +25,18 @@ import {
   type Prefs,
 } from './api.ts';
 
-type Progress = { phase: 'egg' | 'growing' | 'final'; have: number; need: number; ratio: number };
+/**
+ * The gauge. An egg counts toward hatching; a companion toward its next level —
+ * `level` is where it stands, and `total` the whole way from hatch to 100.
+ */
+type Progress = {
+  phase: 'egg' | 'growing' | 'final';
+  have: number;
+  need: number;
+  ratio: number;
+  level: number;
+  total: number;
+};
 
 type Companion = {
   speciesId: number;
@@ -47,6 +58,15 @@ type Companion = {
   weightKg: number;
   /** Progress burned since this one hatched. */
   withYou: number;
+  /** 1..100. Hatching is 1, graduating into the dex is 100. */
+  level: number;
+  friendship: number;
+  /** What each next evolution needs, in words. Empty at the last stage. */
+  evolves: { to: number; name: string; ways: string[] }[];
+  /** 오케이징: its next evolution needs holding it upside down, and whether it is. */
+  flip: { on: boolean } | null;
+  /** Its ability — the games' own, working in battle — and whether it is the hidden one. */
+  ability: { ko: string; hidden: boolean } | null;
   path: { id: number; name: string }[];
   /** The id actually drawn. Differs from speciesId only when fused. */
   displayId: number;
@@ -141,6 +161,8 @@ type HuntLogEntry = {
   icon: string | null;
   /** Set when this encounter was a gated legendary. */
   legend?: { speciesId: number; won: boolean };
+  /** A wild fight's outcome. Absent on older entries and on every named fight. */
+  won?: boolean;
   /** The blow-by-blow, again only for the newest entry. */
   battle: SceneBattle | null;
   /** Set when this encounter was a trainer rather than a wild Pokemon. */
@@ -182,6 +204,8 @@ type State = {
     rarity: string;
     generation: number;
     types: { id: string; name: string }[];
+    /** The ability this species graduated with, or null for an entry from before abilities. */
+    abilityKo?: string | null;
   }[];
   dexTotal: number;
   retiredCount: number;
@@ -201,6 +225,8 @@ type State = {
       sprite: string | null;
       /** Which shelf it sits on. Drives the category chips. */
       group: 'egg' | 'growth' | 'evolution';
+      /** On the shelf right now. An evolution item is only while this companion can use it. */
+      shelved: boolean;
       /** Already owned. Only ever true for the items that need owning once. */
       owned: boolean;
       /** An achievement reward. Shipped for the bag's sake, never shelved. */
@@ -268,6 +294,8 @@ type State = {
     log: HuntLogEntry[];
   };
   moves: MoveCard[];
+  /** Level-up moves it has learned and is not using — free to put back. */
+  relearnable: MoveCard[];
   tms: (MoveCard & { count: number })[];
   unusableTmCount: number;
   legends: {
@@ -435,7 +463,7 @@ const CLERK_PX = 160;
  * I press it".
  */
 const ITEM_DESC: Record<string, string> = {
-  'rare-candy': '지금 단계 진행도를 25% 채웁니다.',
+  'rare-candy': '레벨이 1 오릅니다. 알일 때는 부화까지를 25% 채웁니다.',
   'shiny-charm': '다음 부화 한 번만 샤이니 확률이 8배가 됩니다.',
   everstone: '진화와 졸업을 멈춰 지금 모습을 유지합니다. 해제는 무료입니다.',
   'key-stone': '가지고 있으면 메가스톤이 있는 종이 배틀에서 메가진화합니다.',
@@ -671,6 +699,33 @@ const ENTRYPOINT_LABEL: Record<string, string> = {
 };
 
 /** Desktop-pet controls. Only rendered inside Electron. */
+/**
+ * An on/off setting, drawn as the design system's switch (docs/DESIGN-SYSTEM.md,
+ * Toggle). `word` is what the state is called on this row — 켜짐, 적용 중,
+ * 물어봄 — printed beside the knob so the state never rests on colour alone.
+ * The setting's own name is the switch's accessible name.
+ */
+function Toggle({
+  label,
+  on,
+  word,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  on: boolean;
+  word: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button className="px-toggle" role="switch" aria-checked={on} aria-label={label} disabled={disabled} onClick={onClick}>
+      <span className="px-toggle-track" aria-hidden="true" />
+      {word}
+    </button>
+  );
+}
+
 function PetSettings() {
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [sizes, setSizes] = useState<number[]>([]);
@@ -698,24 +753,33 @@ function PetSettings() {
             화면에 표시
             <em>바탕화면 위에 항상 떠 있습니다. 드래그로 이동, 휠로 크기 조절.</em>
           </span>
-          <button onClick={() => set({ petEnabled: !prefs.petEnabled })}>
-            {prefs.petEnabled ? '켜짐' : '꺼짐'}
-          </button>
+          <Toggle
+            label="화면에 표시"
+            on={prefs.petEnabled}
+            word={prefs.petEnabled ? '켜짐' : '꺼짐'}
+            onClick={() => set({ petEnabled: !prefs.petEnabled })}
+          />
         </li>
         <li>
           <span className="lbl">항상 위에</span>
-          <button onClick={() => set({ petAlwaysOnTop: !prefs.petAlwaysOnTop })}>
-            {prefs.petAlwaysOnTop ? '켜짐' : '꺼짐'}
-          </button>
+          <Toggle
+            label="항상 위에"
+            on={prefs.petAlwaysOnTop}
+            word={prefs.petAlwaysOnTop ? '켜짐' : '꺼짐'}
+            onClick={() => set({ petAlwaysOnTop: !prefs.petAlwaysOnTop })}
+          />
         </li>
         <li>
           <span className="lbl">
             클릭 통과
             <em>켜면 펫이 마우스를 받지 않아 뒤쪽 창을 그대로 클릭할 수 있습니다.</em>
           </span>
-          <button onClick={() => set({ petClickThrough: !prefs.petClickThrough })}>
-            {prefs.petClickThrough ? '켜짐' : '꺼짐'}
-          </button>
+          <Toggle
+            label="클릭 통과"
+            on={prefs.petClickThrough}
+            word={prefs.petClickThrough ? '켜짐' : '꺼짐'}
+            onClick={() => set({ petClickThrough: !prefs.petClickThrough })}
+          />
         </li>
         <li>
           <span className="lbl">크기</span>
@@ -723,7 +787,8 @@ function PetSettings() {
             {sizes.map((s) => (
               <button
                 key={s}
-                className={prefs.petSize === s ? 'on' : ''}
+                className="px-chip"
+                aria-pressed={prefs.petSize === s}
                 onClick={() => set({ petSize: s })}
               >
                 {s}
@@ -733,18 +798,27 @@ function PetSettings() {
         </li>
         <li>
           <span className="lbl">로그인 시 자동 실행</span>
-          <button onClick={() => set({ openAtLogin: !prefs.openAtLogin })}>
-            {prefs.openAtLogin ? '켜짐' : '꺼짐'}
-          </button>
+          <Toggle
+            label="로그인 시 자동 실행"
+            on={prefs.openAtLogin}
+            word={prefs.openAtLogin ? '켜짐' : '꺼짐'}
+            onClick={() => set({ openAtLogin: !prefs.openAtLogin })}
+          />
         </li>
         <li>
           <span className="lbl">펫 위치 초기화</span>
-          <button onClick={() => set({ petX: null, petY: null })}>초기화</button>
+          <button className="px-btn" onClick={() => set({ petX: null, petY: null })}>초기화</button>
         </li>
       </ul>
     </>
   );
 }
+
+/**
+ * How long an accepted fight may take to reach the scene before the panel
+ * stops waiting for it. Well past one poll and a sprite download.
+ */
+const AWAIT_MS = 20_000;
 
 export default function App() {
   const [state, setState] = useState<State | null>(null);
@@ -807,8 +881,43 @@ export default function App() {
   /** Tab buttons, so arrow keys can move focus as well as selection. */
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const refresh = useRef<(force?: boolean) => Promise<void>>(async () => {});
+  /**
+   * Whether a battle is on screen, or an accepted one is about to be.
+   *
+   * Two flags because the gap between them is where the spoiler lived: the
+   * accept returns, the next payload lands with the fight already decided —
+   * a badge on the case, an evolution, an award — and only THEN does the scene
+   * start. `awaiting` covers that gap; `playing` covers the fight itself.
+   * Refs as well as state, because the poll reads them from a closure that
+   * never re-subscribes.
+   */
+  const [playing, setPlaying] = useState(false);
+  const [awaiting, setAwaiting] = useState(false);
+  const holdRef = useRef(false);
+  useEffect(() => {
+    holdRef.current = playing || awaiting;
+  }, [playing, awaiting]);
+  /** Toasts that arrived while a fight was playing, shown once it is over. */
+  const held = useRef<string[]>([]);
+  /**
+   * Show a toast now, or once the fight on screen is over.
+   *
+   * Every announcement the poll makes goes through here. An evolution, an
+   * award or a new badge's worth of progress landing mid-fight tells you how
+   * the fight ends before it does.
+   */
+  const announce = (line: string, ms = 4000) => {
+    if (holdRef.current) {
+      held.current.push(line);
+      return;
+    }
+    setFlash(line);
+    setTimeout(() => setFlash(null), ms);
+  };
   /** The TM waiting on a slot choice, once all four are full. */
   const [pendingTm, setPendingTm] = useState<number | null>(null);
+  /** A level-up move waiting for a slot to go into, once all four are full. */
+  const [pendingRelearn, setPendingRelearn] = useState<number | null>(null);
   /** Non-null while the rename box is open; holds the draft. */
   const [draftName, setDraftName] = useState<string | null>(null);
   /** Whether the hunt log is expanded on the 기록 tab. */
@@ -989,12 +1098,53 @@ export default function App() {
     setDexErr(null);
   };
 
+  /** Show what was held back during a fight, all at once. */
+  const release = () => {
+    holdRef.current = false;
+    const lines = held.current;
+    held.current = [];
+    if (!lines.length) return;
+    setFlash(lines.join(' · '));
+    setTimeout(() => setFlash(null), 4000);
+  };
+
+  /** The scene says when a fight starts and stops being on screen. */
+  const onPlaying = (on: boolean) => {
+    setPlaying(on);
+    if (on) {
+      holdRef.current = true;
+      setAwaiting(false);
+      return;
+    }
+    release();
+  };
+
+  /**
+   * An accepted fight the scene never picked up — a failed poll, a companion
+   * gone — must not hold the panel's toasts and the offer card for ever.
+   */
+  useEffect(() => {
+    if (!awaiting) return;
+    const t = setTimeout(() => {
+      setAwaiting(false);
+      release();
+    }, AWAIT_MS);
+    return () => clearTimeout(t);
+  }, [awaiting]);
+
   const act = async (action: PetActionKind, id: string, slot: number | null = null) => {
     setBusy(true);
     try {
       const out = await shopAction(action, id, slot);
-      setFlash(out.message ?? (out.ok ? '완료' : '실패'));
-      setTimeout(() => setFlash(null), 3000);
+      if (action === 'challenge' && id.startsWith('accept') && out.ok) {
+        // No toast: the scene is about to play the fight, and it is the scene
+        // that says how it went. Hold everything else until it has.
+        setAwaiting(true);
+        holdRef.current = true;
+      } else {
+        setFlash(out.message ?? (out.ok ? '완료' : '실패'));
+        setTimeout(() => setFlash(null), 3000);
+      }
       refresh.current();
     } catch (e) {
       setFlash(String(e));
@@ -1052,12 +1202,10 @@ export default function App() {
 
         const id = data.companion?.speciesId ?? null;
         if (prevSpecies.current !== null && id !== null && id !== prevSpecies.current) {
-          setFlash(`${data.companion!.name}${euro(data.companion!.name)} 진화!`);
-          setTimeout(() => setFlash(null), 4000);
+          announce(`${data.companion!.name}${euro(data.companion!.name)} 진화!`);
         }
         if (prevSpecies.current === null && id !== null && data.events.some((e) => e.kind === 'hatched')) {
-          setFlash(`${data.companion!.name} 부화!`);
-          setTimeout(() => setFlash(null), 4000);
+          announce(`${data.companion!.name} 부화!`);
         }
         prevSpecies.current = id;
 
@@ -1074,8 +1222,7 @@ export default function App() {
         if (seenOffer.current === undefined) {
           seenOffer.current = offer;
         } else if (offer && offer !== seenOffer.current) {
-          setFlash(`${data.hunt.challenge!.ko} · 승부를 걸어왔습니다`);
-          setTimeout(() => setFlash(null), 4000);
+          announce(`${data.hunt.challenge!.ko} · 승부를 걸어왔습니다`);
           seenOffer.current = offer;
         } else {
           seenOffer.current = offer;
@@ -1090,10 +1237,7 @@ export default function App() {
         } else {
           const fresh = data.awards.find((a) => a.at !== null && !seenAwards.current!.has(a.id));
           seenAwards.current = unlocked;
-          if (fresh) {
-            setFlash(`업적 달성 — ${fresh.ko}`);
-            setTimeout(() => setFlash(null), 4000);
-          }
+          if (fresh) announce(`업적 달성 — ${fresh.ko}`);
         }
 
       } catch (e) {
@@ -1253,6 +1397,8 @@ export default function App() {
    */
   /** A bag item's icon, borrowed from the shop row that sells the same id. */
   const itemIcon = (id: string) => state.shop.products.find((p) => p.id === id)?.sprite ?? null;
+  /** The six shop items by their fixed names; an evolution item by its shop row's. */
+  const itemName = (id: string) => ITEM_NAMES[id] ?? state.shop.products.find((p) => p.id === id)?.name ?? id;
 
   const bagKey = bagOver ?? bagPin;
   const bagShown = ((): { name: string; desc: string } | null => {
@@ -1267,8 +1413,10 @@ export default function App() {
       const st = state.bag.stones.find((x) => String(x.id) === key);
       return st ? { name: st.ko, desc: `${st.formKo}${euro(st.formKo)} 메가진화합니다.` } : null;
     }
-    const desc = ITEM_DESC[key];
-    return desc ? { name: ITEM_NAMES[key] ?? key, desc } : null;
+    // An evolution item names and describes itself through its shop row.
+    const row = state.shop.products.find((p) => p.id === key);
+    const desc = ITEM_DESC[key] ?? row?.desc;
+    return desc ? { name: itemName(key), desc } : null;
   })();
 
   /** Whatever the companion is actually called, for the egg warning. */
@@ -1411,7 +1559,7 @@ export default function App() {
     return [...seen, ...locked, ...missing].sort((a, b) => a.speciesId - b.speciesId);
   })();
   const affordable = state.shop.products.filter(
-    (p) => !p.award && state.shop.wallet >= p.price,
+    (p) => p.shelved && state.shop.wallet >= p.price,
   ).length;
 
   /** Generations present in the gate table, in order. */
@@ -1482,7 +1630,11 @@ export default function App() {
        here rather than on each window that wears one — `.scene` sets its own
        copy inline, which is how it keeps the bright frame in dark mode. */
     <div className="app" style={battleUiVars() as React.CSSProperties}>
-      {flash && <div className="flash">{flash}</div>}
+      {flash && (
+        <div className="px-toast flash" role="status">
+          {flash}
+        </div>
+      )}
 
       {/*
         A real tablist, not just the roles.
@@ -1552,7 +1704,7 @@ export default function App() {
         <div className="stale" title={error ?? undefined}>
           <span>연결 실패 · {agoLabel(staleMs)} 정보</span>
           <button
-            className="linky"
+            className="px-btn px-btn--link"
             disabled={retrying}
             onClick={async () => {
               setRetrying(true);
@@ -1598,6 +1750,7 @@ export default function App() {
         timeOfDay={timeOfDayAt(new Date())}
         fx={state.fx}
         capped={huntCapped}
+        onPlaying={onPlaying}
       />
 
       {/* The challenge on offer.
@@ -1607,7 +1760,9 @@ export default function App() {
           nothing on screen to show it — which is the entire problem this
           feature exists to fix. The button has to live where the battle will
           appear. */}
-      {state.hunt.challenge && (
+      {/* Hidden while a fight is on screen or about to be: the card vanishing
+          the moment a badge is won would say so before the battle has. */}
+      {state.hunt.challenge && !awaiting && !playing && (
         <div className="offer">
           <span className="art">
             {state.hunt.challenge.sprite ? (
@@ -1628,13 +1783,13 @@ export default function App() {
             <em className="muted">기회 {state.hunt.challenge.left}번 남음</em>
           </span>
           <span className="acts">
-            <button
+            <button className="px-btn px-btn--primary"
               onClick={() => act('challenge', `accept:${state.hunt.challenge!.id}`)}
               disabled={busy}
             >
               도전
             </button>
-            <button className="linky" onClick={() => act('challenge', 'decline')} disabled={busy}>
+            <button className="px-btn px-btn--link" onClick={() => act('challenge', 'decline')} disabled={busy}>
               나중에
             </button>
           </span>
@@ -1679,7 +1834,7 @@ export default function App() {
                 }
               }}
             />
-            <button
+            <button className="px-btn"
               disabled={busy}
               onClick={() => {
                 const next = draftName;
@@ -1712,14 +1867,15 @@ export default function App() {
         )}
       </div>
 
-      <div className="bar" role="progressbar" aria-valuenow={pct}>
-        <div className="fill" style={{ width: `${pct}%` }} />
+      <div className="px-gauge" role="progressbar" aria-valuenow={pct} aria-valuemax={100} style={{ '--v': pct } as React.CSSProperties}>
+        <i />
       </div>
       <p className="muted sub">
-        {progress.phase === 'egg' && `부화까지 ${compact(remaining)} 남음`}
-        {progress.phase === 'growing' && `다음 진화까지 ${compact(remaining)} 남음`}
-        {progress.phase === 'final' && `졸업까지 ${compact(remaining)} 남음`}
-        {' · '}{pct}%
+        {progress.phase === 'egg' && `부화까지 ${compact(remaining)} 남음 · ${pct}%`}
+        {progress.phase !== 'egg' &&
+          (progress.level >= 100
+            ? 'Lv.100 · 졸업을 기다립니다'
+            : `Lv.${progress.level} · 다음 레벨까지 ${compact(remaining)} 남음 · 졸업까지 ${Math.round(progress.total * 100)}%`)}
       </p>
 
       {companion && companion.stageCount > 1 && (
@@ -1738,11 +1894,36 @@ export default function App() {
           <h2>상태</h2>
           <ul className="bars info">
             <li>
+              <span className="lbl">레벨</span>
+              <span className="num">Lv.{companion.level}</span>
+            </li>
+            <li>
               <span className="lbl">단계</span>
               <span className="num">
                 {companion.stageIndex + 1} / {companion.stageCount}
               </span>
             </li>
+            {/*
+              * What each next evolution needs. One row per branch, each way
+              * separated — "Lv.36", "천둥의돌", "친밀도 160 · 밤". A stone is
+              * used from the bag; the shop sells the ones this companion can use.
+              */}
+            {companion.evolves.map((e) => (
+              <li key={e.to}>
+                <span className="lbl">{e.name}{josa(e.name, '으로', '로')}</span>
+                <span className="num pending">{e.ways.join(' 또는 ')}</span>
+              </li>
+            ))}
+            <li>
+              <span className="lbl">친밀도</span>
+              <span className="num">{companion.friendship}</span>
+            </li>
+            {companion.ability && (
+              <li>
+                <span className="lbl">{companion.ability.hidden ? '숨겨진 특성' : '특성'}</span>
+                <span className="num">{companion.ability.ko}</span>
+              </li>
+            )}
             <li>
               <span className="lbl">희귀도</span>
               <span className="num">{RARITY_LABEL[companion.rarity]}</span>
@@ -1784,6 +1965,23 @@ export default function App() {
               </li>
             ))}
           </ul>
+          {companion.flip && (
+            <ul className="items">
+              <li>
+                <span className="lbl">
+                  거꾸로 들기
+                  <em>다음 레벨업 때 거꾸로 들고 있으면 진화합니다. 레벨업이 지나면 다시 바로 듭니다.</em>
+                </span>
+                <Toggle
+                  label="거꾸로 들기"
+                  on={companion.flip.on}
+                  word={companion.flip.on ? '거꾸로' : '바로'}
+                  disabled={busy}
+                  onClick={() => act('flip', companion.flip!.on ? 'off' : 'on')}
+                />
+              </li>
+            </ul>
+          )}
           {companion.battleForm && (
             <ul className="items">
               <li>
@@ -1795,12 +1993,13 @@ export default function App() {
                     펫과 이 화면에도 그 모습으로 보입니다 — 보이기만 할 뿐 규칙은 그대로입니다.
                   </em>
                 </span>
-                <button
+                <Toggle
+                  label="배틀 모습으로 보기"
+                  on={state.bag.showBattleForm}
+                  word={state.bag.showBattleForm ? '켜짐' : '꺼짐'}
                   disabled={busy}
                   onClick={() => act('form', state.bag.showBattleForm ? 'off' : 'on')}
-                >
-                  {state.bag.showBattleForm ? '켜짐' : '꺼짐'}
-                </button>
+                />
               </li>
             </ul>
           )}
@@ -1826,6 +2025,9 @@ export default function App() {
               // The server refuses this too, but a disabled button that says
               // why is a rule; a red toast after the click is an error.
               const lastAttack = isAttack(m) && state.moves.filter(isAttack).length === 1;
+              const incoming = pendingRelearn === null ? null : state.relearnable.find((r) => r.id === pendingRelearn);
+              // Swapping in another attack is always fine; a status move may not push out the last one.
+              const blocked = lastAttack && (!incoming || !isAttack(incoming));
               return (
                 <li key={m.id} data-type={m.type} className={`row${bagKey === `tm:${m.id}` ? ' on' : ''}`}>
                   {m.sprite ? (
@@ -1837,17 +2039,65 @@ export default function App() {
                     {m.name}
                     <em>{lastAttack ? `${moveSummary(m)} · 하나뿐인 공격 기술` : moveSummary(m)}</em>
                   </span>
-                  <button
-                    disabled={busy || lastAttack}
-                    title={lastAttack ? '공격 기술은 하나 남겨두어야 합니다.' : undefined}
-                    onClick={() => act('forget', String(i))}
-                  >
-                    잊기
-                  </button>
+                  {incoming ? (
+                    <button className="px-btn"
+                      disabled={busy || blocked}
+                      onClick={() => {
+                        setPendingRelearn(null);
+                        void act('relearn', String(incoming.id), i);
+                      }}
+                    >
+                      교체
+                    </button>
+                  ) : (
+                    <button className="px-btn"
+                      disabled={busy || lastAttack}
+                      title={lastAttack ? '공격 기술은 하나 남겨두어야 합니다.' : undefined}
+                      onClick={() => act('forget', String(i))}
+                    >
+                      잊기
+                    </button>
+                  )}
                 </li>
               );
             })}
           </ul>
+
+          {/*
+            * The games' move reminder: level-up moves it has learned and is not
+            * using. Free — they were never TMs. With four already known, the
+            * row asks which one to replace, and the four rows above answer.
+            */}
+          {state.relearnable.length > 0 && (
+            <>
+              <h2>
+                떠올릴 수 있는 기술 <em className="muted">{state.relearnable.length}</em>
+              </h2>
+              <ul className="items">
+                {state.relearnable.map((m) => (
+                  <li key={m.id} data-type={m.type} className={`row${pendingRelearn === m.id ? ' on' : ''}`}>
+                    {m.sprite ? <img className="icon" src={spriteUrl(m.sprite)} alt="" /> : <span className="icon" />}
+                    <span className="lbl">
+                      {m.name}
+                      <em>
+                        {pendingRelearn === m.id ? '위에서 잊을 기술을 고르세요' : moveSummary(m)}
+                      </em>
+                    </span>
+                    <button className="px-btn"
+                      disabled={busy}
+                      onClick={() => {
+                        if (pendingRelearn === m.id) return setPendingRelearn(null);
+                        if (state.moves.length < state.hunt.slots) void act('relearn', String(m.id));
+                        else setPendingRelearn(m.id);
+                      }}
+                    >
+                      {pendingRelearn === m.id ? '취소' : '떠올리기'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </>
       )}
 
@@ -1918,7 +2168,7 @@ export default function App() {
           방금 {state.hunt.log[0].trainer?.name ?? state.hunt.log[0].wildName}
           {state.hunt.log[0].tokens > 0 && ` · +${compact(state.hunt.log[0].tokens)}`}
           {' · '}
-          <button className="linky" onClick={() => goTab('stats')}>
+          <button className="px-btn px-btn--link" onClick={() => goTab('stats')}>
             사냥 기록 보기
           </button>
         </p>
@@ -1945,8 +2195,12 @@ export default function App() {
                 </span>
                 <span className="who">
                   {e.trainer ? e.trainer.name : e.wildName}
-                  {/* A legendary fight can be lost too, and the row said
-                      nothing about it — the badge was gated on `trainer`. */}
+                  {/* A legendary fight can be lost too, and so can a wild
+                      one now. Only a LOSS is marked on a wild row: nine in ten
+                      of them are wins, and a 승 on every line is noise. */}
+                  {!e.trainer && !e.legend && e.won === false && (
+                    <em className="how loss"> 패</em>
+                  )}
                   {(e.trainer || e.legend) && (
                     <em className={`how ${(e.trainer?.won ?? e.legend?.won) ? 'win' : 'loss'}`}>
                       {' '}
@@ -1968,7 +2222,7 @@ export default function App() {
           </ul>
           {state.hunt.log.length > 5 && (
             <p className="muted sub">
-              <button className="linky" onClick={() => setAllHunts(!allHunts)}>
+              <button className="px-btn px-btn--link" onClick={() => setAllHunts(!allHunts)}>
                 {allHunts ? '접기' : `전체 ${state.hunt.log.length}건 보기`}
               </button>
             </p>
@@ -1985,7 +2239,7 @@ export default function App() {
             return (
               <li key={k}>
                 <span className="lbl">{ENTRYPOINT_LABEL[k] ?? k}</span>
-                <span className="track"><i style={{ width: `${(v / max) * 100}%` }} /></span>
+                <span className="px-gauge px-gauge--thin track" style={{ '--v': (v / max) * 100 } as React.CSSProperties}><i /></span>
                 <span className="num">{compact(v)}</span>
               </li>
             );
@@ -2003,7 +2257,7 @@ export default function App() {
             return (
               <li key={d}>
                 <span className="lbl">{d.slice(5)}</span>
-                <span className="track"><i style={{ width: `${(v / max) * 100}%` }} /></span>
+                <span className="px-gauge px-gauge--thin track" style={{ '--v': (v / max) * 100 } as React.CSSProperties}><i /></span>
                 <span className="num">{compact(v)}</span>
               </li>
             );
@@ -2019,7 +2273,7 @@ export default function App() {
             return (
               <li key={k}>
                 <span className="lbl" title={k}>{k.replace('claude-', '')}</span>
-                <span className="track"><i style={{ width: `${(v / max) * 100}%` }} /></span>
+                <span className="px-gauge px-gauge--thin track" style={{ '--v': (v / max) * 100 } as React.CSSProperties}><i /></span>
                 <span className="num">{compact(v)}</span>
               </li>
             );
@@ -2034,11 +2288,11 @@ export default function App() {
       {/* Pockets, which is how the games carve a bag up — five Cases in Gen 5.
           Three here, and they exist whether or not they hold anything. Without
           them fourteen TMs, the items and the stones are one endless column. */}
-      <div className="chips shopchips" role="group" aria-label="가방 주머니">
+      <div className="px-chips chips shopchips" role="group" aria-label="가방 주머니">
         {POCKETS.map((k) => (
           <button
             key={k.id}
-            className={pocket === k.id ? 'on' : ''}
+            className="px-chip px-chip--sm" aria-pressed={pocket === k.id}
             onClick={() => {
               setPocket(k.id);
               setTmPage(0);
@@ -2091,7 +2345,7 @@ export default function App() {
           <p className="pickhint">
             {pendingTmName}
             {josa(pendingTmName, '을', '를')} 배우려면 하나를 잊어야 합니다.{' '}
-            <button className="linky" onClick={() => setPendingTm(null)}>
+            <button className="px-btn px-btn--link" onClick={() => setPendingTm(null)}>
               취소
             </button>
           </p>
@@ -2110,7 +2364,7 @@ export default function App() {
                     {m.name}
                     <em>{lastAttack ? `${moveSummary(m)} · 하나뿐인 공격 기술` : moveSummary(m)}</em>
                   </span>
-                  <button
+                  <button className="px-btn"
                     disabled={busy || lastAttack}
                     title={lastAttack ? '공격 기술은 하나 남겨두어야 합니다.' : undefined}
                     onClick={() => {
@@ -2155,7 +2409,7 @@ export default function App() {
                   {m.name} {m.count > 1 && <b>×{m.count}</b>}
                 </span>
               </button>
-              <button
+              <button className="px-btn"
                 disabled={busy}
                 onClick={() =>
                   // Four slots full? Ask which one to overwrite instead of
@@ -2180,7 +2434,7 @@ export default function App() {
         */}
       {tmPages > 1 && pendingTmName === null && (
         <div className="pager">
-          <button
+          <button className="px-btn"
             aria-label="이전 쪽"
             disabled={tmAt === 0}
             onClick={() => setTmPage(tmAt - 1)}
@@ -2190,7 +2444,7 @@ export default function App() {
           <span className="num">
             {tmAt + 1} / {tmPages}
           </span>
-          <button
+          <button className="px-btn"
             aria-label="다음 쪽"
             disabled={tmAt >= tmPages - 1}
             onClick={() => setTmPage(tmAt + 1)}
@@ -2242,19 +2496,19 @@ export default function App() {
                   onClick={() => setBagPin(bagPin === `item:${id}` ? null : `item:${id}`)}
                 >
                   <span>
-                    {ITEM_NAMES[id] ?? id} <b>×{n}</b>
+                    {itemName(id)} <b>×{n}</b>
                   </span>
                 </button>
                 {choices.length > 1 && !fused ? (
                   <span className="picker">
                     {choices.map((f) => (
-                      <button key={f.id} onClick={() => act('use', id, f.id)} disabled={busy}>
+                      <button className="px-btn" key={f.id} onClick={() => act('use', id, f.id)} disabled={busy}>
                         {f.partnerKo}
                       </button>
                     ))}
                   </span>
                 ) : (
-                  <button onClick={() => act('use', id)} disabled={busy}>
+                  <button className="px-btn" onClick={() => act('use', id)} disabled={busy}>
                     {fused ? '분리' : worn ? '해제' : '사용'}
                   </button>
                 )}
@@ -2293,7 +2547,7 @@ export default function App() {
               >
                 {/* No count: an accessory is not a stack, and a ×1 beside it
                     reads as something you spend. */}
-                <span>{ITEM_NAMES[id] ?? id}</span>
+                <span>{itemName(id)}</span>
               </button>
               <span className="badge">보유 중</span>
             </li>
@@ -2376,7 +2630,7 @@ export default function App() {
           {/* It says 조건 and offered no way to see them. `goTab` resets the
               dex view, so it has to be set after the switch. */}
           <button
-            className="linky"
+            className="px-btn px-btn--link"
             onClick={() => {
               goTab('dex');
               setDexView('legends');
@@ -2402,7 +2656,7 @@ export default function App() {
                 </span>
                 {it.forKo && <em>{it.forKo}{josa(it.forKo, '을', '를')} 부릅니다.</em>}
               </span>
-              <button onClick={() => act('legend', it.slug)} disabled={busy}>
+              <button className="px-btn" onClick={() => act('legend', it.slug)} disabled={busy}>
                 사용
               </button>
             </li>
@@ -2425,12 +2679,12 @@ export default function App() {
                     {sh.count} / {sh.need}
                   </em>
                 </span>
-                <span className="track" aria-hidden="true">
-                  <i style={{ width: `${Math.min(100, (sh.count / sh.need) * 100)}%` }} />
+                <span className="px-gauge px-gauge--thin track" aria-hidden="true" style={{ '--v': Math.min(100, (sh.count / sh.need) * 100) } as React.CSSProperties}>
+                  <i />
                 </span>
               </span>
               {sh.ready && (
-                <button onClick={() => act('fuse', sh.slug)} disabled={busy}>
+                <button className="px-btn" onClick={() => act('fuse', sh.slug)} disabled={busy}>
                   합치기
                 </button>
               )}
@@ -2459,7 +2713,7 @@ export default function App() {
                   {companion ? `${companion.nickname ?? companion.name}${josa(companion.nickname ?? companion.name, '은', '는')} 도감으로 떠납니다.` : '바로 품기 시작합니다.'}
                 </em>
               </span>
-              <button onClick={() => act('legendegg', String(eg.speciesId))} disabled={busy}>
+              <button className="px-btn" onClick={() => act('legendegg', String(eg.speciesId))} disabled={busy}>
                 품기
               </button>
             </li>
@@ -2478,7 +2732,7 @@ export default function App() {
       <div className="dexbar">
         <h2>도감</h2>
         {dexView === 'dex' && (
-          <button className="linky" onClick={() => setShowFilters(!showFilters)}>
+          <button className="px-btn px-btn--link" onClick={() => setShowFilters(!showFilters)}>
             {showFilters ? '필터 닫기' : '필터'}
             {activeFilters > 0 && ` (${activeFilters})`}
           </button>
@@ -2491,14 +2745,14 @@ export default function App() {
           Named 전설 목록 rather than 전설 because the rarity filter below
           already has a chip called 전설, and two buttons of the same name in
           one screen is a coin toss for anything looking one up. */}
-      <div className="chips shopchips" role="group" aria-label="도감 화면">
-        <button className={dexView === 'dex' ? 'on' : ''} onClick={() => setDexView('dex')}>
+      <div className="px-chips chips shopchips" role="group" aria-label="도감 화면">
+        <button className="px-chip px-chip--sm" aria-pressed={dexView === 'dex'} onClick={() => setDexView('dex')}>
           도감
         </button>
-        <button className={dexView === 'legends' ? 'on' : ''} onClick={() => setDexView('legends')}>
+        <button className="px-chip px-chip--sm" aria-pressed={dexView === 'legends'} onClick={() => setDexView('legends')}>
           전설 목록
         </button>
-        <button className={dexView === 'party' ? 'on' : ''} onClick={() => setDexView('party')}>
+        <button className="px-chip px-chip--sm" aria-pressed={dexView === 'party'} onClick={() => setDexView('party')}>
           파티 {state.party.members.length} / {state.party.size}
         </button>
       </div>
@@ -2557,10 +2811,10 @@ export default function App() {
                   {m.moves.length ? m.moves.map((x) => x.name).join(' · ') : '기술이 없습니다.'}
                 </em>
               </span>
-              <button onClick={() => setPartySeat(partySeat === i ? null : i)}>
+              <button className="px-btn" onClick={() => setPartySeat(partySeat === i ? null : i)}>
                 {partySeat === i ? '닫기' : '기술'}
               </button>
-              <button onClick={() => void act('partyclear', String(i))} disabled={busy}>
+              <button className="px-btn" onClick={() => void act('partyclear', String(i))} disabled={busy}>
                 빼기
               </button>
             </li>
@@ -2629,7 +2883,7 @@ export default function App() {
                       {mv.typeName} · {mv.damageClass === 'status' ? '변화' : `위력 ${mv.power}`}
                     </em>
                   </span>
-                  <button
+                  <button className="px-btn"
                     disabled={busy}
                     onClick={() =>
                       void act(
@@ -2657,8 +2911,8 @@ export default function App() {
         <span className="muted">종 조우 가능 / {state.legends.gates.length}종</span>
         {legendsDone > 0 && <span className="muted"> · {legendsDone}종 도감 등록</span>}
       </p>
-      <div className="bar" role="progressbar" aria-valuenow={legendPct}>
-        <i className="fill" style={{ width: `${legendPct}%` }} />
+      <div className="px-gauge" role="progressbar" aria-valuenow={legendPct} aria-valuemax={100} style={{ '--v': legendPct } as React.CSSProperties}>
+        <i />
       </div>
       <p className="muted sub note">
         조건을 채우면 야생에서 만날 수 있게 됩니다. 이기면 그 포켓몬의 알이 남고, 알을 품어
@@ -2704,8 +2958,8 @@ export default function App() {
                 {g.itemKo && !g.held ? ` · ${g.itemKo} 필요` : ''}
               </em>
               {!g.open && (
-                <span className="track" aria-hidden="true">
-                  <i style={{ width: `${g.ratio * 100}%` }} />
+                <span className="px-gauge px-gauge--thin track" aria-hidden="true" style={{ '--v': g.ratio * 100 } as React.CSSProperties}>
+                  <i />
                 </span>
               )}
             </span>
@@ -2739,28 +2993,27 @@ export default function App() {
           <span className="muted note">진화 전 단계도 함께 등록되어 종 수가 더 많습니다.</span>
         )}
       </p>
-      <div className="bar">
-        {/* One entry out of 1025 rounds to 0%, which reads as "nothing yet".
-            Floor a non-empty dex at a visible sliver instead. */}
-        <i
-          className="fill"
-          style={{
-            width: state.dex.length
-              ? `${Math.max(1, (state.dex.length / state.dexTotal) * 100)}%`
-              : '0%',
-          }}
-        />
+      {/* One entry out of 1025 rounds to 0%, which reads as "nothing yet".
+          Floor a non-empty dex at a visible sliver instead. */}
+      <div
+        className="px-gauge"
+        role="progressbar"
+        aria-valuenow={state.dex.length}
+        aria-valuemax={state.dexTotal}
+        style={{ '--v': state.dex.length ? Math.max(1, (state.dex.length / state.dexTotal) * 100) : 0 } as React.CSSProperties}
+      >
+        <i />
       </div>
 
       {showFilters && (
         <div className="filters">
           <section>
             <h3>등급</h3>
-            <div className="chips">
+            <div className="px-chips chips">
               {Object.entries(RARITY_LABEL).map(([id, label]) => (
                 <button
                   key={id}
-                  className={fRarity === id ? 'on' : ''}
+                  className="px-chip px-chip--sm" aria-pressed={fRarity === id}
                   onClick={() => setFRarity(fRarity === id ? null : id)}
                 >
                   {label}
@@ -2770,11 +3023,11 @@ export default function App() {
           </section>
           <section>
             <h3>세대</h3>
-            <div className="chips">
+            <div className="px-chips chips">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((g) => (
                 <button
                   key={g}
-                  className={fGen === g ? 'on' : ''}
+                  className="px-chip px-chip--sm" aria-pressed={fGen === g}
                   onClick={() => setFGen(fGen === g ? null : g)}
                 >
                   {g}
@@ -2784,12 +3037,12 @@ export default function App() {
           </section>
           <section>
             <h3>타입</h3>
-            <div className="chips">
+            <div className="px-chips chips">
               {TYPE_FILTERS.map((t) => (
                 <button
                   key={t.id}
                   data-type={t.id}
-                  className={fType === t.id ? 'on' : ''}
+                  className="px-chip px-chip--sm" aria-pressed={fType === t.id}
                   onClick={() => setFType(fType === t.id ? null : t.id)}
                 >
                   {t.name}
@@ -2798,12 +3051,13 @@ export default function App() {
             </div>
           </section>
           <section>
-            <div className="chips">
-              <button className={showUnseen ? 'on' : ''} onClick={() => setShowUnseen(!showUnseen)}>
+            <div className="px-chips chips">
+              <button className="px-chip px-chip--sm" aria-pressed={showUnseen} onClick={() => setShowUnseen(!showUnseen)}>
                 미수집 포함
               </button>
               {activeFilters > 0 && (
                 <button
+                  className="px-chip px-chip--sm"
                   onClick={() => {
                     setFRarity(null);
                     setFGen(null);
@@ -2920,7 +3174,7 @@ export default function App() {
       <div className="dexbar">
         {/* autoFocus so Escape is reachable and a screen reader is told the
             screen changed. :focus-visible keeps it quiet for mouse users. */}
-        <button className="linky" autoFocus onClick={closeDex}>
+        <button className="px-btn px-btn--link" autoFocus onClick={closeDex}>
           ← 목록
         </button>
         <span className="no">#{String(dexOpen.speciesId).padStart(3, '0')}</span>
@@ -2961,8 +3215,14 @@ export default function App() {
           <b>{compact(Math.min(dexOpen.locked.have, dexOpen.locked.need))}</b>
           <span className="muted"> / {compact(dexOpen.locked.need)}</span>
         </p>
-        <div className="bar" role="progressbar" aria-valuenow={Math.round(dexOpen.locked.ratio * 100)}>
-          <i className="fill" style={{ width: `${dexOpen.locked.ratio * 100}%` }} />
+        <div
+          className="px-gauge"
+          role="progressbar"
+          aria-valuenow={Math.round(dexOpen.locked.ratio * 100)}
+          aria-valuemax={100}
+          style={{ '--v': dexOpen.locked.ratio * 100 } as React.CSSProperties}
+        >
+          <i />
         </div>
         </>
       )}
@@ -3029,7 +3289,7 @@ export default function App() {
         <p className="muted sub">
           정보를 가져오지 못했습니다.{' '}
           <button
-            className="linky"
+            className="px-btn px-btn--link"
             onClick={() => {
               setDexErr(null);
               // Re-seat the same card so the fetch effect runs again.
@@ -3074,10 +3334,12 @@ export default function App() {
           <span className="num">{dexDetail.tmCount}개</span>
         </li>
       </ul>
-      {/* Said once, under the list, rather than as a description on each row:
-          natures are decoration here for the same reason and docs/DESIGN.md says
-          so in a sentence rather than in the UI. */}
-      <p className="muted sub">특성은 이 앱의 배틀에 영향을 주지 않습니다.</p>
+      {/* Which one this species actually graduated with, when the dex knows. */}
+      <p className="muted sub">
+        {dexOpen?.abilityKo
+          ? `이 도감의 ${dexDetail.name}${josa(dexDetail.name, '은', '는')} ${dexOpen.abilityKo} 특성으로 졸업했습니다. 특성은 배틀에서 원작대로 작동합니다.`
+          : '특성은 배틀에서 원작대로 작동합니다. 개체마다 하나가 정해집니다.'}
+      </p>
 
       {dexDetail.stages.length > 1 && (
         <>
@@ -3138,8 +3400,8 @@ export default function App() {
                     by it leaves every bar under half full and stops the six
                     telling one species from another — which is the only thing
                     a bar is for. */}
-                <span className="track">
-                  <i style={{ width: `${Math.min(100, (st.value / 180) * 100)}%` }} />
+                <span className="px-gauge px-gauge--thin track" style={{ '--v': Math.min(100, (st.value / 180) * 100) } as React.CSSProperties}>
+                  <i />
                 </span>
                 <span className="num">{st.value}</span>
               </li>
@@ -3151,13 +3413,12 @@ export default function App() {
               <span className="num">{dexDetail.statTotal}</span>
             </li>
           </ul>
-          {/* The screen says out loud what docs/DESIGN.md refuses to fake: these are
-              the originals' numbers and no fight here reads them. The one thing
-              they ever did in this app is upstairs — server/forms.ts's mega
-              multiplier was measured from exactly these totals. */}
+          {/* The screen says out loud how these numbers are used, so nobody has
+              to guess: every fight is a flat level-50 fight from exactly these,
+              with no individual values. See `battleStats` in server/fight.ts. */}
           <p className="muted sub">
-            원작 수치입니다. 이 앱의 배틀은 종족값을 읽지 않고 기술 위력과 타입 상성으로만
-            계산합니다.
+            원작 수치입니다. 이 앱의 배틀은 양쪽 모두 레벨 50, 개체값 없이 이 종족값으로
+            능력치를 계산합니다.
           </p>
         </>
       )}
@@ -3244,14 +3505,14 @@ export default function App() {
                 a "1" would say nothing. Dropped while the panel is open,
                 because the lit chip two lines below already says it. */}
             {awardCats.length > 1 && (
-              <button className="linky" onClick={() => setShowAwardCats(!showAwardCats)}>
+              <button className="px-btn px-btn--link" onClick={() => setShowAwardCats(!showAwardCats)}>
                 {showAwardCats ? '분야 닫기' : '분야'}
                 {!showAwardCats &&
                   awardCat !== null &&
                   ` (${awardCats.find((c) => c.cat === awardCat)?.catKo})`}
               </button>
             )}
-            <button className="linky" onClick={() => setHideDone(!hideDone)}>
+            <button className="px-btn px-btn--link" onClick={() => setHideDone(!hideDone)}>
               {hideDone ? '전부 보기' : '달성 숨기기'}
             </button>
           </div>
@@ -3288,8 +3549,8 @@ export default function App() {
           count stays, because the sum is the one thing the list does not
           show. */}
       {!regionView && (
-        <div className="bar" role="progressbar" aria-valuenow={awardPct}>
-          <i className="fill" style={{ width: `${awardPct}%` }} />
+        <div className="px-gauge" role="progressbar" aria-valuenow={awardPct} aria-valuemax={100} style={{ '--v': awardPct } as React.CSSProperties}>
+          <i />
         </div>
       )}
 
@@ -3309,11 +3570,11 @@ export default function App() {
           지방 is first and is the default. `업적` must call `showAwards`, not
           `setAwardCat`: that is the path that puts the tab's dot out, and
           pressing it IS reading the list. */}
-      <div className="chips shopchips" role="group" aria-label="업적 화면">
-        <button className={regionView ? 'on' : ''} onClick={() => setAwardCat(REGION_VIEW)}>
+      <div className="px-chips chips shopchips" role="group" aria-label="업적 화면">
+        <button className="px-chip px-chip--sm" aria-pressed={regionView} onClick={() => setAwardCat(REGION_VIEW)}>
           지방
         </button>
-        <button className={!regionView ? 'on' : ''} onClick={() => showAwards(null)}>
+        <button className="px-chip px-chip--sm" aria-pressed={!regionView} onClick={() => showAwards(null)}>
           업적
         </button>
       </div>
@@ -3326,14 +3587,14 @@ export default function App() {
           `aria-label` carries the name instead. */}
       {!regionView && showAwardCats && (
         <div className="filters">
-          <div className="chips awardcats" role="group" aria-label="업적 분야">
-            <button className={awardCat === null ? 'on' : ''} onClick={() => showAwards(null)}>
+          <div className="px-chips chips awardcats" role="group" aria-label="업적 분야">
+            <button className="px-chip px-chip--sm" aria-pressed={awardCat === null} onClick={() => showAwards(null)}>
               전체
             </button>
             {awardCats.map((c) => (
               <button
                 key={c.cat}
-                className={awardCat === c.cat ? 'on' : ''}
+                className="px-chip px-chip--sm" aria-pressed={awardCat === c.cat}
                 onClick={() => showAwards(c.cat)}
               >
                 {c.catKo}
@@ -3406,8 +3667,8 @@ export default function App() {
                   onClick={() => setBadgeRegion(r.key)}
                 >
                   <span className="lbl">{r.ko}</span>
-                  <span className="track">
-                    <i style={{ width: `${(r.count / r.total) * 100}%` }} />
+                  <span className="px-gauge px-gauge--thin track" style={{ '--v': (r.count / r.total) * 100 } as React.CSSProperties}>
+                    <i />
                   </span>
                   <span className="num">
                     {r.count}/{r.total}
@@ -3602,8 +3863,8 @@ export default function App() {
                         {/* The gauge stays on a repeating row for ever; it is
                             measuring the tier, not the whole thing. */}
                         {(!got || a.repeat) && (
-                          <span className="track" aria-hidden="true">
-                            <i style={{ width: `${a.ratio * 100}%` }} />
+                          <span className="px-gauge px-gauge--thin track" aria-hidden="true" style={{ '--v': a.ratio * 100 } as React.CSSProperties}>
+                            <i />
                           </span>
                         )}
                       </span>
@@ -3650,10 +3911,10 @@ export default function App() {
               ? `지금 ${petName}${josa(petName, '은', '는')} 도감으로 떠납니다. 괜찮으시겠습니까?`
               : '괜찮으시겠습니까?'}
             <span className="saywin-ask">
-              <button disabled={busy} onClick={() => void buyAsked(asked.id)}>
+              <button className="px-btn px-btn--primary" disabled={busy} onClick={() => void buyAsked(asked.id)}>
                 예
               </button>
-              <button disabled={busy} onClick={() => setTill({ at: 'idle' })}>
+              <button className="px-btn" disabled={busy} onClick={() => setTill({ at: 'idle' })}>
                 아니오
               </button>
             </span>
@@ -3681,14 +3942,14 @@ export default function App() {
       {/* Ten products do not fit a 420px panel as one list. The chips are the
           dex filter's idiom reused, but they never collapse — with this few
           rows, hiding them behind a second click would be worse than scrolling. */}
-      <div className="chips shopchips" role="group" aria-label="상점 분류">
-        <button className={shopGroup === null ? 'on' : ''} onClick={() => setShopGroup(null)}>
+      <div className="px-chips chips shopchips" role="group" aria-label="상점 분류">
+        <button className="px-chip px-chip--sm" aria-pressed={shopGroup === null} onClick={() => setShopGroup(null)}>
           전체
         </button>
         {SHOP_GROUPS.map((g) => (
           <button
             key={g.id}
-            className={shopGroup === g.id ? 'on' : ''}
+            className="px-chip px-chip--sm" aria-pressed={shopGroup === g.id}
             onClick={() => setShopGroup(g.id)}
           >
             {g.label}
@@ -3698,7 +3959,7 @@ export default function App() {
       {SHOP_GROUPS.filter((g) => shopGroup === null || shopGroup === g.id).map((g) => {
         // `award` rows ride along on the payload for the bag's sake; the shelf
         // is the one place they must not appear.
-        const rows = state.shop.products.filter((p) => p.group === g.id && !p.award);
+        const rows = state.shop.products.filter((p) => p.group === g.id && p.shelved);
         if (!rows.length) return null;
         return (
           <div key={g.id}>
@@ -3780,9 +4041,13 @@ export default function App() {
             자동사냥
             <em>5분마다 포켓몬과 싸워 게이지를 조금씩 올립니다.</em>
           </span>
-          <button disabled={busy} onClick={() => act('hunt', state.hunt.enabled ? 'off' : 'on')}>
-            {state.hunt.enabled ? '켜짐' : '꺼짐'}
-          </button>
+          <Toggle
+            label="자동사냥"
+            on={state.hunt.enabled}
+            word={state.hunt.enabled ? '켜짐' : '꺼짐'}
+            disabled={busy}
+            onClick={() => act('hunt', state.hunt.enabled ? 'off' : 'on')}
+          />
         </li>
         <li>
           <span className="lbl">
@@ -3795,9 +4060,13 @@ export default function App() {
           </span>
           {/* The label names the CAP's state and the id names what to do to it:
               `적용 중` sends 'off', which lifts it. Reads backwards, is right. */}
-          <button disabled={busy} onClick={() => act('huntcap', state.hunt.uncapped ? 'on' : 'off')}>
-            {state.hunt.uncapped ? '해제됨' : '적용 중'}
-          </button>
+          <Toggle
+            label="사냥 상한"
+            on={!state.hunt.uncapped}
+            word={state.hunt.uncapped ? '해제됨' : '적용 중'}
+            disabled={busy}
+            onClick={() => act('huntcap', state.hunt.uncapped ? 'on' : 'off')}
+          />
         </li>
         <li>
           <span className="lbl">
@@ -3808,9 +4077,13 @@ export default function App() {
               합니다.
             </em>
           </span>
-          <button disabled={busy} onClick={() => act('askchallenge', state.hunt.asking ? 'off' : 'on')}>
-            {state.hunt.asking ? '물어봄' : '자동'}
-          </button>
+          <Toggle
+            label="승부 확인"
+            on={state.hunt.asking}
+            word={state.hunt.asking ? '물어봄' : '자동'}
+            disabled={busy}
+            onClick={() => act('askchallenge', state.hunt.asking ? 'off' : 'on')}
+          />
         </li>
       </ul>
 
@@ -3829,7 +4102,7 @@ export default function App() {
               배틀 화면에 나온 포켓몬이 쌓입니다. 지워도 필요할 때 다시 받습니다.
             </em>
           </span>
-          <button disabled={busy} onClick={() => act('sprites', 'clear')}>
+          <button className="px-btn" disabled={busy} onClick={() => act('sprites', 'clear')}>
             정리
           </button>
         </li>

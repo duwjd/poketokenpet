@@ -329,8 +329,13 @@ describe('dex entry', () => {
    * GOLDEN tables. docs/DESIGN.md `### 전투 보정을 지어내지 않았습니다` is the promise;
    * this is the lock on it.
    */
-  it('never lets a base stat into a fight', () => {
-    for (const f of ['server/hunt.ts', 'server/game.ts', 'server/state.ts']) {
+  it('fights from the same base stats the dex card shows', () => {
+    // The battle reads `statsOf` — the very table the card draws — so what a
+    // player reads on the card is what the fight uses. A second copy of the
+    // numbers anywhere else is how the two would drift.
+    const src = readFileSync('server/fight.ts', 'utf8');
+    expect(src).toMatch(/import \{ statsOf \} from '\.\/dexdata\.ts'/);
+    for (const f of ['server/game.ts', 'server/state.ts']) {
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/dexdata\.ts/);
     }
   });

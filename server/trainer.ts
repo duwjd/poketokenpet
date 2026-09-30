@@ -1,6 +1,6 @@
 import { mulberry32, rollSpecies } from './game.ts';
 import { rarityOfSpecies } from './dex.ts';
-import { BATTLE_MAX_HP, TACKLE, battleAt, type Battle, type BattleOpts } from './hunt.ts';
+import { fightAt, foeOf, mineOf, type Battle, type BattleOpts } from './fight.ts';
 import { speciesInfo, type MoveType } from './moves.ts';
 import { LEGENDS, legendOf } from './legenddata.ts';
 import { LINES } from './species.ts';
@@ -38,19 +38,8 @@ const LEGEND_ROOTS = new Set(
 /** Encounters that turn out to be a trainer. One in twenty-five, about 2 hours. */
 export const TRAINER_CHANCE = 0.04;
 
-/** Turns each team member gets. Three of these plus framing is about 18s. */
-export const TRAINER_ROUND_TURNS = 4;
-
 /** Round seeds start here so they cannot collide with a wild encounter's. */
 const ROUND_SEED_BASE = 1_000_000_000;
-
-/**
- * Counter damage per turn, as a share of the companion's whole HP bar.
- *
- * Twelve turns against a three-Pokemon team costs roughly the full bar at the
- * highest grit, so a long fight is genuinely dangerous and a short one is not.
- */
-const COUNTER_SHARE = 0.085;
 
 /** Odds a win also hands over an item. */
 const ITEM_CHANCE = 0.35;
@@ -58,11 +47,14 @@ const ITEM_CHANCE = 0.35;
 /**
  * A win pays this many ordinary encounters, before team size and grit.
  *
- * At 6 a three-Pokemon elite paid 23 encounters. Trainers turn up every 25, so
- * that very nearly doubled hunting income on its own. Three keeps a win worth
- * chasing without making the wild encounters beside the point.
+ * Measured against the grit column, which has been re-tuned three times: it
+ * ran 0.9 to 1.4 against a multiplier of three, came down by 0.6 when the
+ * fight moved to level-50 stats, by 0.9 when weather, stat stages and
+ * priority arrived, and by 0.95 when a team became one fight with hazards
+ * and switching. This goes up by the same factors, so every trainer still
+ * pays exactly what it did before any of it.
  */
-const REWARD_MULT = 3;
+const REWARD_MULT = 3 / 0.6 / 0.9 / 0.95;
 
 export type Gender = 'm' | 'f';
 
@@ -93,33 +85,39 @@ type TrainerClass = {
  * The roster, easiest first.
  *
  * Twenty classes over ten `grit` steps, so the difficulty a name announces is
- * roughly the difficulty you get. Ten are men, five are women, and five field
- * both — about 37% women, which is close to what the games do.
+ * roughly the difficulty you get. Grit is every stat but Speed, at level 50
+ * (see `gritted` in server/fight.ts), and the column was measured against the
+ * ten companions `test/gyms.test.ts` uses: with its four strongest sensible
+ * machine moves (no 대폭발, no 파괴광선), one Pokemon is beaten every time,
+ * two 88%, three 62%; bare-handed 93%, 65% and 23%.
+ *
+ * Ten are men, five are women, and five field both — about 37% women, which
+ * is close to what the games do.
  *
  * Every slug here was checked against the host: all twenty-four are 80x80 and
  * average 762 bytes, which is why Scene.tsx can size them with one constant.
  */
 const CLASSES: TrainerClass[] = [
-  { name: '짧은바지 꼬마', sprite: { m: 'youngster' }, team: 1, grit: 0.9, likes: ['normal', 'electric'] },
-  { name: '미니스커트', sprite: { f: 'lass' }, team: 1, grit: 0.9, likes: ['fairy', 'normal'] },
-  { name: '피크닉걸', sprite: { f: 'picnicker' }, team: 1, grit: 0.95, likes: ['grass', 'fairy'] },
-  { name: '벌레잡이 소년', sprite: { m: 'bugcatcher' }, team: 2, grit: 0.95, likes: ['bug'] },
-  { name: '캠프보이', sprite: { m: 'camper' }, team: 2, grit: 1.0, likes: ['ground', 'grass'] },
-  { name: '포켓몬팬', sprite: { m: 'pokefan', f: 'pokefanf' }, team: 2, grit: 1.0, likes: ['normal', 'fairy'] },
-  { name: '새박사', sprite: { m: 'birdkeeper' }, team: 2, grit: 1.05, likes: ['flying'] },
-  { name: '파라솔아가씨', sprite: { f: 'parasollady' }, team: 2, grit: 1.05, likes: ['water'] },
-  { name: '수영복', sprite: { m: 'swimmer', f: 'swimmerf' }, team: 2, grit: 1.05, likes: ['water', 'ice'] },
-  { name: '낚시꾼', sprite: { m: 'fisherman' }, team: 2, grit: 1.1, likes: ['water'] },
-  { name: '등산가', sprite: { m: 'hiker' }, team: 2, grit: 1.1, likes: ['rock', 'ground'] },
-  { name: '선원', sprite: { m: 'sailor' }, team: 2, grit: 1.1, likes: ['water', 'fighting'] },
-  { name: '미녀', sprite: { f: 'beauty' }, team: 2, grit: 1.1, likes: ['fairy', 'water'] },
-  { name: '검은띠', sprite: { m: 'blackbelt' }, team: 2, grit: 1.15, likes: ['fighting'] },
-  { name: '배틀걸', sprite: { f: 'battlegirl' }, team: 2, grit: 1.15, likes: ['fighting'] },
-  { name: '부자 아저씨', sprite: { m: 'gentleman' }, team: 2, grit: 1.2, likes: ['normal', 'psychic'] },
-  { name: '연구원', sprite: { m: 'scientist' }, team: 2, grit: 1.2, likes: ['electric', 'steel', 'poison'] },
-  { name: '초능력자', sprite: { m: 'psychic', f: 'psychicf' }, team: 2, grit: 1.2, likes: ['psychic'] },
-  { name: '엘리트 트레이너', sprite: { m: 'acetrainer', f: 'acetrainerf' }, team: 3, grit: 1.3 },
-  { name: '베테랑', sprite: { m: 'veteran', f: 'veteranf' }, team: 3, grit: 1.4 },
+  { name: '짧은바지 꼬마', sprite: { m: 'youngster' }, team: 1, grit: 0.4617, likes: ['normal', 'electric'] },
+  { name: '미니스커트', sprite: { f: 'lass' }, team: 1, grit: 0.4617, likes: ['fairy', 'normal'] },
+  { name: '피크닉걸', sprite: { f: 'picnicker' }, team: 1, grit: 0.4874, likes: ['grass', 'fairy'] },
+  { name: '벌레잡이 소년', sprite: { m: 'bugcatcher' }, team: 2, grit: 0.4874, likes: ['bug'] },
+  { name: '캠프보이', sprite: { m: 'camper' }, team: 2, grit: 0.513, likes: ['ground', 'grass'] },
+  { name: '포켓몬팬', sprite: { m: 'pokefan', f: 'pokefanf' }, team: 2, grit: 0.513, likes: ['normal', 'fairy'] },
+  { name: '새박사', sprite: { m: 'birdkeeper' }, team: 2, grit: 0.5386, likes: ['flying'] },
+  { name: '파라솔아가씨', sprite: { f: 'parasollady' }, team: 2, grit: 0.5386, likes: ['water'] },
+  { name: '수영복', sprite: { m: 'swimmer', f: 'swimmerf' }, team: 2, grit: 0.5386, likes: ['water', 'ice'] },
+  { name: '낚시꾼', sprite: { m: 'fisherman' }, team: 2, grit: 0.5643, likes: ['water'] },
+  { name: '등산가', sprite: { m: 'hiker' }, team: 2, grit: 0.5643, likes: ['rock', 'ground'] },
+  { name: '선원', sprite: { m: 'sailor' }, team: 2, grit: 0.5643, likes: ['water', 'fighting'] },
+  { name: '미녀', sprite: { f: 'beauty' }, team: 2, grit: 0.5643, likes: ['fairy', 'water'] },
+  { name: '검은띠', sprite: { m: 'blackbelt' }, team: 2, grit: 0.5899, likes: ['fighting'] },
+  { name: '배틀걸', sprite: { f: 'battlegirl' }, team: 2, grit: 0.5899, likes: ['fighting'] },
+  { name: '부자 아저씨', sprite: { m: 'gentleman' }, team: 2, grit: 0.6156, likes: ['normal', 'psychic'] },
+  { name: '연구원', sprite: { m: 'scientist' }, team: 2, grit: 0.6156, likes: ['electric', 'steel', 'poison'] },
+  { name: '초능력자', sprite: { m: 'psychic', f: 'psychicf' }, team: 2, grit: 0.6156, likes: ['psychic'] },
+  { name: '엘리트 트레이너', sprite: { m: 'acetrainer', f: 'acetrainerf' }, team: 3, grit: 0.6669 },
+  { name: '베테랑', sprite: { m: 'veteran', f: 'veteranf' }, team: 3, grit: 0.7182 },
 ];
 
 /**
@@ -231,82 +229,51 @@ export function trainerAt(seq: number): Trainer | null {
 }
 
 export type TrainerBattle = {
-  /** One per team member fought. Shorter than the team if the companion fell. */
+  /**
+   * One per stretch with the same two Pokemon out — one per team member,
+   * unless somebody was dragged out and came back.
+   */
   rounds: Battle[];
   won: boolean;
-  /** Which round the companion went down in, or null if it won. */
+  /** Which of their team was out when the companion went down, or null if it won. */
   lostAt: number | null;
 };
 
 /**
  * Fight a trainer's whole team.
  *
- * Composed from `battleAt` rather than folded into it. A team inside one
- * `Battle` would break three things the wild encounter guarantees — the last
- * turn always felling the opponent, the total staying under MAX_TURNS, and the
- * finishing blow being tied to the global turn index.
- *
- * HP carries across rounds and has no floor, which is what makes a trainer
- * losable while a wild encounter still cannot be lost.
+ * One `fightAt`, the companion alone against the lot: the trainer sends the
+ * next Pokemon when one falls, and everything on the field — weather,
+ * hazards, screens — and everything on the companion — its HP, its
+ * condition, its stat stages, a substitute — carries on through the whole
+ * thing. A 울부짖기 can drag a benched Pokemon out; the companion has nobody
+ * to switch to, so the same move against it fails.
  */
 export function trainerBattleAt(
   seq: number,
   t: Trainer,
   moves: number[],
-  /** The companion's species, so the type chart applies to the team's moves too. */
+  /** The companion's species: its base stats, types and weight. */
   mySpeciesId?: number,
   /**
    * What the companion's form contributes, from `formOpts`.
-   *
-   * This is where a Gigantamax is worth something. A wild encounter has an HP
-   * floor and cannot be lost, so halving incoming damage there is decoration; a
-   * trainer round has no floor, and three turns of it is the difference between
-   * holding on for the fourth member and going down on the third.
    *
    * Already composed by the caller rather than resolved here, so the settled
    * fight and the panel's replay of it cannot be given different opts.
    */
   boosts: BattleOpts = {},
 ): TrainerBattle {
-  const rounds: Battle[] = [];
-  let hp = BATTLE_MAX_HP;
-
-  for (let i = 0; i < t.team.length; i++) {
-    const foe = t.team[i];
-    const rarity = rarityOfSpecies(foe);
-    // A distinct seed per round, pushed far past any real encounter index so a
-    // trainer round never borrows a wild battle's stream.
-    const round = battleAt(ROUND_SEED_BASE + seq * 8 + i, rarity, moves, foe, {
-      startHp: hp,
-      budget: TRAINER_ROUND_TURNS,
-      // Sized to the round, not to a wild encounter's six turns — otherwise the
-      // opponent cannot fall inside the budget and every trainer "holds".
-      targetTurns: TRAINER_ROUND_TURNS,
-      // A fixed pool, not one scaled to my own damage. This is what makes a
-      // taught moveset actually beat a trainer a bare one loses to.
-      swingRef: TACKLE.power,
-      floor: false,
-      // In HP units, not swing units. Tie it to the moveset and a stronger team
-      // takes proportionally bigger hits against the same pool, which makes the
-      // better trainer-fighter lose more often — measured, and backwards.
-      counterHit: Math.max(1, Math.round(BATTLE_MAX_HP * COUNTER_SHARE * t.grit)),
-      grit: t.grit,
-      mySpeciesId,
-      ...boosts,
-      // After the spread deliberately: a transcribed set is the trainer's own
-      // moves, and no caller-side boost has any business replacing them.
-      foeMoves: t.teamMoves?.[i],
-    });
-    rounds.push(round);
-
-    const last = round.turns.at(-1);
-    hp = last?.myHpAfter ?? hp;
-    if (hp <= 0) return { rounds, won: false, lostAt: i };
-    // The round ran out of turns without felling it — the team holds.
-    if ((last?.foeHpAfter ?? 0) > 0) return { rounds, won: false, lostAt: i };
-  }
-
-  return { rounds, won: true, lostAt: null };
+  const fight = fightAt(
+    ROUND_SEED_BASE + seq * 8,
+    [mineOf(moves, { ...boosts, mySpeciesId })],
+    // A transcribed set is the trainer's own moves; nothing the caller passes replaces it.
+    t.team.map((id, i) => foeOf(id, rarityOfSpecies(id), t.grit, t.teamMoves?.[i])),
+  );
+  return {
+    rounds: fight.rounds,
+    won: fight.won,
+    lostAt: fight.won ? null : (fight.rounds.at(-1)?.foeSlot ?? 0),
+  };
 }
 
 export type TrainerReward = {

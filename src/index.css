@@ -44,6 +44,19 @@
   font-weight: 400;
   font-display: block;
 }
+/*
+ * The one bold that exists. Galmuri11 Bold is the only bold cut of the family
+ * (not monospaced — it is the proportional face), so `font-weight: 700` on
+ * 12px or 24px text now draws a real bold instead of the browser smearing the
+ * regular glyph sideways. Bold at 10px or 8px still has nothing behind it;
+ * docs/DESIGN-SYSTEM.md says to use colour there.
+ */
+@font-face {
+  font-family: 'Galmuri11';
+  src: url('galmuri/dist/Galmuri11-Bold.woff2') format('woff2');
+  font-weight: 600 700;
+  font-display: block;
+}
 @font-face {
   font-family: 'Galmuri9';
   src: url('galmuri/dist/GalmuriMono9.woff2') format('woff2');

@@ -755,9 +755,8 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   font-size: 10px; font-family: 'Galmuri9';
-  font-weight: 700;
   line-height: 1.2;
-  color: #20232a;
+  color: var(--ink-lit);
 }
 
 /*
@@ -794,9 +793,9 @@
 
 .scene-gauge .lbl {
   flex: none;
+  /* No bold or italic: Galmuri7 has neither, and a synthetic one smears the
+     8px glyph (docs/DESIGN-SYSTEM.md, 원칙 6). */
   font-size: 8px; font-family: 'Galmuri7';
-  font-weight: 700;
-  font-style: italic;
   color: #b4531d;
 }
 
@@ -810,17 +809,21 @@
   overflow: hidden;
 }
 
-/* Green, amber, red — the one piece of Pokemon UI everybody can read. */
+/*
+ * Green, amber, red — the one piece of Pokemon UI everybody can read. The
+ * colours are the design system's HP tokens; the drain is a staircase that
+ * finishes inside one turn's beat, the way the games drop a bar a pixel at a
+ * time rather than gliding it (docs/DESIGN-SYSTEM.md, 모션).
+ */
 .scene-hp i {
   display: block;
   height: 100%;
-  background: #4fa64f;
-  /* Short enough to finish inside a single turn's beat. */
-  transition: width 0.45s ease-out;
+  background: var(--hp-hi);
+  transition: width var(--f16) steps(8, end);
 }
 
-.scene-hp i.low { background: #e0a52a; }
-.scene-hp i.crit { background: #d24b3f; }
+.scene-hp i.low { background: var(--hp-mid); }
+.scene-hp i.crit { background: var(--hp-lo); }
 
 /*
  * The status badge, on the HP row after the bar.
@@ -844,7 +847,6 @@
   flex: none;
   padding: 1px 3px;
   font-size: 8px; font-family: 'Galmuri7';
-  font-weight: 700;
   line-height: 1.3;
   letter-spacing: -0.02em;
   color: #fff;
@@ -1032,6 +1034,23 @@
   padding: 3px 8px 3px 4px;
   font-size: 12px; font-family: 'Galmuri11';
   animation: sign-in 0.55s ease-out;
+}
+
+/*
+ * The weather and the terrain, top-left of the battle, while they last.
+ *
+ * Where the place sign stands outside a fight — the two are never on screen
+ * together — and on the same plate chrome as the name plates, so it reads as
+ * part of the battle UI rather than as a caption.
+ */
+.scene-field {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  z-index: 3;
+  padding: 2px 6px;
+  font-size: 10px; font-family: 'Galmuri9';
+  white-space: nowrap;
 }
 
 /* The region, smaller and quieter — the place is the headline. */

@@ -4,7 +4,6 @@ import {
   accrue,
   advance,
   calibrateHatchThreshold,
-  hasDamaging,
   initialState,
   mulberry32,
   progress,
@@ -15,6 +14,7 @@ import {
   tokensForStage,
 } from '../server/game.ts';
 import { canLearn, moveById } from '../server/moves.ts';
+import { startingMoves } from '../server/learnset.ts';
 import { NATURES, NATURE_KO } from '../server/species.ts';
 
 describe('rarityOf', () => {
@@ -269,14 +269,13 @@ describe('starterMove', () => {
     expect(none).toBe(13);
   });
 
-  it('hatches every companion with something that hits', () => {
+  it('hatches every companion knowing its own level-1 moves', () => {
     for (let seed = 0; seed < 200; seed++) {
       const { state } = advance({ ...initialState(), hatchThreshold: H }, H, mulberry32(seed));
       const a = state.active!;
-      // Only the thirteen may come out unarmed, and the battle covers those.
-      if (starterMove(a.pathIds[0]) === null) continue;
-      expect(hasDamaging(a.moves), `seed ${seed}`).toBe(true);
-      expect(a.moves).toHaveLength(1);
+      expect(a.moves, `seed ${seed}`).toEqual(startingMoves(a.pathIds[0]));
+      expect(a.moves.length).toBeLessThanOrEqual(4);
+      expect(a.moves.length).toBeGreaterThan(0);
     }
   });
 });

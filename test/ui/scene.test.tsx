@@ -4,8 +4,42 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Scene, {
   type SceneBattle,
   type SceneEncounter,
+  type SceneTurn,
   type SceneTrainerFight,
 } from '../../src/Scene.tsx';
+
+/**
+ * Everything a turn carries that these fixtures do not vary: I move first,
+ * nobody is held up by a condition, and nobody misses.
+ */
+const PLAIN: Pick<
+  SceneTurn,
+  | 'foeFirst'
+  | 'meActed'
+  | 'mySkip'
+  | 'myCured'
+  | 'foeSkip'
+  | 'foeCured'
+  | 'foeMissed'
+  | 'foeCrit'
+  | 'foeSelfEffect'
+  | 'myEvents'
+  | 'foeEvents'
+  | 'endEvents'
+> = {
+  foeFirst: false,
+  meActed: true,
+  mySkip: null,
+  myCured: null,
+  foeSkip: null,
+  foeCured: null,
+  foeMissed: false,
+  foeCrit: false,
+  foeSelfEffect: null,
+  myEvents: [],
+  foeEvents: [],
+  endEvents: [],
+};
 
 const COMPANION = {
   name: '화염레오',
@@ -15,16 +49,16 @@ const COMPANION = {
 
 /**
  * A four-exchange fight, the last blow felling it.
- *
- * Four is the floor the real simulation guarantees (MIN_TURNS), so the fixture
- * matches what the panel actually has to render.
  */
 const battle = (turns = 4): SceneBattle => ({
   foeMaxHp: 400,
   myMaxHp: 100,
+  myStartHp: 100,
+  won: true,
   turns: Array.from({ length: turns }, (_, i) => {
     const foeHpAfter = i === turns - 1 ? 0 : 400 - (i + 1) * 90;
     return {
+      ...PLAIN,
       moveName: i % 2 ? '돌진' : '화염방사',
       moveType: i % 2 ? 'normal' : 'fire',
       damage: 90,
@@ -100,7 +134,7 @@ const step = async (ms: number) => {
 
 const HOLDS = {
   alert: 700, wipe: 600, vs: 1800, meet: 1400, enter: 500, intro: 1200, form: 1400,
-  turn: 750, counter: 700, faint: 1100, send: 900, badge: 2000, reward: 1600,
+  turn: 750, counter: 700, field: 900, arrive: 900, faint: 1100, send: 900, badge: 2000, reward: 1600,
 };
 
 /**
@@ -367,7 +401,7 @@ describe('Scene — encounter', () => {
         : t,
     );
     const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
-    rerender(<Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, turns: zap } })])} />);
+    rerender(<Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, myStartHp: 100, won: true, turns: zap } })])} />);
     await advanceTo('turn');
     expect(screen.getByText(/화염레오의 전기자석파/)).toBeTruthy();
     expect(screen.getByText(/꼬렛은 몸이 저려 잘 움직이지 못한다/)).toBeTruthy();
@@ -378,7 +412,7 @@ describe('Scene — encounter', () => {
       i === 0 ? { ...t, foeMoveName: '불꽃세례', foeMoveType: 'fire', foeAilmentKo: '화상을 입었다!' } : t,
     );
     const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
-    rerender(<Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, turns: burn } })])} />);
+    rerender(<Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, myStartHp: 100, won: true, turns: burn } })])} />);
     await advanceTo('turn');
     await step(HOLDS.turn);
     expect(screen.getByText(/꼬렛의 불꽃세례/)).toBeTruthy();
@@ -438,7 +472,7 @@ describe('Scene — encounter', () => {
     );
     const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
     rerender(
-      <Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, turns: dud } })])} />,
+      <Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, myStartHp: 100, won: true, turns: dud } })])} />,
     );
     await advanceTo('turn');
     expect(document.querySelector('.scene-fx')).toBeNull();
@@ -464,7 +498,7 @@ describe('Scene — encounter', () => {
     );
     const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
     rerender(
-      <Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, turns: setup } })])} />,
+      <Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, myStartHp: 100, won: true, turns: setup } })])} />,
     );
     await advanceTo('turn');
     const el = document.querySelector('.scene-fx') as HTMLElement;
@@ -482,7 +516,7 @@ describe('Scene — encounter', () => {
     );
     const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
     rerender(
-      <Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, turns: sick } })])} />,
+      <Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, myStartHp: 100, won: true, turns: sick } })])} />,
     );
     await advanceTo('turn');
     const badge = document.querySelector('.scene-plate.foe .scene-st') as HTMLElement;
@@ -499,7 +533,7 @@ describe('Scene — encounter', () => {
     const sick = battle(4).turns.map((t) => ({ ...t, foeStatusKo: '독' }));
     const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
     rerender(
-      <Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, turns: sick } })])} />,
+      <Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, myStartHp: 100, won: true, turns: sick } })])} />,
     );
     await advanceTo('turn');
     expect(document.querySelector('.scene-plate.foe')!.getAttribute('aria-label')).toBe('꼬렛 체력, 독');
@@ -511,7 +545,7 @@ describe('Scene — encounter', () => {
     const hurt = battle(4).turns.map((t) => ({ ...t, myStatusKo: '화상' }));
     const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
     rerender(
-      <Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, turns: hurt } })])} />,
+      <Scene {...props([enc({ seq: 2, battle: { foeMaxHp: 400, myMaxHp: 100, myStartHp: 100, won: true, turns: hurt } })])} />,
     );
     await advanceTo('turn');
     expect(document.querySelector('.scene-plate.mine .scene-st')).toBeNull();
@@ -697,6 +731,141 @@ describe('Scene — encounter', () => {
   });
 });
 
+describe('Scene — speed and conditions', () => {
+  it('plays their half first when they are faster', async () => {
+    const quick = battle(4).turns.map((t, i) => (i === 0 ? { ...t, foeFirst: true } : t));
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(
+      <Scene {...props([enc({ seq: 2, battle: { ...battle(4), turns: quick } })])} />,
+    );
+    await advanceTo('turn');
+    // The fight opens on their swing, and mine follows it.
+    expect(screen.getByText(/꼬렛의 몸통박치기/)).toBeTruthy();
+    await step(HOLDS.counter);
+    expect(screen.getByText(/화염레오의 화염방사/)).toBeTruthy();
+  });
+
+  it('says why a side did not move', async () => {
+    const stuck = battle(4).turns.map((t, i) =>
+      i === 0 ? { ...t, mySkip: 'paralysis' as const, damage: 0 } : i === 1 ? { ...t, foeSkip: 'sleep' as const, counter: 0 } : t,
+    );
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([enc({ seq: 2, battle: { ...battle(4), turns: stuck } })])} />);
+    await advanceTo('turn');
+    expect(screen.getByText(/화염레오는 몸이 저려서 움직일 수 없다/)).toBeTruthy();
+    // No art for a move that never happened.
+    expect(document.querySelector('.scene-fx')).toBeNull();
+    await step(HOLDS.turn);
+    await step(HOLDS.counter);
+    await step(HOLDS.turn);
+    expect(screen.getByText(/꼬렛은 쿨쿨 잠들어 있다/)).toBeTruthy();
+  });
+
+  it('says so when a condition lifts', async () => {
+    const woke = battle(4).turns.map((t, i) => (i === 0 ? { ...t, myCured: 'sleep' as const } : t));
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([enc({ seq: 2, battle: { ...battle(4), turns: woke } })])} />);
+    await advanceTo('turn');
+    expect(screen.getByText(/화염레오는 눈을 떴다/)).toBeTruthy();
+    expect(screen.getByText(/화염레오의 화염방사/)).toBeTruthy();
+  });
+
+  it('can lose a wild fight, and pays nothing for it', async () => {
+    // Two exchanges, and their second answer takes the last of my bar.
+    const lost: SceneBattle = {
+      ...battle(2),
+      won: false,
+      turns: battle(2).turns.map((t, i) =>
+        i === 1 ? { ...t, foeFirst: true, meActed: false, damage: 0, foeHpAfter: 310, foeActed: true, counter: 88, myHpAfter: 0 } : t,
+      ),
+    };
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([enc({ seq: 2, battle: lost, won: false, tokens: 0 })])} />);
+    await advanceTo('turn');
+    await step(HOLDS.turn);
+    await step(HOLDS.counter);
+    // Their answer on turn two lands first, and I never get my half.
+    await step(HOLDS.counter);
+    expect(screen.getByText(/화염레오는 눈앞이 캄캄해졌다/)).toBeTruthy();
+    await step(HOLDS.faint);
+    expect(screen.getByText(/아무것도 얻지 못했다/)).toBeTruthy();
+    expect(screen.queryByText(/진행도/)).toBeNull();
+  });
+
+  it('pages a half that has more to say than the box holds', async () => {
+    const busy = battle(4).turns.map((t, i) =>
+      i === 0
+        ? {
+            ...t,
+            effect: 2,
+            myEvents: [
+              { k: 'hits' as const, n: 3 },
+              { k: 'stat' as const, on: 'target' as const, stat: 'def' as const, delta: -1, tried: -1 },
+            ],
+          }
+        : t,
+    );
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([enc({ seq: 2, battle: { ...battle(4), turns: busy } })])} />);
+    await advanceTo('turn');
+    expect(screen.getByText(/효과가 굉장했다/)).toBeTruthy();
+    expect(screen.queryByText(/3번 맞았다/)).toBeNull();
+    // Same half, second page — their answer has not come yet.
+    await step(HOLDS.turn);
+    expect(screen.getByText(/3번 맞았다/)).toBeTruthy();
+    expect(screen.getByText(/꼬렛의 방어가 떨어졌다/)).toBeTruthy();
+    await step(HOLDS.turn);
+    expect(screen.getByText(/꼬렛의 몸통박치기/)).toBeTruthy();
+  });
+
+  it('gives the end of a turn its own beat, and shows the weather while it lasts', async () => {
+    const field = { weather: 'sand' as const, weatherTurns: 4, terrain: null, terrainTurns: 0, trickRoom: 0, mine: {}, theirs: {} };
+    const sandy = battle(4).turns.map((t, i) =>
+      i === 0
+        ? {
+            ...t,
+            moveName: '모래바람',
+            damage: 0,
+            myEvents: [{ k: 'weather' as const, set: 'sand' as const }],
+            endEvents: [{ k: 'weather-chip' as const, on: 'foe' as const, weather: 'sand' as const, hp: 5 }],
+            field,
+          }
+        : { ...t, field },
+    );
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([enc({ seq: 2, battle: { ...battle(4), turns: sandy } })])} />);
+    await advanceTo('turn');
+    expect(screen.getByText(/모래바람이 불기 시작했다/)).toBeTruthy();
+    // The chip goes up with the weather, not a beat before it.
+    expect(document.querySelector('.scene-field')!.textContent).toBe('모래바람 4');
+    await step(HOLDS.turn);
+    await step(HOLDS.counter);
+    expect(screen.getByText(/모래바람이 꼬렛을 덮쳤다/)).toBeTruthy();
+    await step(HOLDS.field);
+    expect(screen.getByText(/화염레오의 돌진/)).toBeTruthy();
+  });
+
+  it('shows no field chip while the field is quiet', async () => {
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([enc({ seq: 2 })])} />);
+    await advanceTo('turn');
+    expect(document.querySelector('.scene-field')).toBeNull();
+  });
+
+  it('tells the panel when a fight starts and stops being on screen', async () => {
+    const seen: boolean[] = [];
+    const onPlaying = (on: boolean) => seen.push(on);
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} onPlaying={onPlaying} />);
+    rerender(<Scene {...props([enc({ seq: 2 })])} onPlaying={onPlaying} />);
+    expect(seen.at(-1)).toBe(true);
+    await advanceTo('reward');
+    await step(HOLDS.reward);
+    await step(HOLDS.reward);
+    expect(seen.at(-1)).toBe(false);
+    expect(seen.filter((x) => x)).toHaveLength(1);
+  });
+});
+
 describe('Scene — reduced motion', () => {
   it('states the outcome instead of playing the theatre', async () => {
     vi.stubGlobal('matchMedia', (q: string) => ({
@@ -720,7 +889,10 @@ describe('Scene — trainer battles', () => {
   const round = (turns: number, myFrom = 100): SceneBattle => ({
     foeMaxHp: 200,
     myMaxHp: 100,
+    myStartHp: myFrom,
+    won: true,
     turns: Array.from({ length: turns }, (_, i) => ({
+      ...PLAIN,
       moveName: '화염방사',
       moveType: 'fire',
       damage: 70,
@@ -873,6 +1045,37 @@ describe('Scene — trainer battles', () => {
     expect(foeNm()).toBe('갸라도스');
   });
 
+  it('says who was dragged out, sends the next, and lets the hazards strike it', async () => {
+    // Round one ends with 잉어킹 blown back to the bench by 울부짖기 — not down.
+    const first = { ...round(2), exit: 'foe-forced' as const, foeSlot: 0, won: false };
+    first.turns = first.turns.map((t, i) => (i === 1 ? { ...t, foeHpAfter: 60, foeActed: true } : t));
+    const second = {
+      ...round(2, 84),
+      foeSlot: 1,
+      exit: 'foe-down' as const,
+      foeStartHp: 200,
+      entry: [{ k: 'hazard-hit' as const, on: 'foe' as const, hazard: 'stealthRock' as const, hp: 25 }],
+    };
+    const dragged = fight({ rounds: [first, second] });
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([trainerEnc({ trainerFight: dragged })])} />);
+    await meet();
+    await step(HOLDS.enter);
+    await step(HOLDS.intro);
+    await exchange();
+    await step(HOLDS.turn);
+    await step(HOLDS.counter);
+    expect(screen.getByText(/낚시꾼 동현은 잉어킹을 불러들였다/)).toBeTruthy();
+    // Nobody fainted, so no ball goes dark.
+    expect(document.querySelectorAll('.scene-balls i.out')).toHaveLength(0);
+    await step(HOLDS.faint);
+    expect(document.querySelector('.scene-text')!.textContent).toMatch(/갸라도스를 내보냈다/);
+    await step(HOLDS.send);
+    await step(HOLDS.enter);
+    await step(HOLDS.intro);
+    expect(screen.getByText(/뾰족한 바위가 갸라도스에게 박혔다/)).toBeTruthy();
+  });
+
   it('sends out the next Pokemon after one goes down', async () => {
     const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
     rerender(<Scene {...props([trainerEnc()])} />);
@@ -994,7 +1197,14 @@ describe('Scene — trainer battles', () => {
   });
 
   it('says so when the companion is the one that goes down', async () => {
-    const lost = fight({ won: false, lostAt: 0, rounds: [round(3)] });
+    // Their answer on the third exchange comes first and takes the last of my bar.
+    const r = round(3);
+    const turns = r.turns.map((t, i) =>
+      i === 2
+        ? { ...t, foeFirst: true, meActed: false, damage: 0, foeHpAfter: 60, foeActed: true, counter: 76, myHpAfter: 0 }
+        : t,
+    );
+    const lost = fight({ won: false, lostAt: 0, rounds: [{ ...r, won: false, turns }] });
     const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
     rerender(<Scene {...props([trainerEnc({ trainerFight: lost })])} />);
     await meet();

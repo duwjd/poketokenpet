@@ -1,14 +1,17 @@
 import {
+  MAX_LEVEL,
   displayIdOf,
+  evolveBy,
   fusionsAvailable,
+  growthBudget,
+  levelOf,
   lifetimeOf,
-  tokensForRetirement,
-  tokensForStage,
   type GameState,
   type Rarity,
 } from './game.ts';
 import { formsFrom } from './forms.ts';
-import { speciesName } from './species.ts';
+import { EVO_ITEM_KO, speciesName } from './species.ts';
+import { itemsFor } from './evolution.ts';
 import { josa } from '../src/josa.ts';
 import { retireInto } from './dex.ts';
 
@@ -20,7 +23,18 @@ export type ItemId =
   | 'dynamax-band'
   | 'dna-splicers';
 export type EggId = 'egg-common' | 'egg-uncommon' | 'egg-rare' | 'egg-legendary';
-export type ProductId = ItemId | EggId;
+/**
+ * An evolution item, by PokeAPI slug: '천둥의돌' is 'thunder-stone'. The set is
+ * whatever server/species.ts's EVO_ITEM_KO lists — generated, so it is a string
+ * here and `isEvoItem` is the check.
+ */
+export type EvoItemId = string;
+export type ProductId = ItemId | EggId | EvoItemId;
+
+/** Whether an id names an evolution item. */
+export function isEvoItem(id: string): boolean {
+  return Object.hasOwn(EVO_ITEM_KO, id);
+}
 
 /**
  * Which shelf a product sits on.
@@ -78,13 +92,13 @@ type Listing = {
    * What the price is a multiple of. Absent means the hatch threshold, which is
    * what makes the shop cost the same to a heavy user and a light one.
    *
-   * 'requirement' means the CURRENT milestone instead — the same number the
-   * item's own effect is measured in. Only the Rare Candy uses it, and it has
-   * to: its effect is 25% of a requirement that swings from 4x threshold to
-   * 100x, so a flat price was a 0.6x loss during the egg phase and a 62.5x
-   * windfall on a legendary about to graduate.
+   * 'candy' means what one Rare Candy gives right now instead — the same
+   * number the item's own effect is measured in. Only the Rare Candy uses it,
+   * and it has to: a level of a legendary's growth is five times a level of a
+   * common one's, so a flat price would be a loss on one and a windfall on the
+   * other.
    */
-  basis?: 'requirement';
+  basis?: 'candy';
   group: Group;
   /**
    * Earned, not bought.
@@ -126,6 +140,17 @@ export type Product =
       rarity: null;
     })
   | (Listing & {
+      /**
+       * An evolution item. Sold only while the companion's next evolution can
+       * use it — forty-one of them on one shelf is a wall, and the one that
+       * matters is the one this companion needs. See `shelved`.
+       */
+      kind: 'evo';
+      id: EvoItemId;
+      sprite: string;
+      rarity: null;
+    })
+  | (Listing & {
       kind: 'egg';
       id: EggId;
       /** Eggs share one drawn icon rather than a fetched sprite. */
@@ -137,14 +162,24 @@ export type Product =
       rarity: Rarity;
     });
 
+/** 모으령 becomes 타부자고 with 999 coins; the shop sells the lot as one purchase. */
+const GIMMIGHOUL_COIN = 'gimmighoul-coin';
+const PER_BUY: Record<string, number> = { [GIMMIGHOUL_COIN]: 999 };
+
+/** A line of what each kind of evolution item is, for the shelf. */
+const EVO_ITEM_DESC: Record<string, string> = {
+  'linking-cord': '통신교환으로 진화하는 포켓몬이 교환 없이 진화합니다.',
+  [GIMMIGHOUL_COIN]: '999개 묶음. 모으령이 모으는 코인입니다.',
+};
+
 export const PRODUCTS: Product[] = [
   {
     id: 'rare-candy',
     group: 'growth',
     name: '이상한사탕',
-    desc: '지금 단계 진행도를 25% 채웁니다.',
-    priceMult: 0.3,
-    basis: 'requirement',
+    desc: '레벨이 1 오릅니다. 알일 때는 부화까지를 25% 채웁니다.',
+    priceMult: 1.2,
+    basis: 'candy',
     sprite: 'rare-candy',
     rarity: null,
     kind: 'item',
@@ -242,10 +277,37 @@ export const PRODUCTS: Product[] = [
     rarity: 'legendary',
     kind: 'egg',
   },
+  ...Object.entries(EVO_ITEM_KO).map(
+    ([id, name]): Product => ({
+      id,
+      group: 'evolution',
+      name,
+      desc: EVO_ITEM_DESC[id] ?? '진화에 쓰는 도구입니다. 가방에서 쓰면 조건이 맞을 때 진화합니다.',
+      // 모으령의코인 is sold as the whole 999 at once, so it costs like ten.
+      priceMult: id === GIMMIGHOUL_COIN ? 30 : 3,
+      sprite: id,
+      rarity: null,
+      kind: 'evo',
+    }),
+  ),
 ];
 
+/**
+ * Whether a product is on the shelf for this state.
+ *
+ * Everything but the achievement rewards — and the evolution items, which are
+ * shelved only while the companion's next evolution can use them. The bag
+ * still resolves any of them, shelved or not.
+ */
+export function shelved(p: Product, state: GameState): boolean {
+  if (p.award) return false;
+  if (p.kind !== 'evo') return true;
+  const a = state.active;
+  return !!a && itemsFor(a.pathIds, a.stageIndex).includes(p.id);
+}
+
 export function priceOf(p: Product, state: GameState): number {
-  const unit = p.basis === 'requirement' ? currentRequirement(state) : state.hatchThreshold;
+  const unit = p.basis === 'candy' ? candyGrant(state) : state.hatchThreshold;
   return Math.round(p.priceMult * unit);
 }
 
@@ -262,13 +324,15 @@ export function wallet(state: GameState, earnedTokens: number): number {
   return Math.max(0, earnedTokens + (state.awardTokens ?? 0) - state.spentTokens);
 }
 
-/** Tokens needed to clear whatever milestone the companion is currently on. */
-export function currentRequirement(state: GameState): number {
+/**
+ * Tokens one Rare Candy gives right now: a level's worth — a ninety-ninth of the
+ * whole way from hatch to 100 — or, to an egg, a quarter of the hatch.
+ */
+export function candyGrant(state: GameState): number {
   const a = state.active;
-  if (!a) return state.hatchThreshold;
-  return a.stageIndex >= a.pathIds.length - 1
-    ? tokensForRetirement(a.rarity, state.hatchThreshold)
-    : tokensForStage(a.stageIndex, a.rarity, state.hatchThreshold);
+  if (!a) return Math.round(state.hatchThreshold * 0.25);
+  // Rounded up, so a candy is never a token short of the level it promises.
+  return Math.ceil(growthBudget(a.pathIds, a.rarity, state.hatchThreshold) / (MAX_LEVEL - 1));
 }
 
 export type ShopResult = { state: GameState; ok: boolean; message: string };
@@ -311,8 +375,8 @@ export function buy(
     dex: [...state.dex],
   };
 
-  if (product.kind === 'item') {
-    s.inventory[product.id] = (s.inventory[product.id] ?? 0) + 1;
+  if (product.kind === 'item' || product.kind === 'evo') {
+    s.inventory[product.id] = (s.inventory[product.id] ?? 0) + (PER_BUY[product.id] ?? 1);
     return { state: s, ok: true, message: `${product.name}${josa(product.name, '을', '를')} 샀습니다.` };
   }
 
@@ -390,11 +454,14 @@ function splice(state: GameState, have: number, pick: number | null): ShopResult
  */
 export function consumeItem(
   state: GameState,
-  itemId: ItemId,
+  itemId: ItemId | EvoItemId,
   earnedTokens: number,
   pick: number | null = null,
+  now: Date = new Date(),
 ): ShopResult {
   const have = state.inventory[itemId] ?? 0;
+
+  if (isEvoItem(itemId)) return evolveWith(state, itemId, have, now);
 
   // Everstone is a toggle, not a consumable — turning it off costs nothing.
   if (itemId === 'everstone') {
@@ -408,7 +475,7 @@ export function consumeItem(
   // The Key Stone and the Dynamax Band do their work by being owned, so there
   // is nothing to press. Saying so beats doing nothing quietly — a button that
   // silently changes no state is the shape this used to have.
-  if (PASSIVE.has(itemId)) {
+  if (PASSIVE.has(itemId as ItemId)) {
     const name = PRODUCTS.find((p) => p.id === itemId)?.name ?? itemId;
     return { state, ok: false, message: `${name}${josa(name, '은', '는')} 가지고 있는 것만으로 효과가 있습니다.` };
   }
@@ -425,12 +492,40 @@ export function consumeItem(
   }
 
   // rare-candy: credit bonus progress. bonusTokens feeds progression only, so
-  // the wallet is untouched.
-  //
-  // The requirement must be the CURRENT one — it scales with both stage and
-  // rarity, so a fixed multiple would quietly under-deliver on a legendary or a
-  // late stage (1.7% instead of the advertised 25%).
-  s.bonusTokens = state.bonusTokens + Math.round(currentRequirement(state) * 0.25);
+  // the wallet is untouched. A level's worth, measured on THIS companion — a
+  // level of a legendary is five times a level of a common one.
+  s.bonusTokens = state.bonusTokens + candyGrant(state);
   void earnedTokens;
-  return { state: s, ok: true, message: '진행도가 올랐습니다.' };
+  return { state: s, ok: true, message: state.active ? '레벨이 올랐습니다.' : '부화가 가까워졌습니다.' };
+}
+
+/**
+ * Use an evolution item on the companion.
+ *
+ * The item goes only if something happens, as in the games: a Thunder Stone
+ * handed to a Charmander stays in the bag. A rule with a time on it (예리한이빨
+ * at night) is checked against `now`.
+ */
+function evolveWith(state: GameState, item: EvoItemId, have: number, now: Date): ShopResult {
+  const name = EVO_ITEM_KO[item] ?? item;
+  if (have < 1) return { state, ok: false, message: `${name}${josa(name, '이', '가')} 없습니다.` };
+  const a = state.active;
+  if (!a) return { state, ok: false, message: '아직 포켓몬이 없습니다.' };
+  if (state.everstone) return { state, ok: false, message: '변함없는돌 때문에 진화하지 않습니다.' };
+  const at = lifetimeOf(state);
+  const level = levelOf(a, at, state.hatchThreshold);
+  const evolved = evolveBy(state, a, level, now, { kind: 'item', item, have }, at);
+  if (!evolved) return { state, ok: false, message: `${name}${josa(name, '을', '를')} 써도 아무 일도 일어나지 않았다.` };
+  const spent = PER_BUY[item] ?? 1;
+  const to = speciesName(evolved.to);
+  return {
+    state: {
+      ...state,
+      active: evolved.active,
+      inventory: { ...state.inventory, [item]: have - spent },
+      itemEvolutions: (state.itemEvolutions ?? 0) + 1,
+    },
+    ok: true,
+    message: `${speciesName(evolved.from)}${josa(speciesName(evolved.from), '은', '는')} ${to}${josa(to, '으로', '로')} 진화했다!`,
+  };
 }

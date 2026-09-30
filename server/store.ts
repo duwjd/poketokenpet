@@ -98,6 +98,11 @@ export function migrate(parsed: StoredState | null): GameState {
   if (active && active.huntCountAtBirth === undefined) {
     active.huntCountAtBirth = parsed.huntCount ?? 0;
   }
+  // A companion from before levels existed is left without one on purpose:
+  // `advance` reads a missing level as one below what its tokens are worth, so
+  // the first tick is a level-up and the evolution check runs — a 파이리 that
+  // has banked Lv.40 of tokens becomes a 리자몽 then, not at Lv.41. It never
+  // goes back a stage: one already evolved keeps its form whatever its level.
   // What lifetimeTokens must already have reached, minus the parts items and
   // hunting gave. Subtracting huntTokens is a no-op on a v3 save, but leaving
   // it out would rot the moment there is a v5.
@@ -178,6 +183,7 @@ export function migrate(parsed: StoredState | null): GameState {
     forcedNext: parsed.forcedNext ?? null,
     awardTokens: parsed.awardTokens ?? 0,
     trainerWins: parsed.trainerWins ?? 0,
+    itemEvolutions: parsed.itemEvolutions ?? 0,
     /**
      * The badge fields. Same allow-list rule as the blocks above, and the
      * loudest failure yet if forgotten: a badge case that empties every twenty

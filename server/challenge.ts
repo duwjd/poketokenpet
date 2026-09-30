@@ -19,6 +19,7 @@ import {
   HUNT_LOG_MAX,
   encounterAt,
   formOpts,
+  hunt,
   huntCap,
   moveMult,
 } from './hunt.ts';
@@ -201,7 +202,18 @@ function spendEncounter(state: GameState, entry: HuntEntry, now: number, gained:
  * who is standing. The same equality-claim discipline `hunt()` applies to
  * `forcedNext`, applied to intent.
  */
-export function challengeAction(state: GameState, id: string, now: number): ShopResult {
+export function challengeAction(given: GameState, id: string, now: number): ShopResult {
+  /**
+   * Settle whatever encounters are already due BEFORE spending one on this.
+   *
+   * The panel replays `huntLog[0]` only. If a backlog were still owed — the
+   * lid was shut, the poll has not landed yet — the next `buildState` would
+   * settle it on top of this fight and push it off the top of the log, and the
+   * badge would change hands with nothing on screen. Settling first also
+   * re-asks who is standing against where the pet really is, which the
+   * mismatch check below then holds the click to.
+   */
+  const state = hunt(given, now).state;
   const p = pendingChallenge(state);
   if (!p) return { state, ok: false, message: '지금은 걸어온 승부가 없습니다.' };
 
@@ -287,15 +299,11 @@ export function challengeAction(state: GameState, id: string, now: number): Shop
       now,
       tokens,
     );
-    return {
-      state: out,
-      ok: true,
-      message: fight.won
-        ? first
-          ? `${row.badgeKo}${josa(row.badgeKo, '을', '를')} 받았습니다!`
-          : `${g.name}에게 이겼습니다.`
-        : `${g.name}에게 졌습니다.`,
-    };
+    // Deliberately says nothing about how it went. The fight has already
+    // been decided, but the panel is about to PLAY it, and a toast that said
+    // "회색배지를 받았습니다!" before the first Pokemon is out is the spoiler
+    // this reply used to be. The scene carries the outcome.
+    return { state: out, ok: true, message: `${g.name}에게 승부를 걸었습니다!` };
   }
 
   // The league. The first member is fought here so there is something to
@@ -339,11 +347,8 @@ export function challengeAction(state: GameState, id: string, now: number): Shop
     now,
     tokens,
   );
-  return {
-    state: out,
-    ok: true,
-    message: round.won ? `${member.ko}을 이겼습니다.` : `${member.ko}에게 졌습니다.`,
-  };
+  // Neutral for the same reason the gym reply is: the scene tells the result.
+  return { state: out, ok: true, message: `${member.ko}에게 승부를 걸었습니다!` };
 }
 
 /**

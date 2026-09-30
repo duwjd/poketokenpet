@@ -6,10 +6,21 @@
  * Same bargain as gen-species.ts — bake the table into the repo so teaching a
  * move never fails because PokeAPI is slow or down.
  *
- * Scope is `move_learn_method_id = 4` (machine), unioned across EVERY version
- * group. Scarlet/Violet alone is 229 machines but leaves 297 species unable to
- * learn anything, because they simply aren't in the Paldea dex. The union is
- * 340 moves and covers 1016 of 1025 species.
+ * Two learn methods, two scopes:
+ *
+ * - **Machines** (`move_learn_method_id = 4`), unioned across EVERY version
+ *   group. Scarlet/Violet alone is 229 machines but leaves 297 species unable
+ *   to learn anything, because they simply aren't in the Paldea dex. The union
+ *   covers 1016 of 1025 species. This is what `LEARNSET` and `canLearn` mean.
+ * - **Level-up** (`move_learn_method_id = 1`), from ONE version group per
+ *   species: the newest mainline game that has it (see `LEVEL_UP_ORDER`).
+ *   Levels move between generations — 리자드 learns 화염방사 at 30 in one
+ *   and 38 in another — so a union would teach each move at whichever level
+ *   was lowest in any game, which is no game at all. This is `LEVELUP`.
+ *
+ * The move table is the union of both, and nothing else: a move only an old
+ * game taught by level-up (추격, 태권당수) is not in it, because nothing here
+ * could learn it.
  *
  * TM numbers are deliberately NOT carried: they are renumbered every
  * generation, so the same "TM01" means a different move depending on the game.
@@ -22,6 +33,43 @@ import { fileURLToPath } from 'node:url';
 
 const ENDPOINT = 'https://graphql.pokeapi.co/v1beta2';
 const MACHINE = 4; // movelearnmethod.id
+const LEVEL_UP = 1;
+
+/**
+ * Version groups to take a species' level-up learnset from, newest mainline
+ * first: Scarlet/Violet and its two DLCs, Sword/Shield, Brilliant Diamond/
+ * Shining Pearl, then back through the generations.
+ *
+ * Left out on purpose: Let's Go (19), Legends: Arceus (24) and everything past
+ * the DLCs (28+). Their movesets are built around mechanics the mainline
+ * battle does not have — Legends: Arceus has no PP as the games know it and
+ * moves are "mastered" — so their levels are not the answer to "when does it
+ * learn this".
+ */
+const LEVEL_UP_ORDER = [25, 27, 26, 20, 23, 18, 17, 16, 15, 14, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+
+/**
+ * Moves a transcribed gym roster carries that no species here learns any more.
+ *
+ * server/gymdata.ts transcribes leaders from the game each roster comes from,
+ * and a Generation 5 leader can know a move Generation 9 dropped. Keeping those
+ * few in the table is what lets the transcription say what the leader
+ * actually carried.
+ */
+const ROSTER_ONLY: number[] = [
+  2, 26, // 태권당수 (연무의 타격귀), 점프킥 (연무의 비조도)
+  // server/legendmoves.ts: signature moves the current games teach no species
+  // by level — 거수참 · 거수탄 (자시안 · 자마젠타), 블리자드랜스 · 아스트랄비트
+  // (블리자포스 · 레이스포스).
+  781, 782, 824, 825,
+];
+
+/** PokeAPI's move attributes, in id order — the bit each sets in `MoveInfo.flags`. */
+const FLAGS = [
+  'contact', 'charge', 'recharge', 'protect', 'reflectable', 'snatch', 'mirror', 'punch', 'sound',
+  'gravity', 'defrost', 'distance', 'heal', 'authentic', 'powder', 'bite', 'pulse', 'ballistics',
+  'mental', 'non-sky-battle', 'dance',
+] as const;
 const MAX_SPECIES = 1025;
 /** Species ids to fetch per request. 340k rows total, so this must be chunked. */
 const CHUNK = 40;
@@ -43,6 +91,11 @@ const TYPES = [
 
 const DAMAGE_CLASSES = ['physical', 'special', 'status'] as const;
 
+/** The stats a move can move, in PokeAPI's stat-id order. */
+const STATS = [
+  'attack', 'defense', 'special-attack', 'special-defense', 'speed', 'accuracy', 'evasion',
+] as const;
+
 type MoveRow = {
   id: number;
   name: string;
@@ -51,7 +104,16 @@ type MoveRow = {
   pp: number | null;
   movedamageclass: { name: string } | null;
   type: { name: string } | null;
+  /** -7..+5. Quick Attack is +1, Focus Punch -3. */
+  priority: number | null;
+  /** Who it lands on: 'user', 'selected-pokemon', 'entire-field', … */
+  movetarget: { name: string } | null;
+  /** The stat stages it moves, and by how much. Empty for most moves. */
+  movemetastatchanges: { change: number; stat: { name: string } }[];
   movenames: { name: string; language: { name: string } }[];
+  /** PokeAPI's effect id: moves that share one work the same way. Null for the newest. */
+  move_effect_id: number | null;
+  moveattributemaps: { moveattribute: { name: string } }[];
   /**
    * What the move DOES beyond damage. An array upstream, but at most one row
    * in practice — and empty for a handful of Gen-9 machines PokeAPI has not
@@ -61,17 +123,29 @@ type MoveRow = {
     ailment_chance: number | null;
     movemetaailment: { name: string } | null;
     movemetacategory: { name: string } | null;
+    /** Percent of the damage dealt: positive heals the user, negative is recoil. */
+    drain: number | null;
+    /** Percent of max HP a healing move restores. */
+    healing: number | null;
+    crit_rate: number | null;
+    flinch_chance: number | null;
+    /** Percent chance a damaging move's stat change lands. 0 on a status move. */
+    stat_chance: number | null;
+    min_hits: number | null;
+    max_hits: number | null;
   }[];
 };
 
 /**
- * Machines PokeAPI ships with no `movemeta` row.
+ * Moves PokeAPI ships with no `movemeta` row.
  *
- * Newer moves, mostly Gen 9. They are emitted with no ailment and no category
- * rather than throwing, but the count is asserted: if it grows without bound
- * the query shape has changed and the whole column is quietly empty.
+ * Newer moves, mostly Gen 9 — 75 of them once level-up moves came in. They are
+ * emitted with no ailment and no category rather than throwing, and
+ * server/battlefield.ts's MOVE_PATCHES writes back what each one does. The
+ * count is asserted: if it grows without bound the query shape has changed
+ * and the whole column is quietly empty.
  */
-const MAX_MISSING_META = 20;
+const MAX_MISSING_META = 90;
 
 async function gql<T>(query: string): Promise<T> {
   const res = await fetch(ENDPOINT, {
@@ -86,14 +160,10 @@ async function gql<T>(query: string): Promise<T> {
   return json.data;
 }
 
-/** Every move any Pokemon can learn from a machine, in any generation. */
-async function fetchMoves(): Promise<MoveRow[]> {
-  const data = await gql<{ pokemonmove: { move: MoveRow }[] }>(`{
-    pokemonmove(
-      where: { move_learn_method_id: { _eq: ${MACHINE} } }
-      distinct_on: move_id
-    ) {
-      move {
+/** These moves, in full. */
+async function fetchMoves(ids: number[]): Promise<MoveRow[]> {
+  const data = await gql<{ move: MoveRow[] }>(`{
+    move(where: { id: { _in: ${JSON.stringify(ids)} } }) {
         id
         name
         power
@@ -101,19 +171,81 @@ async function fetchMoves(): Promise<MoveRow[]> {
         pp
         movedamageclass { name }
         type { name }
+        priority
+        movetarget { name }
+        movemetastatchanges(order_by: { stat_id: asc }) { change stat { name } }
         movemeta {
           ailment_chance
           movemetaailment { name }
           movemetacategory { name }
+          drain
+          healing
+          crit_rate
+          flinch_chance
+          stat_chance
+          min_hits
+          max_hits
         }
         movenames(where: { language: { name: { _in: ["ko", "en"] } } }) {
           name
           language { name }
         }
-      }
+        move_effect_id
+        moveattributemaps { moveattribute { name } }
     }
   }`);
-  return data.pokemonmove.map((r) => r.move).sort((a, b) => a.id - b.id);
+  return data.move.sort((a, b) => a.id - b.id);
+}
+
+/**
+ * Each species' level-up learnset, from the newest version group that has one.
+ *
+ * `[level, moveId]` pairs, level order. Level 0 is PokeAPI's "on evolution" —
+ * learned the moment it evolves into this species, whatever its level.
+ */
+async function fetchLevelUp(): Promise<Map<number, [number, number][]>> {
+  const out = new Map<number, [number, number][]>();
+  for (let lo = 1; lo <= MAX_SPECIES; lo += CHUNK) {
+    const hi = Math.min(lo + CHUNK - 1, MAX_SPECIES);
+    const data = await gql<{
+      pokemonmove: { pokemon_id: number; move_id: number; level: number; version_group_id: number }[];
+    }>(`{
+      pokemonmove(
+        where: {
+          move_learn_method_id: { _eq: ${LEVEL_UP} }
+          pokemon_id: { _gte: ${lo}, _lte: ${hi} }
+        }
+      ) {
+        pokemon_id
+        move_id
+        level
+        version_group_id
+      }
+    }`);
+    const byVg = new Map<number, Map<number, [number, number][]>>();
+    for (const r of data.pokemonmove) {
+      if (!byVg.has(r.pokemon_id)) byVg.set(r.pokemon_id, new Map());
+      const m = byVg.get(r.pokemon_id)!;
+      if (!m.has(r.version_group_id)) m.set(r.version_group_id, []);
+      m.get(r.version_group_id)!.push([r.level, r.move_id]);
+    }
+    for (const [id, vgs] of byVg) {
+      const vg = LEVEL_UP_ORDER.find((v) => vgs.has(v));
+      if (vg === undefined) continue;
+      const seen = new Set<string>();
+      const rows = vgs
+        .get(vg)!
+        .filter(([lv, mv]) => {
+          const k = `${lv}:${mv}`;
+          return seen.has(k) ? false : (seen.add(k), true);
+        })
+        .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      out.set(id, rows);
+    }
+    process.stdout.write(`\r   #${lo}-${hi} … ${out.size}종`);
+  }
+  process.stdout.write('\n');
+  return out;
 }
 
 /** Korean type names, for the TM label. */
@@ -268,9 +400,20 @@ function packBitset(indices: number[], bits: number): string {
 }
 
 async function main() {
-  process.stdout.write('PokeAPI에서 기술머신 기술 목록 가져오는 중... ');
-  const moves = await fetchMoves();
+  console.log('종별 학습 가능 기술 가져오는 중...');
+  const learnsets = await fetchLearnsets();
+  console.log('종별 레벨업 기술 가져오는 중...');
+  const levelUp = await fetchLevelUp();
+  const missingLevelUp = [...Array(MAX_SPECIES).keys()].map((i) => i + 1).filter((id) => !levelUp.has(id));
+  if (missingLevelUp.length) throw new Error(`레벨업 기술이 없는 종: ${missingLevelUp.slice(0, 20).join(', ')}`);
+
+  const machineIds = new Set([...learnsets.values()].flatMap((s) => [...s]));
+  const levelIds = new Set([...levelUp.values()].flatMap((rows) => rows.map(([, m]) => m)));
+  const ids = [...new Set([...machineIds, ...levelIds, ...ROSTER_ONLY])].sort((a, b) => a - b);
+  process.stdout.write(`기술 ${ids.length}개 가져오는 중 (기술머신 ${machineIds.size} · 레벨업 ${levelIds.size})... `);
+  const moves = await fetchMoves(ids);
   console.log(`${moves.length}개`);
+  if (moves.length !== ids.length) throw new Error(`기술 수가 맞지 않습니다: ${moves.length} / ${ids.length}`);
 
   const typeKo = await fetchTypeNames();
 
@@ -281,9 +424,6 @@ async function main() {
   process.stdout.write('타입 상성표 가져오는 중... ');
   const typeChart = await fetchTypeChart();
   console.log(`${typeChart.length}칸`);
-
-  console.log('종별 학습 가능 기술 가져오는 중...');
-  const learnsets = await fetchLearnsets();
 
   // Every move must land in the 18 known types and 3 damage classes; a new
   // type would silently become "normal" and pick the wrong TM sprite.
@@ -327,6 +467,14 @@ async function main() {
   }
   console.log(`   상태이상 ${AILMENTS.length - 1}종 · 분류 ${CATEGORIES.length - 1}종`);
 
+  const TARGETS = vocab(moves.map((m) => m.movetarget?.name));
+  const targetIndex = new Map(TARGETS.map((t, i) => [t, i]));
+  const statIndex = new Map<string, number>(STATS.map((t, i) => [t, i]));
+  for (const m of moves) {
+    for (const c of m.movemetastatchanges) {
+      if (!statIndex.has(c.stat.name)) throw new Error(`모르는 능력치: ${c.stat.name} (${m.name})`);
+    }
+  }
   const ailIndex = new Map(AILMENTS.map((a, i) => [a, i]));
   const catIndex = new Map(CATEGORIES.map((c, i) => [c, i]));
 
@@ -409,18 +557,42 @@ async function main() {
       `${typeIndex.get(m.type!.name)},${m.power ?? 0},${m.accuracy ?? 0},${m.pp ?? 0},` +
       `${dcIndex.get(m.movedamageclass!.name)},` +
       `${ailIndex.get(metaOf(m)?.movemetaailment?.name ?? 'none') ?? 0},${ailmentChance(m)},` +
-      `${catIndex.get(metaOf(m)?.movemetacategory?.name ?? 'none') ?? 0}],`,
+      `${catIndex.get(metaOf(m)?.movemetacategory?.name ?? 'none') ?? 0},` +
+      `${m.priority ?? 0},${targetIndex.get(m.movetarget?.name ?? 'none') ?? 0},` +
+      `${metaOf(m)?.drain ?? 0},${metaOf(m)?.healing ?? 0},${metaOf(m)?.crit_rate ?? 0},` +
+      `${metaOf(m)?.flinch_chance ?? 0},${metaOf(m)?.stat_chance ?? 0},` +
+      `${metaOf(m)?.min_hits ?? 0},${metaOf(m)?.max_hits ?? 0},` +
+      `${JSON.stringify(m.movemetastatchanges.map((c) => [statIndex.get(c.stat.name), c.change]))},` +
+      `${machineIds.has(m.id) ? 1 : 0},${flagBits(m)},${m.move_effect_id ?? 0}],`,
   );
 
+  // Level-up learnsets as "level.move" pairs joined by commas — a third the
+  // size of the JSON, and read once per species.
+  const levelRows = [...levelUp.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([id, rows]) => `  ${id}: '${rows.map(([lv, mv]) => `${lv}.${mv}`).join(',')}',`);
+
   const learnsetRows = Object.entries(learnset).map(([id, b64]) => `  ${id}: '${b64}',`);
+
+  /** The move's attributes as a bitmask over FLAGS. */
+  function flagBits(m: MoveRow): number {
+    let b = 0;
+    for (const a of m.moveattributemaps) {
+      const i = FLAGS.indexOf(a.moveattribute.name as (typeof FLAGS)[number]);
+      if (i < 0) throw new Error(`모르는 기술 속성: ${a.moveattribute.name} (${m.name})`);
+      b |= 1 << i;
+    }
+    return b;
+  }
 
   const here = path.dirname(fileURLToPath(import.meta.url));
   const out = path.join(here, '..', 'server', 'moves.ts');
 
   const body = `// GENERATED by scripts/gen-moves.ts — do not edit by hand.
-// Source: PokeAPI (https://pokeapi.co). Every move learnable from a machine,
-// unioned across all version groups. TM icons are fetched at runtime from
-// sprites/items/tm-{type}.png and are never bundled.
+// Source: PokeAPI (https://pokeapi.co). Every move learnable from a machine in
+// any version group, and every move in each species' newest level-up learnset.
+// TM icons are fetched at runtime from sprites/items/tm-{type}.png and are
+// never bundled.
 
 /** The 18 elemental types. Index order is what LEARNSET rows encode. */
 export const TYPES = ${JSON.stringify(TYPES)} as const;
@@ -431,7 +603,7 @@ export type DamageClass = (typeof DAMAGE_CLASSES)[number];
 
 /**
  * Everything a move can inflict, straight from PokeAPI — deliberately NOT
- * collapsed into the few the battle models. server/hunt.ts decides what each
+ * collapsed into the few the battle models. server/fight.ts decides what each
  * one is worth, so re-tuning that never needs a regeneration. Index 0 is
  * 'none', so an absent column reads as "does nothing".
  */
@@ -441,6 +613,14 @@ export type Ailment = (typeof AILMENTS)[number];
 /** PokeAPI's own grouping of what a move is for. */
 export const CATEGORIES = ${JSON.stringify(CATEGORIES)} as const;
 export type MoveCategory = (typeof CATEGORIES)[number];
+
+/** Who a move lands on, in PokeAPI's own words. */
+export const TARGETS = ${JSON.stringify(TARGETS)} as const;
+export type MoveTarget = (typeof TARGETS)[number];
+
+/** The stats a stage change can touch. */
+export const STAT_NAMES = ${JSON.stringify(STATS)} as const;
+export type StatName = (typeof STAT_NAMES)[number];
 
 /** Korean type names, for TM labels. */
 export const TYPE_KO: Record<MoveType, string> = ${JSON.stringify(
@@ -461,21 +641,58 @@ export type MoveInfo = {
   accuracy: number;
   pp: number;
   damageClass: DamageClass;
-  /** What it inflicts, or 'none'. The battle rules for each live in server/hunt.ts. */
+  /** What it inflicts, or 'none'. The battle rules for each live in server/fight.ts. */
   ailment: Ailment;
   /** 0-100. Already normalised: a status move that always inflicts reads 100, not 0. */
   ailmentChance: number;
   /** 'net-good-stats', 'heal', 'field-effect' and so on. */
   category: MoveCategory;
+  /** -7..+5. Higher goes first whatever the speeds. */
+  priority: number;
+  /** 'user', 'selected-pokemon', 'entire-field' and so on. */
+  target: MoveTarget;
+  /** Percent of the damage dealt: positive heals the user, negative is recoil. */
+  drain: number;
+  /** Percent of max HP a healing move restores. */
+  healing: number;
+  /** Critical-hit stage the move adds: 1 for Slash and friends. */
+  critRate: number;
+  /** Percent chance the target flinches. */
+  flinchChance: number;
+  /** Percent chance a damaging move's stat change lands. 0 on a status move, which always does. */
+  statChance: number;
+  /** [min, max] strikes for a multi-hit move, or null. */
+  hits: [number, number] | null;
+  /** Stage changes, in PokeAPI's order. Who they land on is the battle's call. */
+  statChanges: { stat: StatName; change: number }[];
+  /** Some species can learn it from a machine. Only these ever drop as a TM. */
+  machine: boolean;
+  /** PokeAPI's attributes — contact, punch, sound… — as a bitmask over MOVE_FLAGS. See \`hasFlag\`. */
+  flags: number;
+  /** PokeAPI's effect id: moves sharing one work alike. 0 where PokeAPI has none yet. */
+  effect: number;
 };
+
+/** The attributes a move can carry, in PokeAPI order; bit i of \`MoveInfo.flags\` is MOVE_FLAGS[i]. */
+export const MOVE_FLAGS = ${JSON.stringify(FLAGS)} as const;
+export type MoveFlag = (typeof MOVE_FLAGS)[number];
+
+/** Whether a move carries an attribute: \`hasFlag(m, 'contact')\`. */
+export function hasFlag(m: MoveInfo, f: MoveFlag): boolean {
+  return (m.flags & (1 << MOVE_FLAGS.indexOf(f))) !== 0;
+}
 
 /**
  * [id, ko, en, typeIndex, power, accuracy, pp, damageClassIndex,
- *  ailmentIndex, ailmentChance, categoryIndex]
+ *  ailmentIndex, ailmentChance, categoryIndex,
+ *  priority, targetIndex, drain, healing, critRate, flinchChance, statChance,
+ *  minHits, maxHits, [[statIndex, change], ...], machine, flags, effect]
  */
 type Row = [
   number, string, string, number, number, number, number, number,
   number, number, number,
+  number, number, number, number, number, number, number,
+  number, number, [number, number][], number, number, number,
 ];
 
 const ROWS: Row[] = [
@@ -495,6 +712,18 @@ export const MOVES: MoveInfo[] = ROWS.map((r) => ({
   ailment: AILMENTS[r[8]],
   ailmentChance: r[9],
   category: CATEGORIES[r[10]],
+  priority: r[11],
+  target: TARGETS[r[12]],
+  drain: r[13],
+  healing: r[14],
+  critRate: r[15],
+  flinchChance: r[16],
+  statChance: r[17],
+  hits: r[18] > 0 && r[19] > 1 ? [r[18], r[19]] : null,
+  statChanges: r[20].map(([i, change]) => ({ stat: STAT_NAMES[i], change })),
+  machine: r[21] === 1,
+  flags: r[22],
+  effect: r[23],
 }));
 
 /** move.id -> index into MOVES. */
@@ -607,6 +836,38 @@ export function learnableMoves(speciesId: number): number[] {
     if (b[i >> 3] & (1 << (i & 7))) out.push(MOVES[i].id);
   }
   return out;
+}
+
+/**
+ * speciesId -> its level-up learnset, as "level.moveId" pairs in level order.
+ *
+ * From ONE version group per species, the newest mainline one that has it —
+ * see scripts/gen-moves.ts. Level 0 is "on evolution".
+ */
+const LEVELUP: Record<number, string> = {
+${levelRows.join('\n')}
+};
+
+const levelDecoded = new Map<number, [number, number][]>();
+
+/** A species' level-up moves, \`[level, moveId]\` in level order. Level 0 is learned on evolving into it. */
+export function levelUpMoves(speciesId: number): [number, number][] {
+  const hit = levelDecoded.get(speciesId);
+  if (hit) return hit;
+  const raw = LEVELUP[speciesId];
+  const out: [number, number][] = raw
+    ? raw.split(',').map((p) => {
+        const [lv, mv] = p.split('.');
+        return [Number(lv), Number(mv)];
+      })
+    : [];
+  levelDecoded.set(speciesId, out);
+  return out;
+}
+
+/** Whether a species learns this move by levelling up, at any level. */
+export function learnsByLevel(speciesId: number, moveId: number): boolean {
+  return levelUpMoves(speciesId).some(([, m]) => m === moveId);
 }
 `;
 

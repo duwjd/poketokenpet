@@ -11,7 +11,8 @@ import {
   shardableItems,
   spendLegendItem,
 } from '../server/legends.ts';
-import { encounterAt, hunt, legendDropAt, shardDropAt, substituteAt } from '../server/hunt.ts';
+import { encounterAt, hunt, legendBattleAt, legendDropAt, shardDropAt, substituteAt } from '../server/hunt.ts';
+import { readFileSync } from 'node:fs';
 import { trainerAt } from '../server/trainer.ts';
 import { legendItem } from '../server/legenddata.ts';
 
@@ -243,6 +244,29 @@ describe('the egg', () => {
     expect(out.state.dex).toEqual([]);
     if (fight!.legend!.won) expect(out.state.legendEggs!['483']).toBe(1);
     else expect(out.state.legendEggs?.['483'] ?? 0).toBe(0);
+  });
+
+  /**
+   * The scene draws a fight from its turns. A legendary's used to ship none, so
+   * the legendary fainted before anyone moved — and fainted on a lost fight too.
+   */
+  it('replays the fight it settled, turn for turn', () => {
+    for (const [seq, moves] of [
+      [700, [53, 63, 89, 87]],
+      [701, [33]],
+    ] as const) {
+      const s = hunting({ legendItems: { 'adamant-orb': 1 }, huntCount: seq, active: { ...ALIVE, moves: [...moves] } });
+      const out = hunt({ ...spendLegendItem(s, 'adamant-orb').state, huntedAt: 0 }, 300_000 * 2);
+      const e = out.state.huntLog.find((x) => x.legend)!;
+      const b = legendBattleAt(e.seq, e.legend!.speciesId, e.mine!.moves, { mySpeciesId: e.mine!.speciesId, myAbility: e.mine!.ability ?? null, myFriendship: e.mine!.friendship });
+      expect(b.turns.length).toBeGreaterThan(0);
+      expect(b.won).toBe(e.legend!.won);
+    }
+  });
+
+  it('is shipped to the scene, not left out of it', () => {
+    const src = readFileSync('server/state.ts', 'utf8');
+    expect(src).toMatch(/e\.seq === newestSeq && e\.legend\s*\?\s*legendFor\(/);
   });
 
   it('hatches the species it names', () => {

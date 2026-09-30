@@ -1,8 +1,20 @@
 import { LINES, NATURES, type SpeciesLine } from './species.ts';
 import { formsFrom, type Form } from './forms.ts';
 import { lineOf, retireInto } from './dex.ts';
+import {
+  NO_DEEDS,
+  evolveTarget,
+  friendshipAt,
+  needsFlip,
+  pathThrough,
+  type Deeds,
+  type EvoContext,
+  type Trigger,
+} from './evolution.ts';
 import { learnableMoves, moveById, speciesInfo, type MoveInfo } from './moves.ts';
 import type { CountMode } from './usage.ts';
+import { movesLearnedBetween, startingMoves } from './learnset.ts';
+import { abilityOf, abilitySlotFor, type AbilitySlot } from './abilities.ts';
 
 /**
  * Does this move actually hit for something?
@@ -102,8 +114,29 @@ export type Companion = {
   nickname?: string;
   /** lifetimeTokens at hatch. */
   bornAt: number;
-  /** lifetimeTokens when the current stage began. */
+  /**
+   * lifetimeTokens when the current stage began.
+   *
+   * Growth no longer reads it — the level is measured from `bornAt` across the
+   * whole line (see `levelAt`) — but it still says when the last evolution
+   * happened, and a v2 save's migration rebuilds the earned counter from it.
+   */
   tokensAtStageStart: number;
+  /**
+   * The level it has been settled at, 1..100.
+   *
+   * Always derivable from the tokens (`levelOf`); stored so a tick can tell
+   * which levels are NEW and run what a level-up does — an evolution check,
+   * the moves that level teaches. Optional for old saves; `migrate` fills it.
+   */
+  level?: number;
+  /** What it has done in battle since hatching, for the evolutions that ask. See server/evolution.ts. */
+  deeds?: Deeds;
+  /**
+   * Held upside down for the next level-up — 오케이징's evolution. Set from
+   * the partner tab, spent by the level-up that follows.
+   */
+  upsideDown?: boolean;
   /**
    * `huntTokens` and `huntCount` as they stood when this one hatched.
    *
@@ -162,6 +195,8 @@ export type PartyMember = {
   shiny: boolean;
   /** Decoration, as in the dex entry it came from. */
   formId?: number;
+  /** The ability slot of the dex entry it came from. Absent on older ones, which fight with the first. */
+  abilitySlot?: AbilitySlot;
   /** Up to MOVE_SLOTS. May be empty — an unarmed member is a legal bad choice. */
   moves: number[];
 };
@@ -170,6 +205,12 @@ export type DexEntry = {
   speciesId: number;
   shiny: boolean;
   firstSeenAt: number;
+  /**
+   * The ability slot this species graduated with — the first one's, unless a
+   * later one left with its hidden ability (2), which then stays. What a party
+   * member made from this entry fights with.
+   */
+  abilitySlot?: AbilitySlot;
   /** Whatever it was called when it graduated. Absent on older entries. */
   nickname?: string;
   /**
@@ -210,6 +251,14 @@ export type HuntEntry = {
   /** The TM that dropped, as a move id, or null. */
   moveId: number | null;
   /**
+   * Whether a WILD fight was won. Absent on trainer, gym, league and
+   * legendary entries, which each carry their own outcome.
+   *
+   * Optional, so no schema bump: every entry written before a wild fight
+   * could be lost simply has none, and was a win.
+   */
+  won?: boolean;
+  /**
    * The mega stone picked up here, as the form id it opens.
    *
    * Optional for the same reason `trainer` is: an older entry simply has none,
@@ -234,11 +283,12 @@ export type HuntEntry = {
    * different battle than the one that handed over the badge, possibly a loss
    * under a badge line.
    *
-   * Only set on an accepted challenge. An automatic fight settles and replays
-   * inside one pass with nothing in between, and every entry written before
-   * this existed simply has none.
+   * Set on every fight the companion itself fights — wild, trainer, gym and
+   * legendary — because an automatic fight has the same gap: `hunt` settles
+   * it, `advance` may evolve the companion, and only then is it replayed. An
+   * entry written before this existed simply has none, and replays live.
    */
-  mine?: { speciesId: number; moves: number[] };
+  mine?: { speciesId: number; moves: number[]; friendship?: number; ability?: string | null };
   /**
    * Set when this encounter was a trainer rather than a wild Pokemon.
    *
@@ -399,6 +449,12 @@ export type GameState = {
    * ideal, and the achievements screen says so.
    */
   trainerWins?: number;
+  /**
+   * Evolutions set off by an item from the bag — a stone, a 연결의끈, anything
+   * `evolveWith` in server/shop.ts spent. Lifetime, for the awards board: the
+   * dex cannot tell a 라이츄 raised by stone from one that was not.
+   */
+  itemEvolutions?: number;
   /**
    * Gym badges earned, by badge number in PokeAPI's GLOBAL numbering.
    *
@@ -566,9 +622,13 @@ export type GameState = {
    * self-healing trick `retiredCount` gets from `departedCount(dex)`.
    */
   tmsFound?: number;
+  /**
+   * The bag. The six shop items by name, and evolution items by PokeAPI slug
+   * ('thunder-stone') — generated in server/species.ts, so any string.
+   */
   inventory: Partial<
     Record<
-      'rare-candy' | 'shiny-charm' | 'everstone' | 'key-stone' | 'dynamax-band' | 'dna-splicers',
+      'rare-candy' | 'shiny-charm' | 'everstone' | 'key-stone' | 'dynamax-band' | 'dna-splicers' | (string & {}),
       number
     >
   >;
@@ -921,6 +981,26 @@ export function rename(state: GameState, raw: string): { state: GameState; ok: b
 }
 
 /**
+ * Hold the companion upside down for its next level-up, or stop.
+ *
+ * 오케이징 evolves at Lv.30 only while its 3DS is held upside down. This is
+ * that: a switch in the partner tab, spent by the next level-up. Refused for
+ * anything whose next evolution does not ask for it, so the switch never sits
+ * there meaning nothing.
+ */
+export function flipUpsideDown(state: GameState, on: boolean): { state: GameState; ok: boolean; message: string } {
+  const a = state.active;
+  if (!a) return { state, ok: false, message: '아직 포켓몬이 없습니다.' };
+  if (on && !needsFlip(a)) return { state, ok: false, message: '거꾸로 들어도 아무 일도 없을 것 같다.' };
+  if (!!a.upsideDown === on) return { state, ok: false, message: on ? '이미 거꾸로 들고 있습니다.' : '이미 바로 들고 있습니다.' };
+  return {
+    state: { ...state, active: { ...a, upsideDown: on } },
+    ok: true,
+    message: on ? '거꾸로 들었습니다. 다음 레벨업 때까지 이대로입니다.' : '바로 들었습니다.',
+  };
+}
+
+/**
  * Draw the battle form outside of battle, or stop.
  *
  * A game-state field rather than a Prefs one, for the same reason `huntEnabled`
@@ -974,6 +1054,115 @@ export function tokensForRetirement(rarity: Rarity, hatchThreshold: number): num
   return Math.round(hatchThreshold * 20 * RARITY_MULT[rarity]);
 }
 
+/** Hatching is level 1; graduating into the dex is level 100. */
+export const MAX_LEVEL = 100;
+
+/**
+ * Tokens from hatch to graduation: what the stages used to cost, summed.
+ *
+ * Three stages are 4 + 12 + 20 = 36 thresholds, two are 24, one is 20, each
+ * times the rarity — exactly what raising one took before levels existed, so
+ * a companion takes as long to raise as it always did. What moved is where in
+ * that span it evolves: at the games' own level, not at the end of a stage.
+ *
+ * Counted over the LONGEST path in its line, so a branch changing under it (a
+ * 과사삭벌레 handed 꿀맛사과 is suddenly three stages deep) never costs levels.
+ */
+export function growthBudget(pathIds: readonly number[], rarity: Rarity, hatchThreshold: number): number {
+  const stages = Math.max(pathIds.length, ...(lineOf(pathIds[0])?.paths.map((p) => p.length) ?? []));
+  let total = tokensForRetirement(rarity, hatchThreshold);
+  for (let i = 0; i < stages - 1; i++) total += tokensForStage(i, rarity, hatchThreshold);
+  return total;
+}
+
+/**
+ * The level `earned` tokens since hatch are worth: 1 at hatch, 100 at the end.
+ *
+ * Linear — every level costs the same, a ninety-ninth of the budget. The
+ * games' curves are steeper at the top, but they are paid for in battles; here
+ * it is time, and a companion that sat at 97 for a week would read as stuck.
+ */
+export function levelAt(earned: number, budget: number): number {
+  if (budget <= 0 || earned >= budget) return MAX_LEVEL;
+  return Math.min(MAX_LEVEL - 1, 1 + Math.floor(((MAX_LEVEL - 1) * Math.max(0, earned)) / budget));
+}
+
+/** Tokens since hatch at which `level` is reached. The inverse of `levelAt`. */
+export function tokensForLevel(level: number, budget: number): number {
+  if (level <= 1) return 0;
+  if (level >= MAX_LEVEL) return budget;
+  return Math.ceil(((level - 1) * budget) / (MAX_LEVEL - 1));
+}
+
+/** The companion's level at this many lifetime tokens. */
+export function levelOf(a: Companion, lifetimeTokens: number, hatchThreshold: number): number {
+  return levelAt(lifetimeTokens - a.bornAt, growthBudget(a.pathIds, a.rarity, hatchThreshold));
+}
+
+/**
+ * Which of its species' abilities this companion has.
+ *
+ * Dealt from what identifies it — the moment it hatched and what it hatched
+ * as — rather than drawn, so nothing about the hatch roll moved to make room
+ * for it, and a save from before abilities has one already, the same one it
+ * would have had. A slot, not a name: it keeps the slot as it evolves.
+ */
+export function abilitySlotOf(a: Companion): AbilitySlot {
+  return abilitySlotFor(Math.floor(a.bornAt), a.pathIds[0]);
+}
+
+/** The companion's ability right now, by slug — as its current species, or as the form it wears. */
+export function companionAbility(a: Companion, formId?: number): string | null {
+  return abilityOf(a.pathIds[a.stageIndex], abilitySlotOf(a), formId ?? a.formId);
+}
+
+/** The companion's friendship: its hatched species' own, and five for every level since. */
+export function friendshipOf(a: Companion): number {
+  return friendshipAt(a.pathIds[0], a.level ?? 1);
+}
+
+/** Everything an evolution rule can be checked against, for this companion now. */
+export function evoContext(state: GameState, a: Companion, level: number, now: Date): EvoContext {
+  return {
+    level,
+    friendship: friendshipAt(a.pathIds[0], level),
+    moves: a.moves,
+    now,
+    party: (state.party ?? []).map((m) => m.speciesId),
+    deeds: a.deeds ?? NO_DEEDS(),
+    encounters: Math.max(0, state.huntCount - (a.huntCountAtBirth ?? state.huntCount)),
+    upsideDown: !!a.upsideDown,
+  };
+}
+
+/**
+ * Evolve the companion one step, if a rule holds for this trigger.
+ *
+ * Shared by the level-up in `advance` and the item used from the bag, so the
+ * two can never disagree about what counts. Returns the evolved companion, or
+ * null when nothing happens. The drawn path follows the branch it took.
+ */
+export function evolveBy(
+  state: GameState,
+  a: Companion,
+  level: number,
+  now: Date,
+  trigger: Trigger,
+  at: number,
+): { active: Companion; from: number; to: number } | null {
+  if (a.stageIndex >= a.pathIds.length - 1 && !lineOf(a.pathIds[0])?.paths.some((p) => p.length > a.stageIndex + 1)) {
+    return null;
+  }
+  const to = evolveTarget(a.pathIds, a.stageIndex, evoContext(state, a, level, now), trigger);
+  if (to === null) return null;
+  const from = a.pathIds[a.stageIndex];
+  return {
+    active: { ...a, pathIds: pathThrough(a.pathIds, a.stageIndex, to), stageIndex: a.stageIndex + 1, tokensAtStageStart: at },
+    from,
+    to,
+  };
+}
+
 /** Deterministic RNG so hatch/shiny rolls are testable. */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -1024,19 +1213,24 @@ export function rollSpecies(
 
 export type GameEvent =
   | { kind: 'hatched'; speciesId: number; shiny: boolean; rarity: Rarity }
+  | { kind: 'levelled'; level: number }
+  /** A level-up move: put straight into a free slot (`placed`), or waiting in the partner tab. */
+  | { kind: 'learned'; moveId: number; placed: boolean }
   | { kind: 'evolved'; from: number; to: number }
   | { kind: 'retired'; speciesId: number };
 
 /**
  * Drive the companion forward to match `lifetimeTokens`.
  *
- * Pure: same inputs, same outputs. Loops because a long gap (app closed for a
- * week) can cross several thresholds at once.
+ * Pure: same inputs, same outputs — `now` included, which only the evolutions
+ * that care about the time of day read. Loops because a long gap (app closed
+ * for a week) can cross several thresholds at once.
  */
 export function advance(
   state: GameState,
   lifetimeTokens: number,
   rng: () => number,
+  now: Date = new Date(0),
 ): { state: GameState; events: GameEvent[] } {
   let s: GameState = { ...state, dex: [...state.dex] };
   const events: GameEvent[] = [];
@@ -1063,7 +1257,7 @@ export function advance(
         (forcedLine ? forcedLine.paths[0] : rolledPath);
       const rarity = rarityOf((forcedLine ?? line).captureRate);
       // Deterministic, so it takes no draw and cannot shift the shiny roll below.
-      const starter = starterMove(pathIds[0]);
+      const born = startingMoves(pathIds[0]);
       // A Shiny Charm is spent on this hatch whether or not it pays off.
       const odds = s.shinyCharmActive ? SHINY_ODDS / 8 : SHINY_ODDS;
       const isShiny = rng() < 1 / odds;
@@ -1079,74 +1273,118 @@ export function advance(
         nature: NATURES[Math.floor(rng() * NATURES.length)],
         bornAt,
         tokensAtStageStart: bornAt,
+        level: 1,
         // Hunting is settled before advance() is called, so these are the
         // counters as of this very tick — this companion starts at zero.
         huntTokensAtBirth: s.huntTokens,
         huntCountAtBirth: s.huntCount,
-        // Born knowing one attack, as they are in the games. Without it a fresh
-        // companion swung the generic fallback for the two hours it takes a TM
-        // to drop — and worse, teaching it a single status move used to leave it
-        // unable to hurt anything at all.
-        moves: starter === null ? [] : [starter],
+        // Born knowing its level-1 moves, as in the games. A species whose
+        // level-1 moves are all status (잉어킹's 튀어오르기) has the battle's
+        // plain swing to fall back on — see `kitOf` in server/fight.ts.
+        moves: born,
       };
       events.push({ kind: 'hatched', speciesId: pathIds[0], shiny: isShiny, rarity });
       continue;
     }
 
     const a = s.active;
+    const budget = growthBudget(a.pathIds, a.rarity, s.hatchThreshold);
+    const level = levelAt(lifetimeTokens - a.bornAt, budget);
+    // A save from before levels: one below, so this tick is a level-up. See `migrate`.
+    const was = a.level ?? Math.max(1, level - 1);
 
-    // Everstone holds the companion exactly as it is: it neither evolves nor
-    // graduates to the dex. Progress simply sits at full until it comes off.
-    if (s.everstone) break;
-
-    const atFinalStage = a.stageIndex >= a.pathIds.length - 1;
-    const earned = lifetimeTokens - a.tokensAtStageStart;
-
-    if (!atFinalStage) {
-      const need = tokensForStage(a.stageIndex, a.rarity, s.hatchThreshold);
-      if (earned < need) break;
-      const from = a.pathIds[a.stageIndex];
-      const to = a.pathIds[a.stageIndex + 1];
-      s.active = {
-        ...a,
-        stageIndex: a.stageIndex + 1,
-        tokensAtStageStart: a.tokensAtStageStart + need,
-      };
-      events.push({ kind: 'evolved', from, to });
+    if (level > was) {
+      // A level-up. Everything it sets off happens here, once per tick however
+      // many levels the tick crossed — a week away is one long level-up.
+      s.active = { ...a, level, upsideDown: false };
+      events.push({ kind: 'levelled', level });
+      let evolvedNow = false;
+      // Everstone holds the companion exactly as it is: it grows, but it
+      // neither evolves nor graduates to the dex until it comes off.
+      if (!s.everstone) {
+        // Twice at most: a Charmander that slept through Lv.16 and Lv.36 wakes a Charizard.
+        for (let step = 0; step < 2; step++) {
+          const cur = s.active!;
+          const evolved = evolveBy(s, { ...cur, upsideDown: a.upsideDown }, level, now, { kind: 'level' }, a.bornAt + tokensForLevel(level, budget));
+          if (!evolved) break;
+          s.active = { ...evolved.active, upsideDown: false };
+          events.push({ kind: 'evolved', from: evolved.from, to: evolved.to });
+          evolvedNow = true;
+        }
+      }
+      s.active = learnOnLevelUp(s.active!, was, level, evolvedNow, events);
+      continue;
+    }
+    if (a.level === undefined) {
+      s.active = { ...a, level };
       continue;
     }
 
-    const need = tokensForRetirement(a.rarity, s.hatchThreshold);
-    if (earned < need) break;
+    if (s.everstone || level < MAX_LEVEL) break;
     const speciesId = a.pathIds[a.stageIndex];
     // Every form it passed through goes in, not just the one that left.
     s.dex = retireInto(s.dex, a, Date.now());
     s.retiredCount += 1;
     s.active = null;
-    s.eggStartedAt = a.tokensAtStageStart + need;
+    s.eggStartedAt = a.bornAt + budget;
     events.push({ kind: 'retired', speciesId });
   }
 
   return { state: s, events };
 }
 
-/** Progress toward the next milestone, for the UI bar. */
+/**
+ * What a level-up teaches, put into the moveset where there is room.
+ *
+ * The species it is NOW, levels `was`..`level`, and its evolution moves if it
+ * has just evolved. A free slot takes the move at once, as the games do; with
+ * four already known, the move waits in the partner tab (`unlockedMoves`)
+ * rather than a prompt nobody is there to answer, and the event says so.
+ */
+function learnOnLevelUp(a: Companion, was: number, level: number, evolved: boolean, events: GameEvent[]): Companion {
+  const speciesId = a.pathIds[a.stageIndex];
+  const moves = [...a.moves];
+  for (const id of movesLearnedBetween(speciesId, was, level, evolved)) {
+    if (moves.includes(id)) continue;
+    const placed = moves.length < MOVE_SLOTS_FOR_LEVELS;
+    if (placed) moves.push(id);
+    events.push({ kind: 'learned', moveId: id, placed });
+  }
+  return moves.length === a.moves.length ? a : { ...a, moves };
+}
+
+/** The four slots, as server/hunt.ts's MOVE_SLOTS says — not imported, because hunt.ts imports this file. */
+const MOVE_SLOTS_FOR_LEVELS = 4;
+
+/**
+ * Progress toward the next milestone, for the UI bar.
+ *
+ * An egg counts toward hatching. A companion counts toward its next LEVEL —
+ * `have`/`need` are this level's share of the budget — and says where it
+ * stands overall (`level`, and `total` for the whole way to 100).
+ */
 export function progress(state: GameState, lifetimeTokens: number) {
   if (!state.active) {
     const need = state.hatchThreshold;
     const have = Math.max(0, lifetimeTokens - state.eggStartedAt);
-    return { phase: 'egg' as const, have, need, ratio: Math.min(1, have / need) };
+    return { phase: 'egg' as const, have, need, ratio: Math.min(1, have / need), level: 0, total: 0 };
   }
   const a = state.active;
   const atFinal = a.stageIndex >= a.pathIds.length - 1;
-  const need = atFinal
-    ? tokensForRetirement(a.rarity, state.hatchThreshold)
-    : tokensForStage(a.stageIndex, a.rarity, state.hatchThreshold);
-  const have = Math.max(0, lifetimeTokens - a.tokensAtStageStart);
+  const budget = growthBudget(a.pathIds, a.rarity, state.hatchThreshold);
+  const earned = Math.max(0, lifetimeTokens - a.bornAt);
+  const level = levelAt(earned, budget);
+  const from = tokensForLevel(level, budget);
+  const to = tokensForLevel(Math.min(MAX_LEVEL, level + 1), budget);
+  const need = Math.max(1, to - from);
+  const have = level >= MAX_LEVEL ? need : Math.max(0, earned - from);
   return {
     phase: (atFinal ? 'final' : 'growing') as 'final' | 'growing',
     have,
     need,
     ratio: Math.min(1, have / need),
+    level,
+    /** The whole way from hatch to 100, 0..1. */
+    total: Math.min(1, earned / budget),
   };
 }

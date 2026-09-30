@@ -1,0 +1,635 @@
+/*
+ * Components — the design system's second layer.
+ *
+ * Every rule here is written against src/tokens.css and the drawn frames in
+ * src/battleui.ts, and nothing else: no raw colour, no raw type size, no
+ * opacity for state. docs/DESIGN-SYSTEM.md is the specification each block
+ * implements, in the same order; test/panel-css.test.ts holds the rules.
+ *
+ * All classes are prefixed `px-` so they can land beside the screens' own
+ * classes without a collision while the screens move over one at a time.
+ *
+ * ## How a component says what state it is in
+ *
+ *   rest      the raised frame
+ *   hover     the pressed frame — it sinks under the pointer
+ *   active    the pressed frame, and the whole control 1px down
+ *   selected  ▶ in the cursor column, and the tinted frame
+ *   focus     a dotted line inside the frame (never outside: it would hit
+ *             the neighbour on a 4px gap)
+ *   disabled  muted ink with an embossed shadow; the frame stays
+ *
+ * Never opacity, never blur. A pixel UI changes a colour or moves a pixel.
+ *
+ * ## Frames follow the theme; lit pictures do not
+ *
+ * Each framed component reads its images through `--fr` / `--fr-down`, which
+ * the dark block at the bottom repoints. Inside `.px-lit` — the battle scene,
+ * the shop counter, anything that is a lit picture at every hour — the light
+ * frames come back regardless of theme.
+ */
+
+/* ------------------------------------------------------------ Button */
+
+.px-btn {
+  --fr: var(--ui-btn);
+  --fr-down: var(--ui-btn-down);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  height: var(--ctl);
+  min-width: var(--hit);
+  padding: 0 var(--pad-box);
+  font: var(--fs-md) / var(--lh-md) var(--face-md);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  background: none;
+  cursor: pointer;
+  border: 3px solid transparent;
+  border-image-source: var(--fr);
+  border-image-slice: var(--ui-slice-small) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+}
+.px-btn:hover:not(:disabled),
+.px-btn.is-hover { border-image-source: var(--fr-down); color: var(--accent); }
+.px-btn--primary:hover:not(:disabled),
+.px-btn--primary.is-hover { color: var(--on-accent); }
+.px-btn:active:not(:disabled),
+.px-btn.is-active {
+  border-image-source: var(--fr-down);
+  transform: translateY(1px);
+}
+.px-btn:disabled,
+.px-btn.is-disabled {
+  cursor: not-allowed;
+  color: var(--muted);
+  text-shadow: var(--text-sh);
+}
+.px-btn--lg { height: var(--ctl-lg); padding: 0 var(--s4); }
+
+/* The one button a screen wants pressed. At most one per screen. */
+.px-btn--primary {
+  --fr: var(--ui-btn-primary);
+  --fr-down: var(--ui-btn-primary-down);
+  color: var(--on-accent);
+}
+.px-btn--primary:disabled,
+.px-btn--primary.is-disabled {
+  --fr: var(--ui-btn);
+  --fr-down: var(--ui-btn);
+}
+
+/* Words that act. Inline, no frame; the hit area still reaches --hit. */
+.px-btn--link {
+  border: 0;
+  border-image: none;
+  height: auto;
+  min-height: var(--hit);
+  padding: 0;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.px-btn--link:hover:not(:disabled),
+.px-btn--link.is-hover { color: var(--fg); }
+.px-btn--link:active:not(:disabled),
+.px-btn--link.is-active { transform: none; }
+
+/* ------------------------------------------------------- Chip / Segment */
+
+.px-chips { display: flex; flex-wrap: wrap; gap: var(--s2); }
+
+.px-chip {
+  --fr: var(--ui-btn);
+  --fr-down: var(--ui-btn-down);
+  display: inline-flex;
+  align-items: center;
+  height: var(--ctl);
+  min-width: var(--hit);
+  padding: 0 var(--pad-box);
+  font: var(--fs-md) / var(--lh-md) var(--face-md);
+  color: var(--fg);
+  background: none;
+  cursor: pointer;
+  border: 3px solid transparent;
+  border-image-source: var(--fr);
+  border-image-slice: var(--ui-slice-small) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+}
+.px-chip:hover:not(:disabled),
+.px-chip.is-hover { border-image-source: var(--fr-down); }
+/* Chosen: the primary frame. aria-pressed is the state, not a class. */
+.px-chip[aria-pressed='true'] {
+  --fr: var(--ui-btn-primary);
+  --fr-down: var(--ui-btn-primary-down);
+  color: var(--on-accent);
+}
+.px-chip:disabled,
+.px-chip.is-disabled { cursor: not-allowed; color: var(--muted); text-shadow: var(--text-sh); }
+/*
+ * Compact: 10px, for a filter row. Eighteen type chips or nine generations
+ * have to fit 420px in as few rows as possible, and at 12px they wrap to one
+ * more row each.
+ */
+.px-chip--sm { font: var(--fs-sm) / var(--lh-sm) var(--face-sm); }
+/* A type chip says its type in colour too, until it is the chosen one. */
+.px-chip[data-type]:not([aria-pressed='true']) { color: color-mix(in srgb, var(--t) 60%, var(--fg)); }
+
+/* ------------------------------------------------------------ Toggle */
+
+/*
+ * A switch that also says its state in words: the knob's side AND 켜짐/꺼짐,
+ * so nothing rests on colour alone.
+ */
+.px-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: var(--hit);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: var(--fs-md) / var(--lh-md) var(--face-md);
+  color: var(--fg);
+  cursor: pointer;
+}
+.px-toggle-track {
+  --fr: var(--ui-gauge);
+  position: relative;
+  width: 28px;
+  height: 16px;
+  flex: none;
+  border: 2px solid transparent;
+  border-image-source: var(--fr);
+  border-image-slice: var(--ui-slice-gauge) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+}
+.px-toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  background: var(--muted);
+  transition: left var(--f4) var(--step);
+}
+.px-toggle[aria-checked='true'] .px-toggle-track::after {
+  left: 14px;
+  background: var(--accent);
+}
+.px-toggle:disabled,
+.px-toggle.is-disabled { cursor: not-allowed; color: var(--muted); text-shadow: var(--text-sh); }
+
+/* -------------------------------------------------------------- Tabs */
+
+.px-tabs {
+  display: flex;
+  border-bottom: var(--bw-1) solid var(--line);
+}
+.px-tab {
+  flex: 1;
+  position: relative;
+  height: var(--ctl-lg);
+  padding: 0 var(--s2);
+  border: 0;
+  background: none;
+  font: var(--fs-md) / var(--lh-md) var(--face-md);
+  color: var(--muted);
+  cursor: pointer;
+}
+.px-tab:hover,
+.px-tab.is-hover { color: var(--fg); }
+/* The chosen tab: ink, and a 2px accent floor it stands on. */
+.px-tab[aria-selected='true'] {
+  color: var(--fg);
+  box-shadow: inset 0 calc(-1 * var(--bw-2)) 0 var(--accent);
+}
+/* Something new behind this tab. A square, because a dot cannot be round. */
+.px-dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  background: var(--accent);
+  vertical-align: top;
+}
+
+/* --------------------------------------------------------------- Row */
+
+.px-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+
+.px-row {
+  --fr: var(--ui-panel);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  min-height: var(--ctl-lg);
+  padding: var(--pad-tight) var(--pad-box) var(--pad-tight) var(--gutter-cursor);
+  font: var(--fs-md) / var(--lh-md) var(--face-md);
+  color: var(--fg);
+  text-align: left;
+  background: none;
+  border: 3px solid transparent;
+  border-image-source: var(--fr);
+  border-image-slice: var(--ui-slice-small) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+}
+button.px-row { cursor: pointer; }
+/* The cursor column. Empty at rest, a muted ▶ under the pointer, ink when chosen. */
+.px-row::before {
+  position: absolute;
+  left: var(--s2);
+  content: '';
+  color: var(--muted);
+}
+.px-row:hover::before,
+.px-row.is-hover::before { content: '▶'; }
+.px-row[aria-selected='true'],
+.px-row[aria-current='true'],
+.px-row.is-selected { --fr: var(--ui-panel-on); }
+.px-row[aria-selected='true']::before,
+.px-row[aria-current='true']::before,
+.px-row.is-selected::before { content: '▶'; color: var(--accent); }
+.px-row:disabled,
+.px-row.is-disabled { cursor: not-allowed; color: var(--muted); text-shadow: var(--text-sh); }
+.px-row-main { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.px-row-side { flex: none; font-variant-numeric: tabular-nums; }
+.px-row-sub { display: block; font: var(--fs-sm) / var(--lh-sm) var(--face-sm); color: var(--muted); }
+
+/* A strip down the left edge, inside the cursor column: rarity, or a type. */
+.px-row[data-rarity]::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--bw-2);
+  background: var(--rar);
+}
+[data-rarity='common'] { --rar: var(--rar-common); }
+[data-rarity='uncommon'] { --rar: var(--rar-uncommon); }
+[data-rarity='rare'] { --rar: var(--rar-rare); }
+[data-rarity='legendary'] { --rar: var(--rar-legendary); }
+
+/* -------------------------------------------------------------- Card */
+
+.px-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s3); }
+
+.px-card {
+  --fr: var(--ui-panel);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+  width: 100%;
+  padding: var(--pad-box) var(--pad-tight);
+  font: var(--fs-sm) / var(--lh-sm) var(--face-sm);
+  color: var(--fg);
+  text-align: center;
+  background: none;
+  border: 3px solid transparent;
+  border-image-source: var(--fr);
+  border-image-slice: var(--ui-slice-small) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+}
+button.px-card { cursor: pointer; }
+.px-card:hover:not(:disabled),
+.px-card.is-hover { --fr: var(--ui-btn-down); }
+.px-card[aria-selected='true'],
+.px-card[aria-current='true'],
+.px-card.is-selected { --fr: var(--ui-panel-on); }
+.px-card-art { width: 56px; height: 56px; image-rendering: pixelated; }
+.px-card-num { color: var(--muted); font-variant-numeric: tabular-nums; }
+/* Not met yet: a dashed outline and embossed ink — present, but not here. */
+.px-card.is-unseen {
+  border: var(--bw-1) dashed var(--line);
+  border-image: none;
+  padding: calc(var(--pad-box) + 2px) calc(var(--pad-tight) + 2px);
+  color: var(--muted);
+  text-shadow: var(--text-sh);
+}
+
+/* ------------------------------------------------------------- Gauge */
+
+/*
+ * One meter for everything that fills: evolution, awards, a trip, HP.
+ * role="progressbar" and a number beside it are part of the component —
+ * a bar alone is not an amount.
+ */
+.px-meter { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--s1) var(--s3); }
+.px-meter-label { font: var(--fs-sm) / var(--lh-sm) var(--face-sm); color: var(--muted); }
+.px-meter-value { font: var(--fs-sm) / var(--lh-sm) var(--face-sm); font-variant-numeric: tabular-nums; }
+
+.px-gauge {
+  --fr: var(--ui-gauge);
+  --v: 0;
+  --fill: var(--accent);
+  position: relative;
+  display: block;
+  height: var(--gauge-h);
+  border: 2px solid transparent;
+  border-image-source: var(--fr);
+  border-image-slice: var(--ui-slice-gauge) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+}
+.px-meter .px-gauge { grid-column: 1 / -1; }
+.px-gauge > i {
+  display: block;
+  height: 100%;
+  width: calc(var(--v) * 1%);
+  background: var(--fill);
+  transition: width var(--f16) var(--step);
+}
+/* Thin: a gauge inside a row, beside a label and a figure. */
+.px-gauge--thin { height: var(--gauge-hp-h); }
+/* HP: thin too, and its colour is its level — see hpLevel() in src/uikit.ts. */
+.px-gauge--hp { height: var(--gauge-hp-h); }
+.px-gauge--hp[data-level='hi'] { --fill: var(--hp-hi); }
+.px-gauge--hp[data-level='mid'] { --fill: var(--hp-mid); }
+.px-gauge--hp[data-level='lo'] { --fill: var(--hp-lo); }
+
+/* ------------------------------------------------------- Message box */
+
+.px-window {
+  --fr: var(--ui-window);
+  position: relative;
+  padding: var(--s2) var(--s3);
+  font: var(--fs-md) / var(--lh-md) var(--face-md);
+  color: var(--ink);
+  text-shadow: var(--text-sh);
+  border: 6px solid transparent;
+  border-image-source: var(--fr);
+  border-image-slice: var(--ui-slice-window) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+}
+/* "There is more": ▼ in the corner, bobbing 0 → 1 → 2 → 1px, eight frames a step. */
+.px-window-more {
+  position: absolute;
+  right: var(--s2);
+  bottom: 0;
+  font: var(--fs-sm) / var(--lh-sm) var(--face-sm);
+  color: var(--gold);
+  animation: px-bob calc(var(--f8) * 4) steps(4, end) infinite;
+}
+@keyframes px-bob {
+  0% { transform: translateY(0); }
+  25% { transform: translateY(1px); }
+  50% { transform: translateY(2px); }
+  75% { transform: translateY(1px); }
+}
+
+/* ------------------------------------------------------ Badge / Type */
+
+.px-badge {
+  display: inline-flex;
+  align-items: center;
+  height: var(--lh-md);
+  padding: 0 var(--s2);
+  font: var(--fs-sm) / var(--lh-sm) var(--face-sm);
+  color: var(--fg);
+  background: var(--track);
+  border: var(--bw-1) solid var(--line);
+}
+.px-badge--accent { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+.px-badge--ok { color: var(--ok); background: var(--ok-sh); border-color: var(--ok); }
+.px-badge--warn { color: var(--warn); background: var(--warn-sh); border-color: var(--warn); }
+.px-badge--err { color: var(--err); background: var(--err-sh); border-color: var(--err); }
+
+/* The eighteen types: a tint of the type toward the window, a darker edge. */
+.px-type {
+  display: inline-flex;
+  align-items: center;
+  height: var(--lh-md);
+  padding: 0 var(--s2);
+  font: var(--fs-sm) / var(--lh-sm) var(--face-sm);
+  color: color-mix(in srgb, var(--t) 55%, var(--fg));
+  background: color-mix(in srgb, var(--t) 18%, var(--surface));
+  border: var(--bw-1) solid color-mix(in srgb, var(--t) 70%, var(--fg));
+}
+[data-type='normal'] { --t: var(--t-normal); }
+[data-type='fire'] { --t: var(--t-fire); }
+[data-type='water'] { --t: var(--t-water); }
+[data-type='electric'] { --t: var(--t-electric); }
+[data-type='grass'] { --t: var(--t-grass); }
+[data-type='ice'] { --t: var(--t-ice); }
+[data-type='fighting'] { --t: var(--t-fighting); }
+[data-type='poison'] { --t: var(--t-poison); }
+[data-type='ground'] { --t: var(--t-ground); }
+[data-type='flying'] { --t: var(--t-flying); }
+[data-type='psychic'] { --t: var(--t-psychic); }
+[data-type='bug'] { --t: var(--t-bug); }
+[data-type='rock'] { --t: var(--t-rock); }
+[data-type='ghost'] { --t: var(--t-ghost); }
+[data-type='dragon'] { --t: var(--t-dragon); }
+[data-type='dark'] { --t: var(--t-dark); }
+[data-type='steel'] { --t: var(--t-steel); }
+[data-type='fairy'] { --t: var(--t-fairy); }
+
+/* ------------------------------------------------------------- Field */
+
+.px-field {
+  --fr: var(--ui-gauge);
+  height: var(--ctl);
+  width: 100%;
+  padding: 0 var(--s3);
+  font: var(--fs-md) / var(--lh-md) var(--face-md);
+  color: var(--fg);
+  background: none;
+  border: 2px solid transparent;
+  border-image-source: var(--fr);
+  border-image-slice: var(--ui-slice-gauge) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+}
+.px-field::placeholder { color: var(--muted); }
+.px-field:disabled,
+.px-field.is-disabled { color: var(--muted); text-shadow: var(--text-sh); cursor: not-allowed; }
+
+/* ------------------------------------------------ Section / Stat rows */
+
+.px-section { margin-top: var(--s5); }
+.px-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin: 0 0 var(--s3);
+  font: var(--fs-sm) / var(--lh-sm) var(--face-sm);
+  color: var(--muted);
+  letter-spacing: .08em;
+}
+.px-section-title::after { content: ''; flex: 1; height: var(--bw-1); background: var(--line); }
+
+.px-stats { display: grid; grid-template-columns: 1fr auto; margin: 0; }
+.px-stats > dt,
+.px-stats > dd {
+  margin: 0;
+  padding: var(--s2) 0;
+  font: var(--fs-md) / var(--lh-md) var(--face-md);
+  border-bottom: var(--bw-1) dotted var(--line);
+}
+.px-stats > dt { color: var(--muted); }
+.px-stats > dd { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* -------------------------------------------------- Toast / Banner */
+
+.px-toast {
+  --fr: var(--ui-window);
+  position: fixed;
+  top: var(--s4);
+  left: var(--s4);
+  right: var(--s4);
+  z-index: var(--z-toast);
+  padding: var(--s2) var(--s3);
+  font: var(--fs-md) / var(--lh-md) var(--face-md);
+  color: var(--ink);
+  border: 6px solid transparent;
+  border-image-source: var(--fr);
+  border-image-slice: var(--ui-slice-window) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+  animation: px-drop var(--f8) steps(2, end);
+}
+@keyframes px-drop {
+  from { transform: translateY(-4px); }
+  to { transform: translateY(0); }
+}
+
+.px-banner {
+  --fr: var(--ui-panel);
+  --tone: var(--accent);
+  display: flex;
+  gap: var(--s3);
+  align-items: baseline;
+  padding: var(--pad-tight) var(--pad-box) var(--pad-tight) var(--s4);
+  font: var(--fs-md) / var(--lh-md) var(--face-md);
+  color: var(--fg);
+  border: 3px solid transparent;
+  border-image-source: var(--fr);
+  border-image-slice: var(--ui-slice-small) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
+  position: relative;
+}
+/* The tone, as a bar down the left. A pseudo-element, because the frame's
+   fill paints over anything drawn inside the box by the box itself. */
+.px-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--bw-4);
+  background: var(--tone);
+}
+.px-banner--ok { --tone: var(--ok); }
+.px-banner--warn { --tone: var(--warn); }
+.px-banner--err { --tone: var(--err); }
+
+/* ---------------------------------------------------------- Empty */
+
+.px-empty {
+  padding: var(--s5) var(--pad-box);
+  font: var(--fs-md) / var(--lh-md) var(--face-md);
+  color: var(--muted);
+  border: var(--bw-1) dashed var(--line);
+}
+.px-empty > b { display: block; color: var(--fg); margin-bottom: var(--s2); }
+
+/* ---------------------------------------------------------- Focus */
+
+/*
+ * The keyboard cursor. Inside the frame for anything framed — outside it
+ * would land on the next control across a 4px gap.
+ */
+.px-btn:focus-visible,
+.px-chip:focus-visible,
+.px-row:focus-visible,
+.px-card:focus-visible,
+.px-field:focus-visible,
+.px-btn.is-focus,
+.px-chip.is-focus,
+.px-row.is-focus,
+.px-card.is-focus,
+.px-field.is-focus {
+  outline: var(--focus-w) dotted var(--accent);
+  outline-offset: var(--focus-offset);
+}
+.px-btn--primary:focus-visible,
+.px-btn--primary.is-focus,
+.px-chip[aria-pressed='true']:focus-visible { outline-color: var(--on-accent); }
+.px-btn--link:focus-visible,
+.px-btn--link.is-focus,
+.px-toggle:focus-visible,
+.px-toggle.is-focus,
+.px-tab:focus-visible,
+.px-tab.is-focus {
+  outline: var(--focus-w) dotted var(--accent);
+  outline-offset: 1px;
+}
+.px-tab:focus-visible,
+.px-tab.is-focus { outline-offset: calc(-1 * var(--focus-w)); }
+
+/* --------------------------------------------------- Reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  .px-btn,
+  .px-chip,
+  .px-toggle-track::after,
+  .px-gauge > i,
+  .px-window-more,
+  .px-toast {
+    transition: none;
+    animation: none;
+  }
+  .px-btn:active,
+  .px-btn.is-active { transform: none; }
+}
+
+/* ----------------------------------------------- Dark frames, last */
+
+/*
+ * Last in the file on purpose: a media query adds no specificity, so the dark
+ * frames have to come after every rule that sets `--fr`.
+ */
+@media (prefers-color-scheme: dark) {
+  .px-btn,
+  .px-chip { --fr: var(--ui-btn-dark); --fr-down: var(--ui-btn-down-dark); }
+  .px-btn--primary,
+  .px-chip[aria-pressed='true'] { --fr: var(--ui-btn-primary-dark); --fr-down: var(--ui-btn-primary-down-dark); }
+  .px-btn--primary:disabled,
+  .px-btn--primary.is-disabled { --fr: var(--ui-btn-dark); --fr-down: var(--ui-btn-dark); }
+  .px-row,
+  .px-card,
+  .px-banner { --fr: var(--ui-panel-dark); }
+  .px-row[aria-selected='true'],
+  .px-row[aria-current='true'],
+  .px-row.is-selected,
+  .px-card[aria-selected='true'],
+  .px-card[aria-current='true'],
+  .px-card.is-selected { --fr: var(--ui-panel-on-dark); }
+  .px-card:hover:not(:disabled),
+  .px-card.is-hover { --fr: var(--ui-btn-down-dark); }
+  .px-gauge,
+  .px-field,
+  .px-toggle-track { --fr: var(--ui-gauge-dark); }
+  .px-window,
+  .px-toast { --fr: var(--ui-window-dark); }
+}
+
+/* A lit picture keeps the daylight frames and the daylight ink at every hour. */
+.px-lit .px-window,
+.px-lit .px-toast { --fr: var(--ui-window); color: var(--ink-lit); text-shadow: var(--text-sh-lit); }
+.px-lit .px-btn,
+.px-lit .px-chip { --fr: var(--ui-btn); --fr-down: var(--ui-btn-down); color: var(--ink-lit); }
+.px-lit .px-row,
+.px-lit .px-card { --fr: var(--ui-panel); color: var(--ink-lit); }

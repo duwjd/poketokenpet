@@ -1,144 +1,8 @@
 /*
- * Neutral chrome, so eighteen type colours can live on top of it.
- *
- * This used to be a warm cream paper palette with a #d9773d accent. Two
- * problems once type badges arrived: the warm cast tinted every type swatch
- * towards orange, and that accent is within a few degrees of the Fire type's
- * #EE8130 — an accented button next to a Fire badge read as the same thing.
- *
- * So the neutrals lost their warmth (they are very slightly cool now, which
- * also stops the green grass looking pasted on) and the accent moved to a teal
- * no type owns. Teal reads as interface rather than as an element.
+ * The tokens this sheet reads — colour, spacing, control heights, the
+ * eighteen type colours — live in src/tokens.css, with the rest of the design
+ * system. See docs/DESIGN-SYSTEM.md.
  */
-/*
- * Two grounds, not one.
- *
- * `--bg` used to mean both "the page" and "what a type tint is mixed toward",
- * which was fine while those were the same colour. They are not any more: the
- * panel now works the way a DS screen does — a COLOURED field with cream
- * windows on it — so the two meanings had to come apart.
- *
- *   --ground   the field the panel is laid on. Coloured, and per tab.
- *   --surface  the inside of a window. What content actually sits on.
- *
- * Every `color-mix` below targets `--surface`, because a type badge lives
- * inside a window. That is what preserves the eighteen type tints and the four
- * rarity edges exactly as they were tuned — only the field behind them moved.
- */
-:root {
-  --ground: #dfe7e1;
-  --surface: #f8f8f4;
-  --fg: #1f2220;
-  --muted: #737a77;
-  --line: #cdd6d0;
-  --accent: #2c7a6f;
-  --track: #e8ebe7;
-
-  /*
-   * Colours that used to be typed out where they were needed.
-   *
-   * `--ink` and `--paper` are the two the 9-slice frames are drawn in, so a
-   * box's text has to match them exactly — writing #20232a in three places was
-   * three chances to drift. `--gold` is the warm figure colour in a message
-   * box, which is the only place this palette has a warm hue at all.
-   */
-  --ink: #20232a;
-  /*
-   * The same ink, under a name dark mode does not move.
-   *
-   * `--ink` flips light at night because the panel's frames flip with it. The
-   * scene and the shop counter do NOT flip — they are lit pictures at every
-   * hour and keep the bright frame — so the text on them needs the dark ink
-   * regardless of theme, and it cannot ask `--ink` for it.
-   */
-  --ink-lit: #20232a;
-  --paper: #f8f8f4;
-  --gold: #b4531d;
-  --warn: #a97a12;
-  --err: #c0392b;
-  /* Text on an accent fill. Constant in both themes — the accent is dark
-     enough in light and light enough in dark for white to hold either way. */
-  --on-accent: #fff;
-
-  /*
-   * One spacing scale, replacing nineteen ad-hoc values.
-   *
-   * 4px is the unit: the body face is 12px, the frames are 3px, and pixel art
-   * has to land on whole pixels. Everything below is a multiple except --s1,
-   * which is the half-step for the inside of a control.
-   */
-  --s1: 2px;
-  --s2: 4px;
-  --s3: 8px;
-  --s4: 12px;
-  --s5: 20px;
-  --s6: 32px;
-
-  /*
-   * Two paddings, so every framed box starts its text on the same line.
-   *
-   * A frame is 3px, so `--pad-box` puts content 11px from the box edge — in every
-   * box, which is the thing that was not true before (rows at 15, bars at 13,
-   * the message window at 14). Two pixels of disagreement is what made a stack
-   * of boxes look untidy.
-   */
-  --pad-box: 8px;
-  --pad-tight: 4px;
-  /*
-   * Named `--pad-box`, not `--pad`.
-   *
-   * Scene.css declares `--pad` on :root too — it is the battle platform's
-   * GREEN — and it loads after this file, so a plain `--pad` here silently
-   * became #87a163. Every padding using it was then invalid, which is a thing
-   * that shows up as "the chips look cramped" rather than as an error.
-   * test/panel-css.test.ts now checks the two sheets share no token name.
-   */
-
-  /*
-   * Two control heights, set rather than derived.
-   *
-   * 24 is the floor: take 3px of frame off each side and 18px is left, which
-   * fits the 12px face with 3px above and below. Smaller and the glyphs touch
-   * the frame.
-   */
-  --ctl: 24px;
-  --ctl-lg: 32px;
-
-
-  /*
-   * Two reserved columns that are NOT spacing, and are named so nobody tunes
-   * them as if they were.
-   *
-   * --rail is the scrollbar's width, and the panel's horizontal padding is
-   * sized against it: --s2 + --rail = --s4, the tab bar's inset. That equation
-   * is what puts the content's left and right edges on the tab bar's, and
-   * test/panel-css.test.ts checks the arithmetic still adds up.
-   *
-   * --gutter-cursor is the column the menu cursor lives in. It used to be
-   * spelled --s5, which reads as "section spacing" and invited exactly the
-   * wrong edit.
-   */
-  --rail: 8px;
-  --gutter-cursor: 20px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ground: #14181a;
-    --surface: #252a2d;
-    --fg: #e8ebe6;
-    --muted: #8b918c;
-    --line: #39434a;
-    --accent: #4fb3a3;
-    --track: #1b2023;
-
-    --ink: #e8ebe6;
-    --paper: #252a2d;
-    --gold: #e0a06a;
-    --warn: #e0a52a;
-    --err: #e0685c;
-  }
-}
 
 /*
  * One field, not six.
@@ -176,36 +40,7 @@
    outset ring collides with both. */
 .tabs button:focus-visible { outline-offset: -2px; }
 
-/* .linky is underlined inline text; 2px lands on the underline. */
-.linky:focus-visible { outline-offset: 1px; }
 
-/*
- * The eighteen official type colours.
- *
- * Used as a tint rather than a fill: `color-mix` pulls each hue most of the way
- * back toward the panel background, so a badge is recognisable without shouting.
- * Eighteen saturated blocks in a 420px panel is a ransom note.
- */
-:root {
-  --t-normal: #a8a77a;
-  --t-fire: #ee8130;
-  --t-water: #6390f0;
-  --t-electric: #d9b400;
-  --t-grass: #7ac74c;
-  --t-ice: #77c4c1;
-  --t-fighting: #c22e28;
-  --t-poison: #a33ea1;
-  --t-ground: #c99b45;
-  --t-flying: #a98ff3;
-  --t-psychic: #f95587;
-  --t-bug: #a6b91a;
-  --t-rock: #b6a136;
-  --t-ghost: #735797;
-  --t-dragon: #6f35fc;
-  --t-dark: #705746;
-  --t-steel: #9a9ab5;
-  --t-fairy: #d685ad;
-}
 
 html,
 body,
@@ -304,7 +139,7 @@ body {
 .tabs button:hover { color: var(--fg); background: var(--track); }
 .tabs button.on {
   color: var(--fg);
-  font-weight: 600;
+  font-weight: var(--font-bold);
   border-bottom-color: var(--accent);
 }
 .tabs .dot {
@@ -336,6 +171,8 @@ body {
   color: var(--muted);
   background: var(--track);
   border-bottom: 1px solid var(--line);
+  /* The banner's edge, in the error tone: the words say what, this says how bad. */
+  box-shadow: inset var(--bw-4) 0 0 var(--err);
 }
 
 .tabpanel {
@@ -432,46 +269,16 @@ p.muted.warn { color: var(--gold); }
 .err { color: var(--err); }
 
 /*
- * A gauge, drawn the way the battle plate draws its HP bar.
- *
- * Two hard pixels of outline, a sunk track, a flat fill. No radius and no
- * gradient — `.scene-hp` in Scene.css has looked like this since the battle
- * screen existed, and there is no reason the panel's bars should look like
- * something else.
+ * Every gauge is `.px-gauge` now (src/ui.css): the sunken well, a flat fill,
+ * and the figure beside it. `.track` is kept only as a grid position in rows.
  */
-.bar {
-  height: 12px;
-  background: var(--track);
-  overflow: hidden;
-  border: 2px solid var(--fg);
-}
-.fill {
-  /*
-   * `display: block` is load-bearing, not tidiness.
-   *
-   * Two of the three gauges write the fill as an `<i>`, and an inline element
-   * ignores `height`, so the dex counter and the achievement counter both drew
-   * an empty trough at every percentage. The pet tab's gauge uses a `<div>` and
-   * was the only one that ever worked.
-   */
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  transition: width .6s ease;
-}
-
-.bars .track {
-  background: var(--track);
-  height: 8px;
-  overflow: hidden;
-  border: 1px solid var(--fg);
-}
-.bars .track i { display: block; height: 100%; background: var(--accent); }
+.bars .track,
+.awards .track { align-self: center; }
 
 .chain { font-size: 12px; color: var(--muted); margin: var(--s3) 0; line-height: 1.7; }
-.chain .now { color: var(--fg); font-weight: 600; }
-.chain .done { text-decoration: line-through; opacity: .6; }
-.chain em { font-style: normal; opacity: .5; }
+.chain .now { color: var(--fg); font-weight: var(--font-bold); }
+.chain .done { text-decoration: line-through; color: var(--muted); }
+.chain em { font-style: normal; color: var(--muted); }
 
 .grid {
   display: grid;
@@ -487,7 +294,7 @@ p.muted.warn { color: var(--gold); }
   gap: var(--s1);
 }
 .stat .k { font-size: 10px; font-family: 'Galmuri9'; color: var(--muted); }
-.stat .v { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat .v { font-size: 24px; font-weight: var(--font-bold); font-variant-numeric: tabular-nums; }
 
 /*
  * A list is one window, not a stack of them.
@@ -657,7 +464,7 @@ p.muted.warn { color: var(--gold); }
   border-image-repeat: stretch;
   image-rendering: pixelated;
 }
-.items li.poor { opacity: .5; }
+.items li.poor { color: var(--muted); text-shadow: var(--text-sh); }
 .items .icon {
   /* Sized to --ctl so a row lands on the grid: 8 + 24 + 8 = 40px. A 28px icon
      made every row 44px, the one box in the panel off the 4px unit. */
@@ -712,61 +519,18 @@ p.muted.warn { color: var(--gold); }
   white-space: nowrap;
 }
 /*
- * The pill buttons — 배우기, 사용, 잊기.
- *
- * `:not(.rowbtn)` because a row is a button too now, and filling a pill with
- * the accent reads as a pressable control while filling a whole ROW with it
- * reads as a bar someone dyed. That is the shape this exclusion exists to stop.
+ * The buttons at the end of a row — 배우기, 사용, 잊기 — are `.px-btn`
+ * (src/ui.css). A row is a button too, and only the one at the end is a pill:
+ * `.rowbtn` never carries `.px-btn`, so a whole row can never be dressed as one.
+ * They keep their width in the row's flex line.
  */
-.items button:not(.rowbtn) {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font: inherit;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  height: var(--ctl);
-  padding: 0 var(--pad-box);
-  color: var(--accent);
-  cursor: pointer;
-  /* A raised pixel button: outline, fill, and a highlight on the lit edge. */
-  border: 3px solid transparent;
-  border-image-source: var(--ui-btn);
-  border-image-slice: var(--ui-slice-small) fill;
-  border-image-repeat: stretch;
-  image-rendering: pixelated;
-  background: none;
-}
-/* Pressing it swaps the highlight to the other edge — it sinks without moving. */
-.items button:not(.rowbtn):hover:not(:disabled),
-.items button:not(.rowbtn):active:not(:disabled) {
-  border-image-source: var(--ui-btn-down);
-}
-.items button:not(.rowbtn):disabled { cursor: not-allowed; opacity: .45; }
+.items .px-btn { flex: none; }
 
-.flash {
-  position: fixed;
-  top: 16px; left: 50%;
-  transform: translateX(-50%);
-  background: var(--accent);
-  color: var(--on-accent);
-  padding: var(--pad-box) var(--s5);
-  font-weight: 600;
-  font-size: 12px;
-  box-shadow: 0 6px 20px rgba(0,0,0,.18);
-  animation: pop .3s ease;
-}
-@keyframes pop {
-  from { opacity: 0; transform: translate(-50%, -8px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
+/* The result toast is `.px-toast` (src/ui.css); `.flash` is only its hook. */
 
 
 .foot { font-size: 12px; margin-top: var(--s5); }
 .sizes { display: flex; gap: var(--s2); flex-wrap: wrap; justify-content: flex-end; }
-.sizes button { height: var(--ctl); padding: 0 var(--pad-box); font-size: 12px; }
-.sizes button.on { background: var(--accent); color: var(--on-accent); }
 
 /*
  * Dex cards.
@@ -817,7 +581,12 @@ p.muted.warn { color: var(--gold); }
   align-items: center;
   gap: var(--s1);
   padding: var(--pad-tight) var(--s1);
-  border: 1px solid var(--line);
+  /* The panel frame, as every row wears: a card is a row laid out square. */
+  border: 3px solid transparent;
+  border-image-source: var(--ui-panel);
+  border-image-slice: var(--ui-slice-small) fill;
+  border-image-repeat: stretch;
+  image-rendering: pixelated;
   /* A <button> otherwise brings its own face, colour and background. */
   font: inherit;
   color: inherit;
@@ -826,9 +595,8 @@ p.muted.warn { color: var(--gold); }
 }
 /* Only the pressable one says so — an unseen slot must not look clickable. */
 button.card { cursor: pointer; }
-/* A surface tint plus the accent edge, never an accent FILL: the same answer
-   `.items li.row:hover` gives, and the shiny card already owns the edge. */
-button.card:hover { border-color: var(--accent); background: var(--track); }
+/* Pointed at: it sinks, as a button does. Never an accent fill. */
+button.card:hover { border-image-source: var(--ui-btn-down); }
 
 .dex .art {
   height: 48px;
@@ -844,12 +612,16 @@ button.card:hover { border-color: var(--accent); background: var(--track); }
 .dex .no { font-size: 10px; font-family: 'Galmuri9'; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .dex li.shinydex { color: var(--accent); }
-.dex li.shinydex .card { border-color: var(--accent); }
-.dex li.shinydex .no { color: inherit; opacity: .7; }
+.dex li.shinydex .no { color: inherit; }
 
-/* An unseen slot: the number, and nothing to look at yet. */
-.dex li.unseen { opacity: .45; }
-.dex li.unseen .card { border-style: dashed; }
+/* An unseen slot: the number, and nothing to look at yet — dashed and embossed. */
+.dex li.unseen .card {
+  border: var(--bw-1) dashed var(--line);
+  border-image: none;
+  padding: calc(var(--pad-tight) + var(--s1)) calc(var(--s1) + var(--s1));
+  color: var(--muted);
+  text-shadow: var(--text-sh);
+}
 .dex li.unseen .art { font-size: 24px; color: var(--muted); }
 
 /*
@@ -971,52 +743,13 @@ button.card:hover { border-color: var(--accent); background: var(--track); }
 .filters h3 {
   margin: 0 0 var(--s3);
   font-size: 10px; font-family: 'Galmuri9';
-  font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: .06em;
 }
 .filters section + section { margin-top: var(--s3); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--s2); list-style: none; padding: 0; margin: 0; }
-.chips button {
-  font: inherit;
-  display: inline-flex;
-  align-items: center;
-  font-size: 10px; font-family: 'Galmuri9';
-  height: var(--ctl);
-  padding: 0 var(--pad-box);
-  color: var(--muted);
-  cursor: pointer;
-  border: 3px solid transparent;
-  border-image-source: var(--ui-btn);
-  border-image-slice: var(--ui-slice-small) fill;
-  border-image-repeat: stretch;
-  image-rendering: pixelated;
-  background: none;
-}
-/*
- * The chosen one is FILLED, not merely pressed in.
- *
- * It used to be the pressed frame plus accent text, and the difference between
- * a raised 3px frame and a pressed one at 10px is a couple of pixels of shading
- * — on a row of seven chips you had to hunt for the selected one. A solid block
- * answers "which one am I looking at" from across the room.
- *
- * `border-image-source: none` is required, not tidiness: `border-image-slice`
- * carries `fill`, which paints the middle slice OVER the background, so a
- * `background` on top of the frame is simply invisible.
- *
- * `.sizes button.on` already selects this way (see the pet size picker), so the
- * flat accent block is the app's existing word for "this is the one", not a new
- * one invented here.
- */
-.chips button.on {
-  border-image-source: none;
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 700;
-}
+/* The chips themselves are `.px-chip` now — src/ui.css, docs/DESIGN-SYSTEM.md. */
 
 /*
  * ── The Poké Mart counter ───────────────────────────────────────────────────
@@ -1124,7 +857,7 @@ button.card:hover { border-color: var(--accent); background: var(--track); }
   display: flex;
   align-items: baseline;
   gap: var(--s3);
-  font-weight: 600;
+  font-weight: var(--font-bold);
 }
 .saywin-line span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* The description under it, clipped rather than allowed to push the buttons out. */
@@ -1146,20 +879,6 @@ button.card:hover { border-color: var(--accent); background: var(--track); }
   gap: var(--s3);
   margin-top: var(--s3);
 }
-.saywin-ask button {
-  font: inherit;
-  display: inline-flex;
-  align-items: center;
-  font-size: 12px;
-  height: var(--ctl);
-  padding: 0 var(--s4);
-  border: 1px solid currentColor;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-}
-.saywin-ask button:hover:not(:disabled) { background: rgba(127, 127, 127, .18); }
-.saywin-ask button:disabled { opacity: .5; cursor: not-allowed; }
 
 /*
  * 소지금, pinned inside the counter.
@@ -1171,7 +890,7 @@ button.card:hover { border-color: var(--accent); background: var(--track); }
   position: absolute;
   top: var(--pad-box);
   right: var(--pad-box);
-  z-index: 2;
+  z-index: var(--z-sticky);
   margin: 0;
   height: var(--ctl);
   padding: 0 var(--pad-box);
@@ -1181,7 +900,7 @@ button.card:hover { border-color: var(--accent); background: var(--track); }
   align-items: center;
 }
 /* No bold: the only bold face is the proportional cut, and this is a figure. */
-.mart-money b { font-weight: 700; }
+.mart-money b { font-weight: var(--font-bold); }
 
 /*
  * A row that is itself the button.
@@ -1228,7 +947,14 @@ button.card:hover { border-color: var(--accent); background: var(--track); }
 /* Moving the cursor over a line costs nothing in the games, and looks like
    nothing much either. A surface tint, never the accent. */
 .items li.row:hover { background: var(--track); }
-.items li.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+/*
+ * The chosen line: the tinted frame, and the ▶ below turns accent.
+ *
+ * This used to set `border-color` and an inset shadow, and the 9-slice frame
+ * painted over both — the only sign of a selection was the arrow. A frame
+ * image is the one thing that can change a framed row's fill.
+ */
+.items li.on { border-image-source: var(--ui-panel-on); }
 /* The cursor follows the pointer too, which is what the reserved gutter is for
    — otherwise that column is empty on every row but the chosen one. */
 .items li.row:hover::before,
@@ -1250,24 +976,12 @@ button.card:hover { border-color: var(--accent); background: var(--track); }
 /* A shelf heading inside the shop. Quieter than <h2>, which names the tab. */
 h3.shelf {
   font-size: 10px; font-family: 'Galmuri9';
-  font-weight: 600;
   color: var(--muted);
   margin: var(--s4) 0 var(--s2);
   letter-spacing: .04em;
 }
 h3.shelf:first-of-type { margin-top: var(--s3); }
 
-/* Type chips borrow the badge tints from .types, so they read the same. */
-.chips button[data-type] {
-  --t: var(--line);
-  border-color: color-mix(in srgb, var(--t) 45%, var(--surface));
-  color: color-mix(in srgb, var(--t) 70%, var(--fg));
-}
-.chips button[data-type].on {
-  border-color: color-mix(in srgb, var(--t) 75%, var(--surface));
-  background: color-mix(in srgb, var(--t) 20%, var(--surface));
-  font-weight: 700;
-}
 
 /* Type badges, tinted with the official colour of each type. */
 .types { display: flex; justify-content: center; gap: var(--s2); margin: 0 0 var(--s4); padding: 0; list-style: none; }
@@ -1278,7 +992,6 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
   color: color-mix(in srgb, var(--t) 70%, var(--fg));
   padding: var(--s1) var(--pad-box);
   font-size: 10px; font-family: 'Galmuri9';
-  font-weight: 600;
 }
 
 .types li[data-type='normal'] { --t: var(--t-normal); }
@@ -1300,24 +1013,6 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
 .types li[data-type='steel'] { --t: var(--t-steel); }
 .types li[data-type='fairy'] { --t: var(--t-fairy); }
 
-.chips button[data-type='normal'] { --t: var(--t-normal); }
-.chips button[data-type='fire'] { --t: var(--t-fire); }
-.chips button[data-type='water'] { --t: var(--t-water); }
-.chips button[data-type='electric'] { --t: var(--t-electric); }
-.chips button[data-type='grass'] { --t: var(--t-grass); }
-.chips button[data-type='ice'] { --t: var(--t-ice); }
-.chips button[data-type='fighting'] { --t: var(--t-fighting); }
-.chips button[data-type='poison'] { --t: var(--t-poison); }
-.chips button[data-type='ground'] { --t: var(--t-ground); }
-.chips button[data-type='flying'] { --t: var(--t-flying); }
-.chips button[data-type='psychic'] { --t: var(--t-psychic); }
-.chips button[data-type='bug'] { --t: var(--t-bug); }
-.chips button[data-type='rock'] { --t: var(--t-rock); }
-.chips button[data-type='ghost'] { --t: var(--t-ghost); }
-.chips button[data-type='dragon'] { --t: var(--t-dragon); }
-.chips button[data-type='dark'] { --t: var(--t-dark); }
-.chips button[data-type='steel'] { --t: var(--t-steel); }
-.chips button[data-type='fairy'] { --t: var(--t-fairy); }
 
 /* A move row carries its own type colour as a left edge, which is enough to
    tell four moves apart at a glance without turning the list into a rainbow. */
@@ -1348,10 +1043,10 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
  * like. Mixed toward --bg so the edge ranks them without shouting.
  */
 .items li[data-rarity]::after { background: color-mix(in srgb, var(--r) 65%, var(--surface)); }
-.items li[data-rarity='common'] { --r: #8d9691; }
-.items li[data-rarity='uncommon'] { --r: #5aa06b; }
-.items li[data-rarity='rare'] { --r: #4a80c4; }
-.items li[data-rarity='legendary'] { --r: #c9a227; }
+.items li[data-rarity='common'] { --r: var(--rar-common); }
+.items li[data-rarity='uncommon'] { --r: var(--rar-uncommon); }
+.items li[data-rarity='rare'] { --r: var(--rar-rare); }
+.items li[data-rarity='legendary'] { --r: var(--rar-legendary); }
 
 /* Inline rename, opened from the pencil next to the name. */
 .rename { display: flex; justify-content: center; gap: var(--s3); margin: 0 0 var(--s3); }
@@ -1400,22 +1095,30 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
 .hunts .who { flex: 1; }
 .hunts .num { color: var(--muted); font-variant-numeric: tabular-nums; }
 .hunts .how { font-style: normal; color: var(--muted); font-size: 12px; }
-.hunts .how.win { color: var(--accent); font-weight: 700; }
-.hunts .how.loss { color: var(--err); font-weight: 700; }
+.hunts .how.win { color: var(--accent); font-weight: var(--font-bold); }
+.hunts .how.loss { color: var(--err); font-weight: var(--font-bold); }
 .hunts .tm {
   font-size: 10px; font-family: 'Galmuri9'; color: var(--accent);
   border: 1px solid var(--accent); padding: var(--s1) var(--pad-tight);
 }
 
 /* A move slot that is empty rather than absent, so four slots always read as four. */
-.items li.empty { border-style: dashed; opacity: .55; }
+/* Dashed and embossed: present, but nothing in it. A frame cannot be dashed,
+   so the frame gives way to a 1px line, and the padding makes up the 2px. */
+.items li.empty {
+  border: var(--bw-1) dashed var(--line);
+  border-image: none;
+  padding: calc(var(--pad-box) + var(--s1));
+  color: var(--muted);
+  text-shadow: var(--text-sh);
+}
 .items li.empty .lbl { color: var(--muted); }
 /* The inline "which one do I forget" step, shown in place of the TM row. */
-.items li.picking { border-color: var(--accent); }
+.items li.picking { border-image-source: var(--ui-panel-on); }
 
 /* A stone this companion could actually use. Same accent edge as .picking —
    both mean "this row is the one you want", which is the whole job. */
-.items li.usable { border-color: var(--accent); }
+.items li.usable { border-image-source: var(--ui-panel-on); }
 /* Same pill as .hunts .tm, hoisted out because the bag needs one too. */
 .badge {
   font-size: 10px; font-family: 'Galmuri9'; color: var(--accent); white-space: nowrap;
@@ -1434,10 +1137,7 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
  * by dragging — and a fixed page keeps the description window and the pocket
  * chips above it on screen the whole time, which a long scroll does not.
  *
- * Same raised pixel button as 배우기 and 사용. Written out rather than shared
- * with `.items button:not(.rowbtn)` because that rule is scoped inside a row
- * and this sits under the list; widening its selector would let the pill reach
- * places the `:not(.rowbtn)` exclusion exists to keep it out of.
+ * The buttons are `.px-btn`, the same as 배우기 and 사용 in a row.
  */
 .pager {
   display: flex;
@@ -1446,39 +1146,13 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
   gap: var(--s3);
   margin: var(--s3) 0;
 }
-.pager button {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font: inherit;
-  font-size: 12px;
-  height: var(--ctl);
-  min-width: var(--ctl);
-  padding: 0 var(--pad-box);
-  color: var(--accent);
-  cursor: pointer;
-  border: 3px solid transparent;
-  border-image-source: var(--ui-btn);
-  border-image-slice: var(--ui-slice-small) fill;
-  border-image-repeat: stretch;
-  image-rendering: pixelated;
-  background: none;
-}
-.pager button:hover:not(:disabled),
-.pager button:active:not(:disabled) { border-image-source: var(--ui-btn-down); }
-.pager button:disabled { cursor: not-allowed; opacity: .45; }
 .pager .num { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* Two fusion partners side by side. Anything more would want the TM picker's
    full list, and there has never been a Pokemon with three. */
 .picker { display: flex; gap: var(--s2); }
 .pickhint { font-size: 12px; color: var(--accent); margin: var(--s3) 0; }
-.linky {
-  border: 0; background: none; padding: 0; color: var(--accent);
-  font: inherit; text-decoration: underline; cursor: pointer;
-}
-.pickhint .linky { color: inherit; }
+.pickhint .px-btn--link { color: inherit; }
 
 /* Six tabs in a 420px panel: let the labels breathe a little tighter. */
 .tabs button { padding-left: var(--s1); padding-right: var(--s1); }
@@ -1566,7 +1240,7 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
  * different thing entirely.
  */
 .regionlist .rowbtn:hover { background: var(--track); color: var(--fg); }
-.regionlist li.on .rowbtn { background: var(--track); color: var(--fg); font-weight: 700; }
+.regionlist li.on .rowbtn { background: var(--track); color: var(--fg); font-weight: var(--font-bold); }
 .regionlist .lbl { color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .regionlist .num { text-align: right; font-variant-numeric: tabular-nums; }
 /*
@@ -1609,15 +1283,6 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
 .awardtop .got,
 .sub .got { color: var(--accent); }
 .awards .icon img { width: var(--ctl); height: var(--ctl); image-rendering: pixelated; }
-/* The same 8px inline gauge the readout rows use, which is why it keeps the name. */
-.awards .track {
-  display: block;
-  background: var(--track);
-  height: 8px;
-  overflow: hidden;
-  border: 1px solid var(--fg);
-}
-.awards .track i { display: block; height: 100%; background: var(--accent); }
 
 /*
  * The dark chrome, last on purpose.
@@ -1630,15 +1295,13 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
 @media (prefers-color-scheme: dark) {
   .items li,
   .bars,
-  .hunts { border-image-source: var(--ui-panel-dark); }
-  .chips button { border-image-source: var(--ui-btn-dark); }
-  /* No `.on` line here any more: a filled chip has no frame image to swap, and
-     --accent already has its own dark value. */
-  .items button:not(.rowbtn) { border-image-source: var(--ui-btn-dark); }
-  .items button:not(.rowbtn):hover:not(:disabled),
-  .items button:not(.rowbtn):active:not(:disabled) {
-    border-image-source: var(--ui-btn-down-dark);
-  }
+  .hunts,
+  .dex .card { border-image-source: var(--ui-panel-dark); }
+  .items li.on,
+  .items li.picking,
+  .items li.usable,
+  .dex li.inparty .card { border-image-source: var(--ui-panel-on-dark); }
+  button.card:hover { border-image-source: var(--ui-btn-down-dark); }
 }
 
 /*
@@ -1656,8 +1319,8 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
  * at 24, 32 and 40. Below 32 the multi-coloured ones (무지개배지 especially)
  * turn to confetti.
  *
- * A slot not yet earned wears the dex's own `.unseen` — dashed edge, 45%
- * opacity — plus the grayscale below. Colour is the whole difference between
+ * A slot not yet earned wears the dex's own `.unseen` — dashed edge, muted
+ * embossed ink — plus the grayscale below. Colour is the whole difference between
  * "held" and "not yet", so it has to be the thing that goes.
  */
 .badgeshelf { margin-top: var(--s4); }
@@ -1685,9 +1348,9 @@ h3.shelf:first-of-type { margin-top: var(--s3); }
 .leagueline li.unseen .art img { filter: grayscale(1); }
 /* A party member on the dex grid. The accent edge the shiny card already uses,
    because it means the same thing here — this one is picked out. */
-.dex li.inparty .card { border-color: var(--accent); border-width: 2px; }
+.dex li.inparty .card { border-image-source: var(--ui-panel-on); }
 /* Six seats above the grid. The empty ones are dashed, like an unseen slot. */
-.partyseats li.empty { border-style: dashed; opacity: .6; }
+.partyseats li.empty { color: var(--muted); }
 /* The same box the award icons use, so the two lists line up down the page. */
 .partyseats .icon img { width: var(--ctl-lg); height: var(--ctl-lg); image-rendering: pixelated; object-fit: contain; }
 

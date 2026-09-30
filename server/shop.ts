@@ -11,7 +11,7 @@ import {
 } from './game.ts';
 import { formsFrom } from './forms.ts';
 import { EVO_ITEM_KO, speciesName } from './species.ts';
-import { itemsFor } from './evolution.ts';
+import { evolvesWithKo, itemsFor } from './evolution.ts';
 import { josa } from '../src/josa.ts';
 import { retireInto } from './dex.ts';
 
@@ -141,9 +141,8 @@ export type Product =
     })
   | (Listing & {
       /**
-       * An evolution item. Sold only while the companion's next evolution can
-       * use it — forty-one of them on one shelf is a wall, and the one that
-       * matters is the one this companion needs. See `shelved`.
+       * An evolution item. All forty-one are on the shelf; the ones this
+       * companion's next evolution can use are listed first. See `usableNow`.
        */
       kind: 'evo';
       id: EvoItemId;
@@ -282,7 +281,9 @@ export const PRODUCTS: Product[] = [
       id,
       group: 'evolution',
       name,
-      desc: EVO_ITEM_DESC[id] ?? '진화에 쓰는 도구입니다. 가방에서 쓰면 조건이 맞을 때 진화합니다.',
+      // Every one is on the shelf now, so the line says who it is for — the
+      // generic "an evolution item" left 41 rows nobody could tell apart.
+      desc: EVO_ITEM_DESC[id] ?? evolvesWithKo(id) ?? '진화에 쓰는 도구입니다. 가방에서 쓰면 조건이 맞을 때 진화합니다.',
       // 모으령의코인 is sold as the whole 999 at once, so it costs like ten.
       priceMult: id === GIMMIGHOUL_COIN ? 30 : 3,
       sprite: id,
@@ -293,15 +294,21 @@ export const PRODUCTS: Product[] = [
 ];
 
 /**
- * Whether a product is on the shelf for this state.
+ * Whether a product is on the shelf.
  *
- * Everything but the achievement rewards — and the evolution items, which are
- * shelved only while the companion's next evolution can use them. The bag
- * still resolves any of them, shelved or not.
+ * Everything but the achievement rewards. The evolution items used to be
+ * shelved only while the companion's next evolution could use them, which hid
+ * thirty-odd of the forty-one on any given day and made it impossible to buy
+ * a stone ahead for the NEXT partner. They are all shelved now; `usableNow`
+ * is what puts this companion's own at the top.
  */
-export function shelved(p: Product, state: GameState): boolean {
-  if (p.award) return false;
-  if (p.kind !== 'evo') return true;
+export function shelved(p: Product, _state: GameState): boolean {
+  return !p.award;
+}
+
+/** An evolution item the companion's next evolution asks for. The shop lists these first. */
+export function usableNow(p: Product, state: GameState): boolean {
+  if (p.kind !== 'evo') return false;
   const a = state.active;
   return !!a && itemsFor(a.pathIds, a.stageIndex).includes(p.id);
 }

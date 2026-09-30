@@ -219,15 +219,17 @@ type State = {
       id: string;
       name: string;
       desc: string;
-      kind: 'item' | 'egg';
+      kind: 'item' | 'egg' | 'evo';
       /** Null for items; the tier an egg guarantees. */
       rarity: 'common' | 'uncommon' | 'rare' | 'legendary' | null;
       price: number;
       sprite: string | null;
       /** Which shelf it sits on. Drives the category chips. */
       group: 'egg' | 'growth' | 'evolution';
-      /** On the shelf right now. An evolution item is only while this companion can use it. */
+      /** On the shelf: everything but the achievement rewards. */
       shelved: boolean;
+      /** An evolution item this companion's next evolution asks for — listed first, badged. */
+      usable: boolean;
       /** Already owned. Only ever true for the items that need owning once. */
       owned: boolean;
       /** An achievement reward. Shipped for the bag's sake, never shelved. */
@@ -1662,8 +1664,11 @@ export default function App() {
       .map((e) => ({ ...e, shiny: false, sprite: null, seen: false }));
     return [...seen, ...locked, ...missing].sort((a, b) => a.speciesId - b.speciesId);
   })();
+  // Evolution items count only when this companion can use them: all
+  // forty-one are shelved, and "you could afford a stone nobody here needs"
+  // would keep the dot lit forever.
   const affordable = state.shop.products.filter(
-    (p) => p.shelved && state.shop.wallet >= p.price,
+    (p) => p.shelved && (p.kind !== 'evo' || p.usable) && state.shop.wallet >= p.price,
   ).length;
 
   /** Generations present in the gate table, in order. */
@@ -4066,6 +4071,9 @@ export default function App() {
         // `award` rows ride along on the payload for the bag's sake; the shelf
         // is the one place they must not appear.
         const rows = state.shop.products.filter((p) => p.group === g.id && p.shelved);
+        // This companion's own evolution items first; the rest keep their order.
+        // Array.prototype.sort is stable, so ties stay where the server put them.
+        rows.sort((a, b) => Number(b.usable) - Number(a.usable));
         if (!rows.length) return null;
         return (
           <div key={g.id}>
@@ -4110,6 +4118,7 @@ export default function App() {
                       }
                     >
                       <span>{p.name}</span>
+                      {p.usable && <span className="px-badge px-badge--accent">지금 쓸 수 있음</span>}
                       {p.owned ? <span className="badge">보유중</span> : <em>{compact(p.price)}</em>}
                     </button>
                   </li>

@@ -148,9 +148,9 @@ export const STATE = {
     wallet: 43_000_000,
     clerk: 'npc-waitress.png' as string | null,
     products: [
-      { id: 'rare-candy', name: '이상한사탕', desc: '진행도 +25%', kind: 'item', group: 'growth', price: 32_041_264, sprite: 'item-rare-candy.png', owned: false, shelved: true },
-      { id: 'key-stone', name: '키스톤', desc: '배틀에서 메가진화', kind: 'item', group: 'evolution', price: 534_021_060, sprite: 'item-key-stone.png', owned: false, shelved: true },
-      { id: 'egg-legendary', name: '전설의 알', desc: '전설 보장', kind: 'egg', group: 'egg', price: 2_136_084_240, sprite: null, owned: false, shelved: true },
+      { id: 'rare-candy', name: '이상한사탕', desc: '진행도 +25%', kind: 'item', group: 'growth', price: 32_041_264, sprite: 'item-rare-candy.png', owned: false, shelved: true, usable: false },
+      { id: 'key-stone', name: '키스톤', desc: '배틀에서 메가진화', kind: 'item', group: 'evolution', price: 534_021_060, sprite: 'item-key-stone.png', owned: false, shelved: true, usable: false },
+      { id: 'egg-legendary', name: '전설의 알', desc: '전설 보장', kind: 'egg', group: 'egg', price: 2_136_084_240, sprite: null, owned: false, shelved: true, usable: false },
     ],
   },
   bag: {

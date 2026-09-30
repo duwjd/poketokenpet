@@ -724,6 +724,65 @@ describe('panel tabs', () => {
     expect(screen.getByText('전설의 알')).toBeTruthy();
   });
 
+  it('shelves every evolution item, with this partner\'s own first and badged', async () => {
+    const evo = (id: string, name: string, usable: boolean) => ({
+      id, name, desc: '', kind: 'evo' as const, group: 'evolution' as const, price: 1_000_000,
+      sprite: null, owned: false, shelved: true, usable,
+    });
+    payload = {
+      ...STATE,
+      shop: {
+        ...STATE.shop,
+        wallet: 43_000_000,
+        products: [
+          ...STATE.shop.products,
+          evo('fire-stone', '불꽃의돌', false),
+          evo('thunder-stone', '천둥의돌', true),
+        ],
+      },
+    };
+    const user = userEvent.setup();
+    render(<App />);
+    await ready();
+    await user.click(screen.getByRole('tab', { name: /상점/ }));
+    await user.click(screen.getByRole('button', { name: '진화' }));
+
+    // Both are for sale — the one nobody here needs can be bought ahead.
+    const names = [...document.querySelectorAll('.items .rowbtn > span:first-child')].map((e) => e.textContent);
+    expect(names).toContain('불꽃의돌');
+    // The usable one leads the shelf, with the badge.
+    expect(names[0]).toBe('천둥의돌');
+    expect(screen.getAllByText('지금 쓸 수 있음')).toHaveLength(1);
+  });
+
+  it('does not light the shop dot for an evolution item nobody here can use', async () => {
+    const stone = {
+      id: 'fire-stone', name: '불꽃의돌', desc: '', kind: 'evo' as const, group: 'evolution' as const,
+      price: 1_000, sprite: null, owned: false, shelved: true, usable: false,
+    };
+    // Everything else priced out of reach, so the stone is the only candidate.
+    payload = {
+      ...STATE,
+      shop: {
+        ...STATE.shop,
+        wallet: 10_000,
+        products: [...STATE.shop.products, stone],
+      },
+    };
+    const { unmount } = render(<App />);
+    await ready();
+    expect(screen.getByRole('tab', { name: /상점/ }).querySelector('.dot')).toBeNull();
+    unmount();
+
+    payload = {
+      ...STATE,
+      shop: { ...STATE.shop, wallet: 10_000, products: [...STATE.shop.products, { ...stone, usable: true }] },
+    };
+    render(<App />);
+    await ready();
+    expect(screen.getByRole('tab', { name: /상점/ }).querySelector('.dot')).not.toBeNull();
+  });
+
   it('puts the usable mega stone first and says so', async () => {
     payload = {
       ...STATE,

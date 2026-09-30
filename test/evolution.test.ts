@@ -14,8 +14,8 @@ import {
   type Companion,
   type GameState,
 } from '../server/game.ts';
-import { consumeItem, PRODUCTS, shelved } from '../server/shop.ts';
-import { friendshipAt, fullMoonAt, nextEvolutions, phaseAt, ruleKo } from '../server/evolution.ts';
+import { consumeItem, PRODUCTS, shelved, usableNow } from '../server/shop.ts';
+import { evolvesWith, evolvesWithKo, friendshipAt, fullMoonAt, nextEvolutions, phaseAt, ruleKo } from '../server/evolution.ts';
 import { EVOLUTIONS } from '../server/species.ts';
 import { timeOfDayAt } from '../src/timeOfDay.ts';
 import { migrate } from '../server/store.ts';
@@ -179,11 +179,31 @@ describe('branches', () => {
 });
 
 describe('the shop and the panel', () => {
-  it('shelves an evolution item only for a companion that can use it', () => {
+  it('shelves every evolution item, so one can be bought ahead for the next partner', () => {
     const stone = PRODUCTS.find((p) => p.id === 'thunder-stone')!;
     expect(shelved(stone, withCompanion(companion([25, 26])))).toBe(true);
-    expect(shelved(stone, withCompanion(companion([4, 5, 6])))).toBe(false);
-    expect(shelved(stone, { ...initialState(), active: null })).toBe(false);
+    expect(shelved(stone, withCompanion(companion([4, 5, 6])))).toBe(true);
+    expect(shelved(stone, { ...initialState(), active: null })).toBe(true);
+  });
+
+  it('marks as usable only what this companion\'s next evolution asks for', () => {
+    const stone = PRODUCTS.find((p) => p.id === 'thunder-stone')!;
+    expect(usableNow(stone, withCompanion(companion([25, 26])))).toBe(true);
+    expect(usableNow(stone, withCompanion(companion([4, 5, 6])))).toBe(false);
+    expect(usableNow(stone, { ...initialState(), active: null })).toBe(false);
+    // Only evolution items are ever "usable now"; a candy is just for sale.
+    const candy = PRODUCTS.find((p) => p.id === 'rare-candy')!;
+    expect(usableNow(candy, withCompanion(companion([25, 26])))).toBe(false);
+  });
+
+  it('says who each evolution item is for', () => {
+    expect(evolvesWith('thunder-stone')).toContain(26);
+    expect(evolvesWithKo('peat-block')).toBe('다투곰이 이걸로 진화합니다.');
+    expect(evolvesWithKo('thunder-stone')).toMatch(/^라이츄·.+ 등 \d+종이 이걸로 진화합니다\.$/);
+    // With all forty-one on one shelf, a row nobody is for would be a dead row.
+    for (const p of PRODUCTS.filter((x) => x.kind === 'evo')) {
+      expect(evolvesWith(p.id).length, p.id).toBeGreaterThan(0);
+    }
   });
 
   it('says what each next evolution needs', () => {

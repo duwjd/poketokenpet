@@ -1,3 +1,4 @@
+import { josa } from '../src/josa.ts';
 import { BASE_HAPPINESS, EVOLUTIONS, EVO_ITEM_KO, speciesName, type EvoRule } from './species.ts';
 import { lineOf } from './dex.ts';
 import { moveById, speciesInfo, TYPE_KO, type MoveType } from './moves.ts';
@@ -267,6 +268,30 @@ export function itemsFor(pathIds: readonly number[], stageIndex: number): string
     }
   }
   return out;
+}
+
+/**
+ * Every species that evolves INTO something with this item, by id.
+ *
+ * `EVOLUTIONS` is keyed by the evolved form, so this is its inverse — what the
+ * shop needs to say what an item is for once it shelves all of them, not just
+ * the ones this companion can use.
+ */
+export function evolvesWith(item: string): number[] {
+  const out: number[] = [];
+  for (const [to, rules] of Object.entries(EVOLUTIONS)) {
+    if (rules.some((r) => r.item === item)) out.push(Number(to));
+  }
+  return out.sort((a, b) => a - b);
+}
+
+/** "라이츄·샤미드·쥬피썬더 등 7종이 이걸로 진화합니다." — the first three, then the count. */
+export function evolvesWithKo(item: string): string | null {
+  const ids = evolvesWith(item);
+  if (!ids.length) return null;
+  const names = ids.slice(0, 3).map((id) => speciesName(id)).join('·');
+  const rest = ids.length > 3 ? ` 등 ${ids.length}종이` : josa(names, '이', '가');
+  return `${names}${rest} 이걸로 진화합니다.`;
 }
 
 /** An item's Korean name. */

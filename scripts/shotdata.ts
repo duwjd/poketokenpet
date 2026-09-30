@@ -219,9 +219,9 @@ export async function buildPayloads(): Promise<ShotPayloads> {
     'egg-legendary': 2_136_084_240,
   };
   const products = [];
-  // Evolution items are shelved only for a companion that can use them; a
-  // 리자몽 at its last stage has none, and fetching forty-one icons for nothing
-  // would only slow the generator down.
+  // All forty-one evolution items are shelved in the app, but they sit on the
+  // last shelf, below anything the shop shot shows; fetching their icons would
+  // only slow the generator down. A 리자몽 at its last stage can use none.
   for (const p of PRODUCTS.filter((x) => x.kind !== 'evo')) {
     products.push({
       id: p.id,
@@ -234,6 +234,7 @@ export async function buildPayloads(): Promise<ShotPayloads> {
       price: PRICE[p.id] ?? 26_701_053,
       owned: p.id === 'key-stone' || p.id === 'dynamax-band',
       shelved: !p.award,
+      usable: false,
       sprite: p.sprite ? await ensureItemSprite(p.sprite) : p.kind === 'egg' ? eggIcon : null,
     });
   }

@@ -41,7 +41,7 @@ import {
   teachableNow,
 } from './hunt.ts';
 import { TYPE_KO, moveById, speciesInfo } from './moves.ts';
-import { PRODUCTS, UNIQUE, owns, priceOf, shelved, wallet, type ItemId } from './shop.ts';
+import { PRODUCTS, UNIQUE, owns, priceOf, shelved, usableNow, wallet, type ItemId } from './shop.ts';
 import { friendshipAt, needsFlip, nextEvolutions } from './evolution.ts';
 import { unlockedMoves } from './learnset.ts';
 import { NAMES, NATURE_KO, speciesName } from './species.ts';
@@ -1015,7 +1015,7 @@ export async function buildState(mode: CountMode = 'activity') {
       /** The clerk sprite, or null while it is still downloading. */
       clerk,
       products: await Promise.all(
-        PRODUCTS.filter((p) => p.kind !== 'evo' || shelved(p, state) || (state.inventory[p.id] ?? 0) > 0).map(async (p) => ({
+        PRODUCTS.map(async (p) => ({
           id: p.id,
           name: p.name,
           desc: p.desc,
@@ -1030,12 +1030,14 @@ export async function buildState(mode: CountMode = 'activity') {
            * on this rather than on a hardcoded id list.
            */
           award: p.award ?? false,
-          /**
-           * On the shelf right now. An evolution item is sold only while this
-           * companion's next evolution can use it; one already in the bag is
-           * still shipped so the bag can name it.
-           */
+          /** On the shelf: everything but the achievement rewards. */
           shelved: shelved(p, state),
+          /**
+           * An evolution item this companion's next evolution asks for. The
+           * shop puts these first, and only these light the tab's dot — with
+           * all forty-one shelved, "you can afford an item" would be always.
+           */
+          usable: usableNow(p, state),
           /** Null for items. Lets the shop rank the four eggs at a glance. */
           rarity: p.rarity,
           /**

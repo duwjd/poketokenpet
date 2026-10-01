@@ -231,8 +231,10 @@ export type GymRow = {
 /**
  * The Kanto roster, in challenge order.
  *
- * Levels are dropped on purpose: this game has none. What survives from the
- * source is WHICH Pokemon, which is the half the type chart reads.
+ * Levels are dropped on purpose: every fight is fought at a flat Lv.50 (see
+ * BATTLE_LEVEL in server/fight.ts), so a leader's levels would be read by
+ * nothing. What survives from the source is WHICH Pokemon, which is the half
+ * the type chart reads.
  */
 const KANTO_GYMS: GymRow[] = [
   { id: 'brock',    region: '관동', badge: 1, order: 1, ko: '웅',     badgeKo: '회색배지',   city: '회색시티',   sprite: 'brock',    gender: 'm', grit: 1.12, prize: 317, team: [74, 95] },

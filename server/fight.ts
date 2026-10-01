@@ -187,10 +187,15 @@ const FIXED_POWER = 40;
 /**
  * The level every Pokemon fights at, on both sides.
  *
- * This game has no levels, so every fight is fought as if it were a flat-50
- * battle: base stats decide who hits harder, who takes it better and who moves
- * first. No IVs, no EVs and a neutral nature, so two of the same species are
- * exactly as strong as each other — see `battleStats`.
+ * The companion HAS a level (server/game.ts `levelAt`), but it drives growth,
+ * evolution and the level-up learnset — not the fight. Every fight is fought
+ * as if it were a flat-50 battle: base stats decide who hits harder, who takes
+ * it better and who moves first. No IVs, no EVs and a neutral nature, so two of
+ * the same species are exactly as strong as each other — see `battleStats`.
+ *
+ * Deliberate, and measured: docs/DESIGN.md "전투 밸런스 점검" has the win
+ * rates, why a strong legendary is left strong, and the three things that
+ * would have to change together if a fight ever read the real level.
  */
 export const BATTLE_LEVEL = 50;
 

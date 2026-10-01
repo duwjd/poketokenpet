@@ -339,3 +339,31 @@ describe('one-hit knockouts', () => {
     expect(hit).toBeGreaterThan(20);
   });
 });
+
+/**
+ * The balance review in docs/DESIGN.md ("전투 밸런스 점검"), pinned as an order
+ * rather than as numbers: with the same three moves, a line's stages win more
+ * wild fights the higher their base stats. Every fight is at Lv.50, so this is
+ * the axis a partner's strength actually lives on — if it ever stops holding,
+ * that section is describing a different game.
+ */
+describe('the balance review', () => {
+  it('orders wild odds by base stats', async () => {
+    const { encounterAt } = await import('../server/hunt.ts');
+    const moves = [43, 83, 232]; // 째려보기·회오리불꽃·메탈크로우, the reviewed set
+    const N = 400;
+    const rate = (sp: number) => {
+      let won = 0;
+      for (let k = 0; k < N; k++) {
+        const e = encounterAt(k, sp, 100_000_000);
+        if (battleAt(k, e.rarity, moves, e.wildId, { mySpeciesId: sp }).won) won++;
+      }
+      return won / N;
+    };
+    // 파이리 309 < 리자드 405 < 리자몽 534 < 히드런 600
+    const [charmander, charmeleon, charizard, heatran] = [4, 5, 6, 485].map(rate);
+    expect(charmander).toBeLessThan(charmeleon);
+    expect(charmeleon).toBeLessThan(charizard);
+    expect(charizard).toBeLessThan(heatran);
+  }, 30_000);
+});

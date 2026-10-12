@@ -33,7 +33,7 @@ export const DEFAULT_PREFS: Prefs = {
   petY: null,
   petClickThrough: false,
   petAlwaysOnTop: true,
-  openAtLogin: false,
+  openAtLogin: true,
   showTokensInTray: true,
   checkUpdates: true,
 };

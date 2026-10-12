@@ -989,6 +989,29 @@ button.card:hover { border-image-source: var(--ui-btn-down); }
    needs the breathing room a <section> would otherwise have given it. */
 .shopchips { margin: var(--s3) 0 var(--s2); }
 
+/*
+ * The shop's counter, message window and chips, pinned to the top of the panel.
+ *
+ * Sticky inside .tabpanel, which is the scroll container, so only the product
+ * list moves. It paints the panel's own ground so rows pass behind it rather
+ * than showing through, and padding replaces the outer margins: a margin would
+ * collapse out of the box and leave a transparent strip where a row peeks
+ * through above the counter or under the chips.
+ */
+.shophead {
+  position: sticky;
+  /* Up by the panel's own top padding: sticky measures from inside it, so at
+     0 the rows scrolled past would show in that strip above the counter. */
+  top: calc(-1 * var(--s4));
+  z-index: var(--z-sticky);
+  background: var(--ground);
+  padding: var(--s3) 0 var(--s2);
+}
+.shophead .mart { margin-top: 0; }
+.shophead .shopchips { margin-bottom: 0; }
+/* The list under it starts with a shelf heading whose own margin is the gap. */
+.shophead + div h3.shelf:first-of-type { margin-top: var(--s2); }
+
 /* A shelf heading inside the shop. Quieter than <h2>, which names the tab. */
 h3.shelf {
   font-size: 10px; font-family: 'Galmuri9';

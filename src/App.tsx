@@ -3993,8 +3993,13 @@ export default function App() {
       <>
       <h2>프렌들리숍</h2>
 
-      {/* The counter. The frame vars have to be set on a host element — the
-          panel is outside .scene, which is the only other place they live. */}
+      {/* The counter, the clerk's window and the shelf chips stay pinned while
+          the products scroll under them — the games keep the description on
+          the screen that does not scroll, and with forty-odd evolution items
+          the window used to scroll away from the row it was describing. */}
+      <div className="shophead">
+      {/* The frame vars have to be set on a host element — the panel is
+          outside .scene, which is the only other place they live. */}
       <div className="mart">
         <p className="mart-money uiplate">
           소지금 <b>{compact(state.shop.wallet)}</b>
@@ -4066,6 +4071,7 @@ export default function App() {
             {g.label}
           </button>
         ))}
+      </div>
       </div>
       {SHOP_GROUPS.filter((g) => shopGroup === null || shopGroup === g.id).map((g) => {
         // `award` rows ride along on the payload for the bag's sake; the shelf

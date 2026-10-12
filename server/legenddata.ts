@@ -610,7 +610,7 @@ export const LEGEND_ITEMS: LegendItem[] = [
   {
     "slug": "auspicious-armor",
     "ko": "축복받은갑옷",
-    "sprite": null
+    "sprite": "auspicious-armor"
   },
   {
     "slug": "azure-flute",
@@ -685,7 +685,7 @@ export const LEGEND_ITEMS: LegendItem[] = [
   {
     "slug": "malicious-armor",
     "ko": "저주받은갑옷",
-    "sprite": null
+    "sprite": "malicious-armor"
   },
   {
     "slug": "member-card",
@@ -760,12 +760,12 @@ export const LEGEND_ITEMS: LegendItem[] = [
   {
     "slug": "scroll-of-darkness",
     "ko": "악의 족자",
-    "sprite": null
+    "sprite": "scroll-of-darkness"
   },
   {
     "slug": "scroll-of-waters",
     "ko": "물의 족자",
-    "sprite": null
+    "sprite": "scroll-of-waters"
   },
   {
     "slug": "silver-wing",

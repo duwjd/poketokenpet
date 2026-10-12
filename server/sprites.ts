@@ -405,23 +405,50 @@ export function ensureEggSprite(): Promise<string | null> {
 const ITEM_DIRS = ['', 'gen9/', 'gen8/'];
 
 /**
- * pokesprite, for the two items PokeAPI has in none of the three directories.
+ * Where to look for the items PokeAPI has in none of the three directories.
  *
- * The same host as everything else — a second repository on raw.githubusercontent,
- * not a new place to reach — filed by item category rather than flat, which is
- * why these two are written down instead of derived. Both were checked by hand;
- * so were the four that are NOT here, and they stay on the glyph: the two
- * Generation 9 armours and the two scrolls exist in no icon set this project can
- * reach.
+ * Two more repositories on raw.githubusercontent, the same host as everything
+ * else, so neither is a new place to reach. Both file by something other than the
+ * bare slug (pokesprite by category, pokeemerald-expansion with underscores),
+ * which is why these are written down instead of derived. Every entry was
+ * checked by hand: the file exists and has a transparent background.
  *
- * PokeAPI is still asked first, so the day it picks either of these up, upstream
+ * pokesprite first, because its icons are RGBA. pokeemerald-expansion carries
+ * the rest of the Generation 8 and 9 evolution items, the two Generation 9
+ * armours and the two scrolls, which used to stay on the glyph. Its icons are
+ * palette PNGs with index 0 marked transparent, except for the four that
+ * pokesprite already supplies (the sweet, both apples and the pot), whose
+ * backgrounds there are solid. That is why those four come from pokesprite.
+ *
+ * PokeAPI is still asked first, so the day it picks any of these up, upstream
  * wins and this table quietly stops mattering.
  */
 const POKESPRITE = 'https://raw.githubusercontent.com/msikma/pokesprite/master/items';
+const EXPANSION =
+  'https://raw.githubusercontent.com/rh-hideout/pokeemerald-expansion/master/graphics/items/icons';
 
 const ITEM_ELSEWHERE: Record<string, string> = {
   'dynamax-band': `${POKESPRITE}/key-item/dynamax-band.png`,
   'reins-of-unity': `${POKESPRITE}/key-item/reins-of-unity.png`,
+  'strawberry-sweet': `${POKESPRITE}/evo-item/strawberry-sweet.png`,
+  'sweet-apple': `${POKESPRITE}/evo-item/sweet-apple.png`,
+  'tart-apple': `${POKESPRITE}/evo-item/tart-apple.png`,
+  'cracked-pot': `${POKESPRITE}/evo-item/cracked-pot.png`,
+  ...Object.fromEntries(
+    [
+      'syrupy-apple',
+      'unremarkable-teacup',
+      'metal-alloy',
+      'linking-cord',
+      'black-augurite',
+      'peat-block',
+      'gimmighoul-coin',
+      'malicious-armor',
+      'auspicious-armor',
+      'scroll-of-darkness',
+      'scroll-of-waters',
+    ].map((slug) => [slug, `${EXPANSION}/${slug.replaceAll('-', '_')}.png`]),
+  ),
 };
 
 /**

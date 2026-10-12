@@ -140,6 +140,21 @@ describe('itemSpriteUrls', () => {
     );
   });
 
+  /**
+   * Fourteen evolution items and four legend items are in no PokeAPI folder.
+   * The four whose pokeemerald-expansion icon has a solid background must come
+   * from pokesprite instead, or the shelf draws a coloured square behind them.
+   */
+  it('finds the Generation 8 and 9 evolution items elsewhere, last', () => {
+    expect(itemSpriteUrls('tart-apple').at(-1)).toBe(
+      'https://raw.githubusercontent.com/msikma/pokesprite/master/items/evo-item/tart-apple.png',
+    );
+    expect(itemSpriteUrls('scroll-of-darkness').at(-1)).toBe(
+      'https://raw.githubusercontent.com/rh-hideout/pokeemerald-expansion/master/graphics/items/icons/scroll_of_darkness.png',
+    );
+    expect(itemSpriteUrls('peat-block')).toHaveLength(4);
+  });
+
   it('asks a rejected slug for nothing at all', () => {
     // The cache namespace is flat, so a slug with a slash in it would escape it.
     expect(itemSpriteUrls('../secret').every((u) => u.includes('../secret'))).toBe(true);
@@ -172,13 +187,12 @@ describe('item icons after the folder fix', () => {
     });
   });
 
-  /** The four that genuinely exist in no icon set this project can reach. */
-  it('leaves four legendary items on the glyph, and names them', () => {
-    expect(LEGEND_ITEMS.filter((i) => !i.sprite).map((i) => i.ko)).toEqual([
-      '축복받은갑옷',
-      '저주받은갑옷',
-      '악의 족자',
-      '물의 족자',
-    ]);
+  /**
+   * The two armours and the two scrolls were on the glyph until
+   * pokeemerald-expansion was added as a source. No legendary item is left
+   * without an icon.
+   */
+  it('leaves no legendary item on the glyph', () => {
+    expect(LEGEND_ITEMS.filter((i) => !i.sprite).map((i) => i.ko)).toEqual([]);
   });
 });

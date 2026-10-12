@@ -5,6 +5,7 @@ import { trainerAt } from '../server/trainer.ts';
 import { legendOf } from '../server/legenddata.ts';
 import { learnableMoves, levelUpMoves, moveById, speciesInfo } from '../server/moves.ts';
 import { trainerBattleAt } from '../server/trainer.ts';
+import { rollIvs } from '../server/fight.ts';
 import type { GymRow } from '../server/gymdata.ts';
 import {
   ALL_GYMS,
@@ -634,13 +635,12 @@ describe('difficulty', () => {
    * learn, so `0.04 x encounters` draws from its own machine learnset is the
    * honest model — three TMs at 웅, seventeen at 비주기.
    */
-  const kit = (speciesId: number, tms: number, rng: () => number) => {
+  const kit = (speciesId: number, tms: number, rng: () => number, level = 50) => {
     const all = learnableMoves(speciesId);
     const held = new Set<number>();
     if (all.length) for (let i = 0; i < Math.max(1, tms); i++) held.add(all[Math.floor(rng() * all.length)]);
-    // And what it has learned by levelling, which costs nothing — up to Lv.50,
-    // about where a companion stands by the time it is walking gym to gym.
-    for (const [lv, id] of levelUpMoves(speciesId)) if (lv <= 50) held.add(id);
+    // And what it has learned by levelling, which costs nothing.
+    for (const [lv, id] of levelUpMoves(speciesId)) if (lv <= level) held.add(id);
     return [...held]
       .map((m) => moveById(m)!)
       .filter((m) => !COSTLY.has(m.id))
@@ -674,14 +674,26 @@ describe('difficulty', () => {
     return out;
   })();
 
+  /**
+   * A leader's odds against the ten partners, each at a level drawn from
+   * 5..95 with its own IVs and the level-up moves it would know by then.
+   *
+   * Drawn rather than fixed because nothing ties a partner's level to a gym:
+   * one graduates at 100 and the next hatches at 1, so 웅 and 비주기 are each
+   * met at every level there is. The leader stands 0..5 above it
+   * (`gymLevelOffsets`), and the grit column was re-searched against exactly
+   * this harness so every row kept the rate it had at the old flat 50.
+   */
   const rate = (id: string, tms: number, n = 900) => {
     const row = gymById(id)!;
     const t = gymTrainer(row);
     let won = 0;
     for (let k = 0; k < n; k++) {
       const me = PARTNERS[k % PARTNERS.length];
-      const moves = kit(me, tms, mulberry32((k * 2654435761) >>> 0));
-      if (trainerBattleAt(k * 13 + 7, t, moves, me).won) won++;
+      const rng = mulberry32((k * 2654435761) >>> 0);
+      const level = 5 + Math.floor(rng() * 91);
+      const moves = kit(me, tms, rng, level);
+      if (trainerBattleAt(k * 13 + 7, t, moves, me, { myLevel: level, myIvs: rollIvs(rng) }).won) won++;
     }
     return won / n;
   };
@@ -716,7 +728,10 @@ describe('difficulty', () => {
       const t = gymTrainer(gymById(id)!);
       let won = 0;
       for (let k = 0; k < 600; k++) {
-        if (trainerBattleAt(k * 13 + 7, t, [], PARTNERS[k % PARTNERS.length]).won) won++;
+        // The same drawn level as `rate`, so the two are measured alike.
+        const rng = mulberry32((k * 2654435761) >>> 0);
+        const level = 5 + Math.floor(rng() * 91);
+        if (trainerBattleAt(k * 13 + 7, t, [], PARTNERS[k % PARTNERS.length], { myLevel: level, myIvs: rollIvs(rng) }).won) won++;
       }
       return won / 600;
     };

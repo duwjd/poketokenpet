@@ -82,6 +82,9 @@ export type SceneTurn = {
 export type SceneBattle = {
   foeMaxHp: number;
   myMaxHp: number;
+  /** Each side's level this round, 1..100. Absent on fixtures that predate levels, which print none. */
+  myLevel?: number;
+  foeLevel?: number;
   /** The HP I came in with — below max in a trainer's later rounds. */
   myStartHp: number;
   /** The same for the opponent — below max when one comes back after being dragged out. */
@@ -1320,11 +1323,12 @@ export default function Scene({
             className="scene-plate uiplate foe"
             role="group"
             /* The status is on the label too — a colour alone is not a reading. */
-            aria-label={foeStatus ? `${foeName} 체력, ${foeStatus}` : `${foeName} 체력`}
+            aria-label={`${foeName}${bout?.foeLevel !== undefined ? ` Lv.${bout.foeLevel}` : ''} 체력${foeStatus ? `, ${foeStatus}` : ''}`}
             hidden={!showFoePlate}
           >
             <span className="scene-who">
               <span className="scene-nm">{foeName}</span>
+              {bout?.foeLevel !== undefined && <span className="scene-lv">Lv.{bout.foeLevel}</span>}
               {fight && (
                 <span className="scene-balls" aria-label={`남은 ${fight.team.length - downBefore.size}마리`}>
                   {fight.team.map((_, i) => (
@@ -1372,7 +1376,7 @@ export default function Scene({
           <div
             className="scene-plate uiplate mine"
             role="group"
-            aria-label={myStatus ? `${myName} 체력, ${myStatus}` : `${myName} 체력`}
+            aria-label={`${myName}${bout?.myLevel !== undefined ? ` Lv.${bout.myLevel}` : ''} 체력${myStatus ? `, ${myStatus}` : ''}`}
             hidden={!showMyPlate}
           >
             {/* `petName` is already the nickname when one is set — buildState
@@ -1383,6 +1387,7 @@ export default function Scene({
                 Pokemon being raised. */}
             <span className="scene-who">
               <span className="scene-nm">{myName}</span>
+              {bout?.myLevel !== undefined && <span className="scene-lv">Lv.{bout.myLevel}</span>}
             </span>
             <span className="scene-gauge">
               <span className="lbl">HP</span>

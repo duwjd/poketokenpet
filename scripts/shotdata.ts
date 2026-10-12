@@ -152,6 +152,8 @@ function turn(o: {
 const BATTLE = {
   foeMaxHp: 148,
   myMaxHp: 162,
+  myLevel: 62,
+  foeLevel: 58,
   myStartHp: 162,
   won: true,
   turns: [

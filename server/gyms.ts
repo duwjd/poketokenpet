@@ -11,7 +11,9 @@ import {
   type RegionKo,
   type RegionRow,
 } from './gymdata.ts';
-import { BATTLE_MAX_HP, fightAt, foeOf, mineOf, speciesStats, type Battle, type BattleOpts } from './fight.ts';
+import { BATTLE_MAX_HP, battleStats, fightAt, foeOf, mineOf, type Battle, type BattleOpts } from './fight.ts';
+import { statsOf } from './dexdata.ts';
+import { foeIvsAt, gymLevelOffsets, leagueLevelOffsets, levelsFrom, partyIvs, PARTY_LEVEL } from './levels.ts';
 import type { Trainer } from './trainer.ts';
 
 export { BADGE_IDS, MIN_LEAGUE_SIZE, REGIONS };
@@ -373,6 +375,7 @@ export function gymTrainer(row: GymRow): Trainer {
     team: row.team,
     teamMoves: row.teamMoves,
     grit: row.grit,
+    levelOffsets: gymLevelOffsets(row),
   };
 }
 
@@ -560,8 +563,11 @@ export function leagueRoundAt(
   startHp: number[],
   boosts: BattleOpts = {},
 ): LeagueRound {
-  const max = party.map((m) => speciesStats(m.speciesId)?.hp ?? 1);
+  // Graduates, so all of them are at the top of the scale — and so is the
+  // league, which stands a few levels above them and is clamped back to 100.
+  const max = party.map((m) => partyStats(m)?.hp ?? 1);
   if (!startHp.some((h) => h > 0)) return { rounds: [], hp: [...startHp], won: false, outFor: [] };
+  const levels = levelsFrom(PARTY_LEVEL, leagueLevelOffsets(member));
   const fight = fightAt(
     LEAGUE_SEED_BASE + seq * 32,
     party.map((m, i) =>
@@ -570,13 +576,23 @@ export function leagueRoundAt(
         mySpeciesId: m.speciesId,
         // The slot its dex entry graduated with; an older party member fights with the first.
         myAbility: abilityOf(m.speciesId, m.abilitySlot ?? 0),
+        myLevel: PARTY_LEVEL,
+        myIvs: partyIvs(m),
         startHp: startHp[i] > 0 ? Math.max(1, Math.round((startHp[i] / BATTLE_MAX_HP) * max[i])) : 0,
       }),
     ),
-    member.team.map((id, i) => foeOf(id, rarityOfSpecies(id), member.grit, member.teamMoves?.[i])),
+    member.team.map((id, i) =>
+      foeOf(id, rarityOfSpecies(id), member.grit, member.teamMoves?.[i], undefined, levels[i], foeIvsAt(seq, i)),
+    ),
   );
   const hp = fight.hp.map((h, i) => (h <= 0 ? 0 : Math.max(1, Math.round((h / max[i]) * BATTLE_MAX_HP))));
   return { rounds: fight.rounds, hp, won: fight.won, outFor: fight.outFor };
+}
+
+/** A party member's real stats at its level and IVs, which is what its HP share is a share of. */
+function partyStats(m: PartyMember) {
+  const base = statsOf(m.speciesId);
+  return base ? battleStats(base, PARTY_LEVEL, partyIvs(m)) : null;
 }
 
 /** What clearing the whole league is worth, as a multiplier on one encounter. */

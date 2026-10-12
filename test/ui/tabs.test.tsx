@@ -1356,7 +1356,7 @@ describe('panel tabs', () => {
     await user.click(screen.getByRole('button', { name: /리자몽/ }));
     await waitFor(() => expect(screen.getByText('534')).toBeTruthy());
     // The chart is what the fight is fought from; the line says on what terms.
-    expect(screen.getByText(/레벨 50, 개체값 없이 이 종족값으로/)).toBeTruthy();
+    expect(screen.getByText(/종족값에 레벨과 개체값을 더해/)).toBeTruthy();
   });
 
   it('omits the record rows it has nothing to put in', async () => {

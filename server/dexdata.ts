@@ -1345,8 +1345,8 @@ const SPECIES_ABILITY: Record<number, number[]> = {
 /**
  * speciesId -> [HP, 공격, 방어, 특수공격, 특수방어, 스피드].
  *
- * What every fight is fought from. server/fight.ts turns these into level-50
- * stats (`battleStats`: no IVs, no EVs, a neutral nature), so the numbers on
+ * What every fight is fought from. server/fight.ts turns these into stats
+ * with the level and IVs (`battleStats`: no EVs, a neutral nature), so the numbers on
  * the dex card are exactly what the battle uses — and the only place they
  * live, which test/payload-shape.test.ts holds.
  */

@@ -17,6 +17,7 @@ import {
 } from './game.ts';
 import { formById, formsFrom } from './forms.ts';
 import { battleAt, formOpts, BATTLE_MAX_HP, type Battle, type BattleOpts } from './fight.ts';
+import { companionIvs, companionLevel, foeIvsAt, wildLevelAt } from './levels.ts';
 import { LEGEND_MOVES } from './legendmoves.ts';
 
 /*
@@ -172,6 +173,15 @@ export function legendBattleAt(seq: number, speciesId: number, moves: readonly n
     foeMoves: LEGEND_MOVES[speciesId],
     ...opts,
   });
+}
+
+/**
+ * A wild opponent's level and IVs at encounter `seq`, for a companion at
+ * `myLevel` — the half of `BattleOpts` the settled fight and its replay must
+ * agree on. A legendary met in the grass is a wild Pokemon and follows it too.
+ */
+export function wildFoe(seq: number, myLevel: number): Pick<BattleOpts, 'foeLevel' | 'foeIvs'> {
+  return { foeLevel: wildLevelAt(seq, myLevel), foeIvs: foeIvsAt(seq) };
 }
 
 /**
@@ -492,7 +502,10 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
   const friendship = friendshipOf(active);
   /** Its ability — the mega's own while it is one. Recorded on `mine` so the replay fights with it too. */
   const ability = companionAbility(active, form?.id ?? worn?.id);
-  const boosts = { ...formOpts(form, worn), myFriendship: friendship, myAbility: ability };
+  /** Its level and IVs: what its stats are made of. Recorded on `mine`, and the wild level is measured from it. */
+  const level = companionLevel(active);
+  const ivs = companionIvs(active);
+  const boosts = { ...formOpts(form, worn), myFriendship: friendship, myAbility: ability, myLevel: level, myIvs: ivs };
   // A mega swings 19% harder, so it earns 19% more from the same encounter.
   // A gigantamax earns nothing extra here on purpose — its base stats are
   // unchanged, and what it buys instead is surviving trainers.
@@ -505,7 +518,7 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
    * evolved species unless the entry says otherwise — a different set of
    * stats, and very possibly a different winner.
    */
-  const mine = { speciesId, moves: [...active.moves], friendship, ability };
+  const mine = { speciesId, moves: [...active.moves], friendship, ability, level, ivs: [...ivs] };
   /** What the companion does in these fights, for the evolutions that ask. See server/evolution.ts. */
   let deeds: Deeds = active.deeds ?? NO_DEEDS();
 
@@ -809,7 +822,7 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
        * wild guarantees (a felling last turn, MAX_TURNS, the global turn index)
        * would all have to break to fold this into one battle.
        */
-      const fight = legendBattleAt(seq, wildId, active.moves, { mySpeciesId: speciesId, ...boosts });
+      const fight = legendBattleAt(seq, wildId, active.moves, { mySpeciesId: speciesId, ...boosts, ...wildFoe(seq, level) });
       deeds = deedsAfter(deeds, [fight], () => wildId);
       const won = fight.won;
       // Met, whatever happened next. The shrine opens on the meeting rather
@@ -844,7 +857,7 @@ export function hunt(state: GameState, now: number): { state: GameState; changed
      * fragment. The drop rolls are still ASKED for either way, so which
      * encounter drops what never depends on who won.
      */
-    const wild = battleAt(seq, e.rarity, active.moves, wildId, { mySpeciesId: speciesId, ...boosts });
+    const wild = battleAt(seq, e.rarity, active.moves, wildId, { mySpeciesId: speciesId, ...boosts, ...wildFoe(seq, level) });
     deeds = deedsAfter(deeds, [wild], () => wildId);
     const won = wild.won;
     const tokens = won ? Math.min(room(), Math.round(e.reward * mult * formMult)) : 0;

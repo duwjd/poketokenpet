@@ -166,8 +166,8 @@ import {
 /**
  * The battle: two teams, one Pokemon out on each side, turn by turn.
  *
- * Everything that decides a fight lives here — level-50 stats from base
- * stats, the damage formula, status conditions, stat stages, moves and what
+ * Everything that decides a fight lives here — stats from base stats, level
+ * and IVs, the damage formula, status conditions, stat stages, moves and what
  * they do, switching. The rules that are tables rather than state (weather,
  * terrain, screens, formula powers, which move id is which) are in
  * server/battlefield.ts; the words are in src/battleText.ts. server/hunt.ts,
@@ -185,19 +185,42 @@ import {
 const FIXED_POWER = 40;
 
 /**
- * The level every Pokemon fights at, on both sides.
+ * The level a Fighter fights at when nothing says otherwise.
  *
- * The companion HAS a level (server/game.ts `levelAt`), but it drives growth,
- * evolution and the level-up learnset — not the fight. Every fight is fought
- * as if it were a flat-50 battle: base stats decide who hits harder, who takes
- * it better and who moves first. No IVs, no EVs and a neutral nature, so two of
- * the same species are exactly as strong as each other — see `battleStats`.
+ * Every real fight now names both sides' levels: the companion fights at its
+ * own, a wild Pokemon within ten of it, a trainer's team a little above it —
+ * see `wildLevelAt` in server/hunt.ts and `teamLevels` in server/trainer.ts.
+ * This is what is left for a Fighter built without one, which is the engine's
+ * own tests and `speciesStats`, so every number those pin stays where it was.
  *
- * Deliberate, and measured: docs/DESIGN.md "전투 밸런스 점검" has the win
- * rates, why a strong legendary is left strong, and the three things that
- * would have to change together if a fight ever read the real level.
+ * docs/DESIGN.md "전투 밸런스 점검" has why fights used to be flat-50 and what
+ * moved when they stopped being.
  */
 export const BATTLE_LEVEL = 50;
+
+/** Levels run 1..100 on every Pokemon, on both sides of every fight. */
+export function clampLevel(n: number): number {
+  return Math.max(1, Math.min(100, Math.round(n)));
+}
+
+/**
+ * Six individual values, in STATS order, each 0..31.
+ *
+ * The games' IVs: fixed for an individual from the moment it exists, and the
+ * reason two of the same species at the same level are not quite equal. EVs
+ * stay at zero and the nature stays neutral — this is the one per-individual
+ * term the fight reads.
+ */
+export type Ivs = readonly [number, number, number, number, number, number];
+
+/** All zero: what a Fighter built without IVs gets, so old numbers hold. */
+export const NO_IVS: Ivs = [0, 0, 0, 0, 0, 0];
+
+/** Six IVs drawn from `rng`, each uniform in 0..31. */
+export function rollIvs(rng: () => number): Ivs {
+  const d = () => Math.floor(rng() * 32);
+  return [d(), d(), d(), d(), d(), d()];
+}
 
 /** A critical hit lands for half again. How often is `critChance`. */
 const CRIT_MULT = 1.5;
@@ -293,23 +316,25 @@ export const BATTLE_MAX_HP = 100;
 export type BattleStats = { hp: number; atk: number; def: number; spa: number; spd: number; spe: number };
 
 /**
- * Level-50 stats from base stats, with no IVs, no EVs and a neutral nature.
+ * Stats from base stats, level and IVs, with no EVs and a neutral nature.
  *
- * The games' formulas with every optional term at zero:
- *   HP    = floor(2 × base × 50 / 100) + 50 + 10 = base + 60
- *   other = floor(2 × base × 50 / 100) + 5       = base + 5
- * 껍질몬 is the one exception the games make — its HP is always 1.
+ * The games' formulas with the EV and nature terms at their identity:
+ *   HP    = floor((2 × base + IV) × level / 100) + level + 10
+ *   other = floor((2 × base + IV) × level / 100) + 5
+ * At level 50 with no IVs that is base + 60 and base + 5, which is what every
+ * fight was before levels counted. 껍질몬 is the one exception the games make —
+ * its HP is always 1.
  */
-export function battleStats(base: readonly number[]): BattleStats {
-  const lv = BATTLE_LEVEL;
-  const other = (b: number) => Math.floor((2 * b * lv) / 100) + 5;
+export function battleStats(base: readonly number[], level = BATTLE_LEVEL, ivs: Ivs = NO_IVS): BattleStats {
+  const lv = clampLevel(level);
+  const core = (i: number) => Math.floor(((2 * base[i] + ivs[i]) * lv) / 100);
   return {
-    hp: base[0] === 1 ? 1 : Math.floor((2 * base[0] * lv) / 100) + lv + 10,
-    atk: other(base[1]),
-    def: other(base[2]),
-    spa: other(base[3]),
-    spd: other(base[4]),
-    spe: other(base[5]),
+    hp: base[0] === 1 ? 1 : core(0) + lv + 10,
+    atk: core(1) + 5,
+    def: core(2) + 5,
+    spa: core(3) + 5,
+    spd: core(4) + 5,
+    spe: core(5) + 5,
   };
 }
 
@@ -317,7 +342,7 @@ export function battleStats(base: readonly number[]): BattleStats {
  * An opponent's stats with its trainer's grit applied.
  *
  * Every stat but Speed. One companion fights a leader's WHOLE team without
- * healing, which at honest level-50 stats is a fight almost nobody wins — so
+ * healing, which at honest stats is a fight almost nobody wins — so
  * the named rosters are tuned, and grit is the one dial for it (the teams
  * themselves are never trimmed). Leaving Speed alone is what keeps the canon
  * team playing like itself: who moves first and which matchups are good are
@@ -330,7 +355,7 @@ function gritted(s: BattleStats, grit: number): BattleStats {
   return { hp: g(s.hp), atk: g(s.atk), def: g(s.def), spa: g(s.spa), spd: g(s.spd), spe: s.spe };
 }
 
-/** A species' level-50 stats, or null outside 1..1025. */
+/** A species' stats at BATTLE_LEVEL with no IVs, or null outside 1..1025. */
 export function speciesStats(speciesId: number): BattleStats | null {
   const base = statsOf(speciesId);
   return base ? battleStats(base) : null;
@@ -699,6 +724,9 @@ export type RoundExit =
 export type Battle = {
   foeMaxHp: number;
   myMaxHp: number;
+  /** The levels of the two out this round, 1..100 — what the scene prints beside each name. */
+  myLevel: number;
+  foeLevel: number;
   /** HP I came into this round with. Below max after a trainer's first Pokemon. */
   myStartHp: number;
   /** The same for the opponent — below max when one comes back after being pulled out. */
@@ -829,7 +857,7 @@ type FoePool = { moves: MoveInfo[]; weights: number[]; total: number };
  * Null for a species with nothing left after either — it falls back to the
  * same plain swing an untaught companion uses.
  */
-const foePools = new Map<number, FoePool | null>();
+const foePools = new Map<string, FoePool | null>();
 
 /**
  * Weight a set of moves the way an opponent picks between them.
@@ -861,13 +889,22 @@ function poolFrom(ids: readonly number[], types: readonly MoveType[], named = fa
   return { moves, weights, total: weights.reduce((a, w) => a + w, 0) };
 }
 
-function foePool(speciesId: number): FoePool | null {
-  const cached = foePools.get(speciesId);
+/**
+ * What an opponent with no transcribed set swings with: every damaging move its
+ * species has learned by levelling up to `level`, as the games' wild Pokemon do.
+ *
+ * A low-level one may have learned nothing that hits yet (a Lv.3 잉어킹 has only
+ * 튀어오르기). It then falls back to its whole level-up list, and only after
+ * that to everything it can learn — the same fallback the flat-50 pool had.
+ */
+function foePool(speciesId: number, level = BATTLE_LEVEL): FoePool | null {
+  const key = `${speciesId}:${level}`;
+  const cached = foePools.get(key);
   if (cached !== undefined) return cached;
   const types = speciesInfo(speciesId)?.types ?? [];
-  const byLevel = [...new Set(levelUpMoves(speciesId).filter(([lv]) => lv <= BATTLE_LEVEL).map(([, id]) => id))];
-  const pool = poolFrom(byLevel, types) ?? poolFrom(learnableMoves(speciesId), types);
-  foePools.set(speciesId, pool);
+  const learned = (cap: number) => [...new Set(levelUpMoves(speciesId).filter(([lv]) => lv <= cap).map(([, id]) => id))];
+  const pool = poolFrom(learned(level), types) ?? poolFrom(learned(Infinity), types) ?? poolFrom(learnableMoves(speciesId), types);
+  foePools.set(key, pool);
   return pool;
 }
 
@@ -1129,6 +1166,14 @@ export type BattleOpts = {
   myAbility?: string | null;
   /** The opponent's, when the caller knows it; otherwise dealt from the seed. */
   foeAbility?: string | null;
+  /** My level, 1..100. See `Fighter.level`. */
+  myLevel?: number;
+  /** My IVs. See `Fighter.ivs`. */
+  myIvs?: Ivs;
+  /** The opponent's level, 1..100. */
+  foeLevel?: number;
+  /** The opponent's IVs. */
+  foeIvs?: Ivs;
 };
 
 /** Turns a Gigantamax lasts, as in the games. */
@@ -1196,6 +1241,10 @@ export type Fighter = {
    * wild one is born with one. Null is none at all.
    */
   ability?: string | null;
+  /** 1..100. Undefined is BATTLE_LEVEL, which only tests rely on. */
+  level?: number;
+  /** Its six IVs. Undefined is all zero, which only tests rely on. */
+  ivs?: Ivs;
 };
 
 /** The companion (or a party member) as a Fighter. */
@@ -1210,6 +1259,8 @@ export function mineOf(moves: readonly number[], opts: BattleOpts = {}): Fighter
     startStatus: opts.startStatus ?? null,
     friendship: opts.myFriendship ?? COMPANION_FRIENDSHIP,
     ...(opts.myAbility !== undefined ? { ability: opts.myAbility } : {}),
+    ...(opts.myLevel !== undefined ? { level: opts.myLevel } : {}),
+    ...(opts.myIvs !== undefined ? { ivs: opts.myIvs } : {}),
     ...(opts.counterMult !== undefined && opts.counterMult !== 1
       ? { guard: { mult: opts.counterMult, turns: opts.counterMultTurns ?? Infinity } }
       : {}),
@@ -1223,8 +1274,20 @@ export function foeOf(
   grit = 1,
   named?: readonly number[],
   ability?: string | null,
+  level?: number,
+  ivs?: Ivs,
 ): Fighter {
-  return { speciesId, rarity, moves: null, named, grit, friendship: DEFAULT_FRIENDSHIP, ...(ability !== undefined ? { ability } : {}) };
+  return {
+    speciesId,
+    rarity,
+    moves: null,
+    named,
+    grit,
+    friendship: DEFAULT_FRIENDSHIP,
+    ...(ability !== undefined ? { ability } : {}),
+    ...(level !== undefined ? { level } : {}),
+    ...(ivs !== undefined ? { ivs } : {}),
+  };
 }
 
 /** How a side picks its moves: which ones, their base weights, and how hard the chart leans. */
@@ -1244,7 +1307,7 @@ function kitOf(f: Fighter, types: readonly MoveType[]): Kit {
     const ids: (number | null)[] = !f.moves.length ? [null] : hasDamaging([...f.moves]) ? [...f.moves] : [...f.moves, null];
     return { ids, weight: () => 1, table: MATCHUP_WEIGHT, player: true };
   }
-  const pool = f.named?.length ? namedPool(f.named, types) : f.speciesId ? foePool(f.speciesId) : null;
+  const pool = f.named?.length ? namedPool(f.named, types) : f.speciesId ? foePool(f.speciesId, clampLevel(f.level ?? BATTLE_LEVEL)) : null;
   const weights = new Map<number | null, number>(pool ? pool.moves.map((m, i) => [m.id, pool.weights[i]] as const) : []);
   return {
     ids: pool ? pool.moves.map((m) => m.id) : [null],
@@ -1260,8 +1323,11 @@ const ZERO_STAGES = (): Stages => ({ atk: 0, def: 0, spa: 0, spd: 0, spe: 0, acc
 /** One Pokemon on a team: what it keeps when it switches out. */
 type Mon = {
   f: Fighter;
-  /** Base stats, before the level-50 formula — 집단구타 reads a teammate's attack from here. */
+  /** Base stats, before the stat formula — 집단구타 reads a teammate's attack from here. */
   base: readonly number[];
+  /** 1..100: what the damage formula, 나이트헤드 and the OHKO moves read. */
+  level: number;
+  ivs: Ivs;
   stats: BattleStats;
   maxHp: number;
   hp: number;
@@ -1436,12 +1502,16 @@ type Team = {
 function monOf(f: Fighter): Mon {
   const info = f.speciesId ? speciesInfo(f.speciesId) : null;
   const base = f.stats ?? (f.speciesId ? statsOf(f.speciesId) : null) ?? Array(6).fill(f.rarity ? FALLBACK_BASE[f.rarity] : 80);
-  const stats = gritted(battleStats(base), f.grit ?? 1);
+  const level = clampLevel(f.level ?? BATTLE_LEVEL);
+  const ivs = f.ivs ?? NO_IVS;
+  const stats = gritted(battleStats(base, level, ivs), f.grit ?? 1);
   const types = f.types ?? info?.types ?? [];
   const hp = Math.max(0, Math.min(stats.hp, f.startHp ?? stats.hp));
   return {
     f,
     base,
+    level,
+    ivs,
     stats,
     maxHp: stats.hp,
     hp,
@@ -1841,7 +1911,7 @@ function abilityStatMult(s: Side, stat: 'atk' | 'def' | 'spa' | 'spd' | 'spe', a
 function setForm(s: Side, name: string): boolean {
   const f = BATTLE_FORMS[name];
   if (!f || s.mon.form === name) return false;
-  const next = gritted(battleStats(f.stats), s.mon.f.grit ?? 1);
+  const next = gritted(battleStats(f.stats, s.mon.level, s.mon.ivs), s.mon.f.grit ?? 1);
   const gained = next.hp - s.maxHp;
   s.stats = { ...next };
   s.types = [...f.types];
@@ -3234,7 +3304,7 @@ function damageOf(
     1,
     Math.floor(target.stats[dRead] * stageMult(dStage) * (opts.defMult ?? 1) * (user !== target ? abilityStatMult(target, dRead, user) : 1)),
   );
-  const lv = Math.floor((2 * BATTLE_LEVEL) / 5) + 2;
+  const lv = Math.floor((2 * user.mon.level) / 5) + 2;
   let dmg = Math.floor(Math.floor((lv * power * a) / d) / 50) + 2;
   dmg = Math.floor(dmg * (opts.fieldMult ?? 1));
   // 스나이퍼: a critical hit lands for half again on top.
@@ -3620,11 +3690,18 @@ function perform(ut: Team, tt: Team, pickedIn: number | null, c: Ctx, first: boo
     }
   }
 
-  // Accuracy. OHKO moves ignore stages and hit a third of the time at the same level.
+  // Accuracy. OHKO moves ignore stages and hit a third of the time at the same
+  // level, a point more for every level the user has over its target, and
+  // never at all against something higher than itself.
   const ohko = !!move && OHKO_MOVES.has(move.id);
+  if (ohko && aimed && t.mon.level > u.mon.level) {
+    out.missed = true;
+    u.streak = 0;
+    return finish(true);
+  }
   let baseAcc = move ? (weatherAccuracy(c.field.weather?.kind ?? null, move.id) ?? move.accuracy) : 0;
   // 절대영도 lands a fifth of the time from anything that is not an Ice type.
-  if (ohko) baseAcc = move?.id === SHEER_COLD && !u.types.includes('ice') ? 20 : 30;
+  if (ohko) baseAcc = (move?.id === SHEER_COLD && !u.types.includes('ice') ? 20 : 30) + (u.mon.level - t.mon.level);
   else if (aimed && (t.telekinesis > 0 || t.glaive || u.lockOn > 0)) baseAcc = 0;
   // 맹독 from a Poison type cannot miss; 짓밟기 and its kin cannot miss something small.
   else if (move && ((move.id === 92 && u.types.includes('poison')) || (MINIMIZE_PUNISH.has(move.id) && t.minimized))) baseAcc = 0;
@@ -3733,7 +3810,7 @@ function perform(ut: Team, tt: Team, pickedIn: number | null, c: Ctx, first: boo
           timesHit: u.mon.timesHit,
           roll: move.id === PRESENT || move.id === FICKLE_BEAM ? rng() : undefined,
         },
-        BATTLE_LEVEL,
+        u.mon.level,
         FIXED_POWER,
       )
     : { power: struggle ? 50 : TACKLE.power, fixed: null, type: 'normal' };
@@ -3759,7 +3836,7 @@ function perform(ut: Team, tt: Team, pickedIn: number | null, c: Ctx, first: boo
   if (u.electrified || (c.field.plasma && pw.type === 'normal')) pw.type = 'electric';
   if (move && move.id in FIXED_DAMAGE) pw.fixed = FIXED_DAMAGE[move.id];
   // 사이코웨이브: anywhere from half the user's level to half again.
-  if (move?.id === PSYWAVE) pw.fixed = Math.max(1, Math.floor((BATTLE_LEVEL * (50 + Math.floor(rng() * 101))) / 100));
+  if (move?.id === PSYWAVE) pw.fixed = Math.max(1, Math.floor((u.mon.level * (50 + Math.floor(rng() * 101))) / 100));
   if (returned !== null) pw.fixed = returned;
   if (bideDamage !== null) pw.fixed = bideDamage;
   const type = pw.type;
@@ -6038,6 +6115,8 @@ function openRound(c: Ctx, entry: EndEvent[]): Battle {
   return {
     foeMaxHp: c.foe.active.maxHp,
     myMaxHp: c.me.active.maxHp,
+    myLevel: c.me.active.mon.level,
+    foeLevel: c.foe.active.mon.level,
     myStartHp: c.me.active.hp + entry.filter((e) => 'on' in e && e.on === 'me' && e.k === 'hazard-hit').reduce((a, e) => a + (e as { hp: number }).hp, 0),
     foeStartHp: c.foe.active.hp + entry.filter((e) => 'on' in e && e.on === 'foe' && e.k === 'hazard-hit').reduce((a, e) => a + (e as { hp: number }).hp, 0),
     mySlot: c.me.slot,
@@ -6063,7 +6142,12 @@ export function battleAt(
   foeSpeciesId?: number,
   opts: BattleOpts = {},
 ): Battle {
-  const fight = fightAt(seq, [mineOf(moves, opts)], [foeOf(foeSpeciesId, rarity, opts.grit ?? 1, opts.foeMoves, opts.foeAbility)], true);
+  const fight = fightAt(
+    seq,
+    [mineOf(moves, opts)],
+    [foeOf(foeSpeciesId, rarity, opts.grit ?? 1, opts.foeMoves, opts.foeAbility, opts.foeLevel, opts.foeIvs)],
+    true,
+  );
   const b = fight.rounds[0];
   return { ...b, won: fight.won };
 }

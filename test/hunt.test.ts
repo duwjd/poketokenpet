@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { companionIvs, companionLevel } from '../server/levels.ts';
 import {
   advance,
   companionAbility,
@@ -30,6 +31,7 @@ import {
   setHuntUncapped,
   teach,
   teachableNow,
+  wildFoe,
 } from '../server/hunt.ts';
 
 const H = 10_000_000;
@@ -194,6 +196,9 @@ describe('hunt', () => {
           moves: me.moves,
           friendship: friendshipOf(me),
           ability: companionAbility(me),
+          // The level the opponent was measured from, and the IVs it fought with.
+          level: companionLevel(me),
+          ivs: [...companionIvs(me)],
         });
       }
       if (e.trainer || e.legend) continue;
@@ -201,6 +206,9 @@ describe('hunt', () => {
         mySpeciesId: speciesIdOf(me),
         myFriendship: e.mine!.friendship,
         myAbility: e.mine!.ability,
+        myLevel: e.mine!.level,
+        myIvs: companionIvs(me),
+        ...wildFoe(e.seq, e.mine!.level!),
       });
       expect(b.won, `seq ${e.seq}`).toBe(e.won);
     }

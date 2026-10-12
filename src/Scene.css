@@ -760,6 +760,18 @@
 }
 
 /*
+ * The level, right after the name, as the games print it on the plate. Never
+ * shrinks: the name is the one that gives way to an ellipsis.
+ */
+.scene-lv {
+  flex: none;
+  font-size: 10px; font-family: 'Galmuri9';
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-lit);
+}
+
+/*
  * How many the trainer has left.
  *
  * Deliberately not a row of HP bars: the panel has exactly two of those, one

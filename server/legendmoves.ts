@@ -15,8 +15,8 @@
  * it, and the row says so: meeting 루기아 without 에어로블라스트 is not meeting
  * 루기아.
  *
- * The battle is still at Lv.50; the level in each comment is only where the
- * four came from.
+ * The battle is at the level `wildLevelAt` gives (the companion's, give or
+ * take ten); the level in each comment is only where the four came from.
  */
 export const LEGEND_MOVES: Readonly<Record<number, readonly number[]>> = {
   144: [542, 114, 59, 329], // 프리져 — 스칼렛·바이올렛 Lv.70 고정 조우 · 폭풍 · 흑안개 · 눈보라 · 절대영도

@@ -1,6 +1,7 @@
 import { mulberry32, rollSpecies } from './game.ts';
 import { rarityOfSpecies } from './dex.ts';
 import { fightAt, foeOf, mineOf, type Battle, type BattleOpts } from './fight.ts';
+import { foeIvsAt, levelsFrom, trainerLevelsAt } from './levels.ts';
 import { speciesInfo, type MoveType } from './moves.ts';
 import { LEGENDS, legendOf } from './legenddata.ts';
 import { LINES } from './species.ts';
@@ -165,6 +166,12 @@ export type Trainer = {
   /** The four moves each carries, index-aligned with `team`. Absent = generated. */
   teamMoves?: number[][];
   grit: number;
+  /**
+   * Each member's level above or below the companion's, index-aligned with
+   * `team`. A gym leader's are fixed by badge order (`gymLevelOffsets`); a
+   * route trainer has none, and each member is drawn within the spread instead.
+   */
+  levelOffsets?: number[];
 };
 
 /** How many attempts to honour a class's preferred types before settling. */
@@ -263,17 +270,31 @@ export function trainerBattleAt(
    */
   boosts: BattleOpts = {},
 ): TrainerBattle {
+  const levels = trainerLevels(seq, t, boosts.myLevel);
   const fight = fightAt(
     ROUND_SEED_BASE + seq * 8,
     [mineOf(moves, { ...boosts, mySpeciesId })],
     // A transcribed set is the trainer's own moves; nothing the caller passes replaces it.
-    t.team.map((id, i) => foeOf(id, rarityOfSpecies(id), t.grit, t.teamMoves?.[i])),
+    t.team.map((id, i) =>
+      foeOf(id, rarityOfSpecies(id), t.grit, t.teamMoves?.[i], undefined, levels?.[i], levels ? foeIvsAt(seq, i) : undefined),
+    ),
   );
   return {
     rounds: fight.rounds,
     won: fight.won,
     lostAt: fight.won ? null : (fight.rounds.at(-1)?.foeSlot ?? 0),
   };
+}
+
+/**
+ * The levels a trainer's team fights at against a companion at `myLevel`.
+ *
+ * Undefined when the caller names no level, which is only ever a test: the
+ * team then fights at BATTLE_LEVEL like the companion does.
+ */
+export function trainerLevels(seq: number, t: Trainer, myLevel: number | undefined): number[] | undefined {
+  if (myLevel === undefined) return undefined;
+  return t.levelOffsets ? levelsFrom(myLevel, t.levelOffsets) : trainerLevelsAt(seq, t.team.length, myLevel);
 }
 
 export type TrainerReward = {

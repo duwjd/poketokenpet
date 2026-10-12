@@ -25,7 +25,7 @@ import { legendItem } from './legenddata.ts';
 import { LEGEND_GATES, SHARDS_PER_ITEM, itemKo, legendRow } from './legends.ts';
 import { formById, formsFrom, type Form } from './forms.ts';
 import { loadState, saveState } from './store.ts';
-import type { Battle, BattleEvent, EndEvent } from './fight.ts';
+import type { Battle, BattleEvent, EndEvent, Ivs } from './fight.ts';
 import { abilityKo, abilityOf } from './abilities.ts';
 import { STRUGGLE } from './battlefield.ts';
 import {
@@ -37,6 +37,7 @@ import {
   hunt,
   huntCap,
   legendBattleAt,
+  wildFoe,
   moveMult,
   teachableNow,
 } from './hunt.ts';
@@ -232,7 +233,13 @@ export async function buildState(mode: CountMode = 'activity') {
     ...(mine?.friendship !== undefined ? { myFriendship: mine.friendship } : {}),
     // The same for the ability: an entry from before abilities fought without one.
     myAbility: mine && 'ability' in mine ? (mine.ability ?? null) : mine ? null : undefined,
+    // Level and IVs as they were. An entry from before levels counted has
+    // neither and replays at the old flat 50 on both sides, as it was fought.
+    ...(mine?.level !== undefined ? { myLevel: mine.level } : {}),
+    ...(mine?.ivs?.length === 6 ? { myIvs: mine.ivs as unknown as Ivs } : {}),
   });
+  /** A wild opponent's level and IVs, when the entry recorded the level they were measured from. */
+  const replayFoe = (seq: number, mine?: HuntEntry['mine']) => (mine?.level !== undefined ? wildFoe(seq, mine.level) : {});
   /** What it would turn into in a fight right now. Null when nothing would. */
   const battleForm = battleFormOf(state);
   /**
@@ -417,6 +424,8 @@ export async function buildState(mode: CountMode = 'activity') {
   const dressTurns = (b: Battle) => ({
     foeMaxHp: b.foeMaxHp,
     myMaxHp: b.myMaxHp,
+    myLevel: b.myLevel,
+    foeLevel: b.foeLevel,
     myStartHp: b.myStartHp,
     foeStartHp: b.foeStartHp,
     mySlot: b.mySlot,
@@ -619,6 +628,7 @@ export async function buildState(mode: CountMode = 'activity') {
         // fight being replayed from yesterday.
         mySpeciesId: mine?.speciesId ?? speciesId ?? undefined,
         ...replayOpts(form, mine),
+        ...replayFoe(seq, mine),
       }),
     );
 
@@ -640,6 +650,7 @@ export async function buildState(mode: CountMode = 'activity') {
     const b = legendBattleAt(seq, legend.speciesId, mine?.moves ?? active?.moves ?? [], {
       mySpeciesId: mine?.speciesId ?? speciesId ?? undefined,
       ...replayOpts(form, mine),
+      ...replayFoe(seq, mine),
     });
     return b.won === legend.won ? dressTurns(b) : null;
   };

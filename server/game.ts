@@ -288,7 +288,20 @@ export type HuntEntry = {
    * it, `advance` may evolve the companion, and only then is it replayed. An
    * entry written before this existed simply has none, and replays live.
    */
-  mine?: { speciesId: number; moves: number[]; friendship?: number; ability?: string | null };
+  mine?: {
+    speciesId: number;
+    moves: number[];
+    friendship?: number;
+    ability?: string | null;
+    /**
+     * Its level and IVs when it fought. The opponent's level is measured from
+     * this one (server/levels.ts), so the replay needs it as much as the
+     * fight did. Absent on entries from before levels counted, which replay
+     * at the old flat 50.
+     */
+    level?: number;
+    ivs?: number[];
+  };
   /**
    * Set when this encounter was a trainer rather than a wild Pokemon.
    *

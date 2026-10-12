@@ -3525,10 +3525,10 @@ export default function App() {
             </li>
           </ul>
           {/* The screen says out loud how these numbers are used, so nobody has
-              to guess: every fight is a flat level-50 fight from exactly these,
-              with no individual values. See `battleStats` in server/fight.ts. */}
+              to guess: every fight computes stats from exactly these, the
+              level and the IVs. See `battleStats` in server/fight.ts. */}
           <p className="muted sub">
-            원작 수치입니다. 이 앱의 배틀은 양쪽 모두 레벨 50, 개체값 없이 이 종족값으로
+            원작 수치입니다. 이 앱의 배틀은 이 종족값에 레벨과 개체값을 더해 원작 공식대로
             능력치를 계산합니다.
           </p>
         </>

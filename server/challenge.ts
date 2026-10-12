@@ -13,6 +13,7 @@ import {
   type GymRow,
   type RegionRow,
 } from './gyms.ts';
+import { companionIvs, companionLevel } from './levels.ts';
 import {
   BATTLE_MAX_HP,
   HUNT_INTERVAL_MS,
@@ -242,7 +243,9 @@ export function challengeAction(given: GameState, id: string, now: number): Shop
   const form = battleFormOf(state);
   const formTag = form ? { form: { id: form.id, kind: form.kind as 'mega' | 'gmax' } } : {};
   const worn = active.formId !== undefined ? formById(active.formId) : null;
-  const boosts = formOpts(form, worn);
+  const level = companionLevel(active);
+  const ivs = companionIvs(active);
+  const boosts = { ...formOpts(form, worn), myLevel: level, myIvs: ivs };
   const room = Math.max(0, huntCap(state) - state.huntTokens);
   /**
    * What fought, recorded for the same reason `form` is.
@@ -253,7 +256,7 @@ export function challengeAction(given: GameState, id: string, now: number): Shop
    * the LIVE moveset. Without this the panel would narrate a different fight
    * than the one that handed over the badge.
    */
-  const mine = { speciesId, moves: [...active.moves] };
+  const mine = { speciesId, moves: [...active.moves], level, ivs: [...ivs] };
 
   if (p.kind === 'gym') {
     const row = p.row;

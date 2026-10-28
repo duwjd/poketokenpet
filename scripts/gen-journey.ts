@@ -849,8 +849,36 @@ const SKY: [RegExp, string][] = [
   [/-city$|-town$|시티|마을|타운|도시/, 'city'],
 ];
 
+/**
+ * The backdrop for a place SKY has no rule for, by what it is walked on.
+ *
+ * SKY used to stop at null for these — a third of the journey, mostly plain
+ * fields and roads — and the scene drew a flat sky colour over the tile floor.
+ * Now the scene draws the backdrop and nothing else (Scene.css, .scene-sky), so
+ * every place needs one. A field or a road is what the `route` painting is: a
+ * dirt path between trees and grass, which is also the one backdrop nothing
+ * else on the journey uses.
+ *
+ * Every terrain is listed, not just the three that reach it today, so a rule
+ * added to TERRAIN later cannot bring the null back. The rest repeat what SKY
+ * already answers for most places of that terrain.
+ */
+const SKY_BY_TERRAIN: Record<string, string> = {
+  field: 'route',
+  stonepath: 'route',
+  town: 'city',
+  forest: 'forest',
+  mountain: 'mountain',
+  cave: 'dampcave',
+  ruins: 'earthycave',
+  seaside: 'beach',
+  lakeside: 'river',
+  flowers: 'meadow',
+  desert: 'desert',
+};
+
 /** Every slug SKY can produce. Emitted as a union so the renderer is typed. */
-const SKY_IDS = [...new Set(SKY.map(([, id]) => id))].sort();
+const SKY_IDS = [...new Set([...SKY.map(([, id]) => id), ...Object.values(SKY_BY_TERRAIN)])].sort();
 
 function matchFor(table: [RegExp, string][], slug: string, ko: string): string | null {
   for (const [re, id] of table) {
@@ -863,14 +891,11 @@ function terrainFor(slug: string, ko: string): string {
   return matchFor(TERRAIN, slug, ko) ?? 'field';
 }
 
-/**
- * Null for anywhere with no obvious backdrop — a plain route, a laboratory.
- *
- * Null is not a failure path: it means the scene keeps the flat sky colour it
- * has always had, which is what an ordinary field should look like anyway.
- */
-function skyFor(slug: string, ko: string): string | null {
-  return matchFor(SKY, slug, ko);
+/** SKY's answer, or the terrain's when SKY has none — never null. */
+function skyFor(slug: string, ko: string, terrain: string): string {
+  const sky = matchFor(SKY, slug, ko) ?? SKY_BY_TERRAIN[terrain];
+  if (!sky) throw new Error(`배경이 없는 지형입니다: ${terrain}`);
+  return sky;
 }
 
 type Loc = { name: string; region: { name: string } | null; locationnames: { name: string }[] };
@@ -913,7 +938,7 @@ async function main() {
   /** Numbered routes are skipped: "1번도로" fifty times is not a journey. */
   const isRoute = (n: string) => /route-\d+$/.test(n);
 
-  const stops: { ko: string; region: string; terrain: string; sky: string | null }[] = [];
+  const stops: { ko: string; region: string; terrain: string; sky: string }[] = [];
   const dropped: Record<string, number> = {};
   /** Folded into an earlier stop of the same name — a different thing from unnamed. */
   const folded: Record<string, number> = {};
@@ -967,11 +992,12 @@ async function main() {
         continue;
       }
       seen.add(key);
+      const terrain = terrainFor(l.name, ko);
       stops.push({
         ko,
         region: regionKo.get(region)!,
-        terrain: terrainFor(l.name, ko),
-        sky: skyFor(l.name, ko),
+        terrain,
+        sky: skyFor(l.name, ko, terrain),
       });
       kept++;
     }
@@ -1000,7 +1026,7 @@ async function main() {
   const bySky: Record<string, number> = {};
   for (const s of stops) {
     byTerrain[s.terrain] = (byTerrain[s.terrain] ?? 0) + 1;
-    bySky[s.sky ?? '(없음)'] = (bySky[s.sky ?? '(없음)'] ?? 0) + 1;
+    bySky[s.sky] = (bySky[s.sky] ?? 0) + 1;
   }
 
   const here = path.dirname(fileURLToPath(import.meta.url));
@@ -1024,16 +1050,18 @@ export type SkyId = ${SKY_IDS.map((id) => `'${id}'`).join(' | ')};
 /**
  * One place on the journey, and the two independent things it looks like.
  *
- * \`terrain\` is which of the ten sheets gets painted underfoot. It is NOT what
- * the place is — a town and a stone road walk on the same cobble, and the
- * sheets have to cover ${stops.length} places between them.
+ * \`sky\` is the Gen-5 backdrop the pet walks in front of, and every place has
+ * one. It is what the scene shows, and all it shows.
  *
- * \`sky\` is the Gen-5 backdrop hung at the horizon, or null for nowhere in
- * particular. It is classified separately because the two layers have different
- * limits: sheets are capped by what CC0 art exists, backdrops are not, so a
- * desert can have a sky without having a floor.
+ * \`terrain\` is which of the ten tile sheets gets painted underfoot when that
+ * backdrop is not on disk yet — a first launch offline, a failed download. It
+ * is NOT what the place is — a town and a stone road walk on the same cobble,
+ * and the sheets have to cover ${stops.length} places between them. The two are
+ * classified separately because they have different limits: sheets are capped
+ * by what CC0 art exists, backdrops are not, so a desert can have a sky without
+ * having a floor.
  */
-export type Stop = { ko: string; region: string; terrain: TerrainId; sky: SkyId | null };
+export type Stop = { ko: string; region: string; terrain: TerrainId; sky: SkyId };
 
 export const STOPS: Stop[] = ${JSON.stringify(stops, null, 1)};
 

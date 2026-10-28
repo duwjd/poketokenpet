@@ -24,3 +24,12 @@
  * this rests on.
  */
 export const stillPokemon = (name: string): boolean => /^\d+-s(sh)?b?\.png$/.test(name);
+
+/**
+ * Whether this sprite is Showdown's art rather than Gen-5's.
+ *
+ * `w` is PokeAPI's mirror of Showdown and `z` is Showdown itself — the same
+ * drawings, which are drawn larger than the Gen-5 ones (see SHOWDOWN_ART in
+ * pixelFit.ts). Same naming rule as `stillPokemon` above.
+ */
+export const showdownArt = (name: string): boolean => /^\d+-[wz](sh)?b?\.gif$/.test(name);

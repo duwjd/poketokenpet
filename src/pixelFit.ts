@@ -1,5 +1,5 @@
 /**
- * Sizing maths for the floating pet.
+ * Sizing maths for the floating pet, and for the two sides of a battle.
  *
  * Sprite canvases vary far more than they look: a survey across the dex found
  * 38x38 up to 178x95, with 61% wider or taller than 64px. The window used to be
@@ -41,6 +41,44 @@ export function fitScale(contentMax: number, target: number): number {
     }
   }
   return best;
+}
+
+/**
+ * Where one side of the battle stands: the scale it draws at, and the box the
+ * art must stay inside.
+ */
+export type BattleSlot = { k: number; maxW: number; maxH: number };
+
+/**
+ * How much smaller Showdown's art is drawn to sit beside the Gen-5 sprites.
+ *
+ * The two tiers are not drawn to one scale. Measured over 72 species that have
+ * both, Showdown's canvas is 1.26x the Gen-5 one at the median (p10 1.00, p90
+ * 1.49), fronts and backs alike. Everything from #650 on is Showdown art, so
+ * without this a Gen-6 Pokemon stood a quarter taller than a Gen-1 one its own
+ * size.
+ */
+export const SHOWDOWN_ART = 0.8;
+
+/**
+ * The scale a combatant is drawn at.
+ *
+ * ONE scale for every Pokemon, not one size each. The scene used to fit every
+ * sprite to 72px on its own through `fitScale`, and the ladder has nothing
+ * between 1/2, 1 and 2 — so a 48px canvas doubled to 96 while a 49px one stayed
+ * 49, and the result ran backwards: Caterpie (36px) drew at 72 while Wailord
+ * (103px) drew at 52, and Charizard's back (100px) was halved to 50 beside a
+ * 74px Gengar. The Gen-5 canvases already carry the games' own size ratios —
+ * the artists compressed Wailord to 103px and Caterpie to 36 — so drawing them
+ * all at the same scale is what makes the two sides agree.
+ *
+ * The box only ever shrinks: a sprite that would leave the stage or slide under
+ * a name plate is drawn smaller, never anything else.
+ */
+export function battleScale(canvas: Box, slot: BattleSlot, showdown: boolean): number {
+  const k = slot.k * (showdown ? SHOWDOWN_ART : 1);
+  if (!(canvas.w > 0) || !(canvas.h > 0)) return k;
+  return Math.min(k, slot.maxW / canvas.w, slot.maxH / canvas.h);
 }
 
 /** Window size for a sprite: the scaled art, plus room for shadow and the HUD. */

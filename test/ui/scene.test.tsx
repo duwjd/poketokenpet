@@ -114,7 +114,7 @@ const props = (log: SceneEncounter[]) => ({
   idleReason: null,
   nextInMs: 180_000,
   /** Where the journey opens, so the caption assertions have a fixed place. */
-  stop: { ko: '태초마을', region: '관동', terrain: 'field', sky: null } as const,
+  stop: { ko: '태초마을', region: '관동', terrain: 'field', sky: 'city' } as const,
   skylineBg: null,
   timeOfDay: 'day' as const,
 });
@@ -194,10 +194,9 @@ afterEach(() => {
 });
 
 describe('Scene — travelling', () => {
-  it('walks the grass and says when the next encounter is due', () => {
+  it('walks and says when the next encounter is due', () => {
     render(<Scene {...props([enc()])} />);
     expect(screen.getByText('다음 조우까지 3분')).toBeTruthy();
-    expect(document.querySelector('.scene-grass.near')).toBeTruthy();
     expect(document.querySelector('.scene-walker img')).toBeTruthy();
   });
 
@@ -232,23 +231,32 @@ describe('Scene — travelling', () => {
     expect(next.textContent).toBe('관동무지개시티');
   });
 
-  it('hangs the horizon backdrop for where the pet is', () => {
+  it('shows the backdrop for where the pet is, and nothing over it', () => {
+    // The tile floor and the grass bands used to be laid over the painting's
+    // lower third — a second, flatter ground in front of the one the backdrop
+    // already has. With a backdrop on disk, none of them mount.
     const { container } = render(<Scene {...props([enc()])} skylineBg="bg-dampcave.png" />);
     const scene = container.querySelector('.scene') as HTMLElement;
     expect(container.querySelector('.scene-sky')).toBeTruthy();
     expect(scene.style.getPropertyValue('--skyline')).toContain('bg-dampcave.png');
+    expect(container.querySelector('.scene-ground')).toBeNull();
+    expect(container.querySelector('.scene-grass')).toBeNull();
+    expect(container.querySelector('.scene-walker img')).toBeTruthy();
   });
 
-  it('looks exactly as it did before when there is no backdrop', () => {
-    // Null is the ordinary answer for two thirds of the journey — a plain field
-    // names no backdrop — and it is also what a failed download looks like. The
-    // custom property must then never land, so Scene.css's own
-    // `var(--skyline, none)` is what answers and the scene keeps its flat sky.
+  it('stands on the tile floor while the backdrop has not downloaded', () => {
+    // Every stop names a backdrop, so null means only a download that has not
+    // landed — a first launch offline. The custom property must then never
+    // land, so Scene.css's own `var(--skyline, none)` is what answers, and the
+    // tiles are what keep the pet from floating in a flat colour.
     const { container } = render(<Scene {...props([enc()])} skylineBg={null} />);
     const scene = container.querySelector('.scene') as HTMLElement;
     expect(scene.style.getPropertyValue('--skyline')).toBe('');
     // The element still mounts; with no URL it paints nothing.
     expect(container.querySelector('.scene-sky')).toBeTruthy();
+    expect(container.querySelector('.scene-ground')).toBeTruthy();
+    expect(container.querySelector('.scene-grass.far')).toBeTruthy();
+    expect(container.querySelector('.scene-grass.near')).toBeTruthy();
   });
 
   it('tints the scene by the time of day rather than by the OS theme', () => {
@@ -427,6 +435,27 @@ describe('Scene — encounter', () => {
     const foe = document.querySelector('.scene-foe img') as HTMLImageElement;
     expect(mine.src).toContain('668-wb.gif'); // the `b` is the back view
     expect(foe.src).toContain('19-a.gif');
+  });
+
+  it('draws both sides at one scale, so the bigger Pokemon is the bigger sprite', async () => {
+    // Each sprite used to be fitted to 72px on its own, on a ladder with
+    // nothing between 1/2, 1 and 2: a 36px Rattata doubled to 72 while the
+    // companion beside it could be halved. Now the foe draws at 1x and mine at
+    // 1.25x — and 668-wb is Showdown art, which is drawn 0.8x on top of that.
+    const { rerender } = render(<Scene {...props([enc({ seq: 1 })])} />);
+    rerender(<Scene {...props([enc({ seq: 2 })])} />);
+    await advanceTo('enter');
+    const load = (img: HTMLImageElement, w: number, h: number) => {
+      Object.defineProperty(img, 'naturalWidth', { value: w });
+      Object.defineProperty(img, 'naturalHeight', { value: h });
+      fireEvent.load(img);
+    };
+    load(document.querySelector('.scene-foe img') as HTMLImageElement, 36, 37);
+    load(document.querySelector('.scene-mine img') as HTMLImageElement, 100, 85);
+    const foe = document.querySelector('.scene-foe img') as HTMLImageElement;
+    const mine = document.querySelector('.scene-mine img') as HTMLImageElement;
+    expect([foe.style.width, foe.style.height]).toEqual(['36px', '37px']);
+    expect([mine.style.width, mine.style.height]).toEqual(['100px', '85px']);
   });
 
   /**

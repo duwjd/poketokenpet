@@ -5,8 +5,8 @@ import type { Stop } from './journey.ts';
 import { sceneVars } from './scenes.ts';
 import type { TimeOfDay } from './timeOfDay.ts';
 import { euro, josa } from './josa.ts';
-import { fitScale } from './pixelFit.ts';
-import { stillPokemon } from './spriteName.ts';
+import { type BattleSlot, battleScale, fitScale } from './pixelFit.ts';
+import { showdownArt, stillPokemon } from './spriteName.ts';
 import './Scene.css';
 import { hpLevel } from './uikit.ts';
 
@@ -204,9 +204,8 @@ export type SceneProps = {
   /**
    * Cached filename of the Gen-5 backdrop for where the pet is, or null.
    *
-   * Resolved server-side from `stop.sky`; null both when the stop names no
-   * backdrop and when the download has not landed, because the scene draws the
-   * same flat sky for either.
+   * Resolved server-side from `stop.sky`, which every stop has; null means the
+   * download has not landed, and the scene falls back to the tile floor.
    */
   skylineBg: string | null;
   /** Tints the art, nothing else. See src/timeOfDay.ts. */
@@ -241,14 +240,30 @@ const UI_VARS = battleUiVars();
 const WALK_TARGET = 88;
 /** egg.png is a 96x96 canvas holding a ~28x30 egg, so it needs a bigger target. */
 const EGG_TARGET = 240;
-const BATTLE_TARGET = 72;
+/**
+ * The two sides of a battle, in px against the 218px-tall stage.
+ *
+ * Both draw at one shared scale (see battleScale), so the two sprites keep the
+ * size ratio the games gave them. Mine is the nearer of the two and is drawn a
+ * quarter larger, which is the proportion the platforms already have — 152px
+ * against 116.
+ *
+ * The boxes are clearances, not targets. The far side stands at y=100 and is
+ * centred 88px from the right edge, so 96 tall keeps it on the stage and 168
+ * wide keeps it off both edges. The near side stands at y=150 and is centred
+ * 90px from the left, under the foe's plate, which ends at y=46 — 104 tall is
+ * what keeps a head out from under it.
+ */
+const FOE_SLOT: BattleSlot = { k: 1, maxW: 168, maxH: 96 };
+const MINE_SLOT: BattleSlot = { k: 1.25, maxW: 176, maxH: 104 };
 /**
  * The trainer standing there before the fight.
  *
  * Every Showdown trainer sprite is an 80x80 canvas — checked across all
  * twenty-four this app can ask for — so a target of 80 lands exactly on the
- * ladder's 1x step and the art is drawn pixel for pixel. Slightly taller than a
- * Pokemon at 72, which is the proportion the games use.
+ * ladder's 1x step and the art is drawn pixel for pixel. That is FOE_SLOT's
+ * scale too, so the person and the Pokemon that replaces them are drawn to one
+ * scale on the same platform.
  */
 const TRAINER_TARGET = 80;
 /**
@@ -257,8 +272,12 @@ const TRAINER_TARGET = 80;
  * Megas are barely larger than their base and gigantamax sprites are drawn at
  * roughly the same canvas size as everything else, so without this the beat
  * that says "거다이맥스했다!" shows a Pokemon exactly the size it just was.
+ *
+ * Inside the same box as ever: the plate above it does not move for a
+ * gigantamax, so a companion already at the box's height stays there.
  */
 const FORM_SCALE = 1.35;
+const FORM_SLOT: BattleSlot = { ...MINE_SLOT, k: MINE_SLOT.k * FORM_SCALE };
 /** Turns a gigantamax lasts. Mirrors GMAX_TURNS in server/fight.ts. */
 const GMAX_TURNS = 3;
 
@@ -635,7 +654,8 @@ function usePrefersReducedMotion(): boolean {
 }
 
 /**
- * A sprite scaled by a whole-number ladder step.
+ * A sprite scaled by a whole-number ladder step — or, given a `slot`, by the
+ * battle's shared scale.
  *
  * Deliberately measured from `<img onLoad>` rather than spriteBox's
  * `measureSprite`: that one fetches a blob and reads a canvas, neither of which
@@ -644,11 +664,14 @@ function usePrefersReducedMotion(): boolean {
  */
 function SceneSprite({
   name,
-  target,
+  target = 0,
+  slot,
   alt = '',
 }: {
   name: string;
-  target: number;
+  target?: number;
+  /** A combatant: drawn at its side's shared scale, not fitted to `target`. */
+  slot?: BattleSlot;
   alt?: string;
 }) {
   /**
@@ -683,7 +706,7 @@ function SceneSprite({
       onLoad={(e) => {
         const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
         if (!w || !h) return;
-        const k = fitScale(Math.max(w, h), target);
+        const k = slot ? battleScale({ w, h }, slot, showdownArt(name)) : fitScale(Math.max(w, h), target);
         setM({ name, size: { w: Math.round(w * k), h: Math.round(h * k) }, failed: false });
       }}
       onError={(e) => {
@@ -1132,11 +1155,19 @@ export default function Scene({
         dispatch({ type: 'skip' });
       }}
     >
-      {/* The horizon. Behind everything, including the sky colour it covers —
-          and only a background, so a missing download shows the colour. */}
+      {/* Where the pet is: the backdrop, edge to edge, and nothing on top of it.
+
+          The tile floor and the two grass bands are only what stands in for it
+          while there is none — a first launch offline, a failed download. Laid
+          over the painting, they were a second, flatter ground in front of the
+          one the painting already has. */}
       <div className="scene-sky" />
-      <div className="scene-ground" />
-      <div className="scene-grass far" />
+      {!skylineBg && (
+        <>
+          <div className="scene-ground" />
+          <div className="scene-grass far" />
+        </>
+      )}
 
       {/* Travelling. Kept mounted under the battle so the GIF does not restart
           every time an encounter ends. */}
@@ -1163,7 +1194,7 @@ export default function Scene({
         <span className="scene-shadow" />
       </div>
 
-      <div className="scene-grass near" />
+      {!skylineBg && <div className="scene-grass near" />}
 
       {st.phase === 'alert' && <span className="scene-bang">!</span>}
       {st.phase === 'wipe' && <div className="scene-wipe" />}
@@ -1366,7 +1397,7 @@ export default function Scene({
             key={`foe-${st.round}`}
           >
             {foeSprite ? (
-              <SceneSprite name={foeSprite} target={BATTLE_TARGET} alt={foeName} />
+              <SceneSprite name={foeSprite} slot={FOE_SLOT} alt={foeName} />
             ) : (
               <span className="scene-silhouette" />
             )}
@@ -1410,11 +1441,7 @@ export default function Scene({
             key={`mine-${st.round}`}
           >
             {myBack ? (
-              <SceneSprite
-                name={myBack}
-                target={transformed ? BATTLE_TARGET * FORM_SCALE : BATTLE_TARGET}
-                alt={myName}
-              />
+              <SceneSprite name={myBack} slot={transformed ? FORM_SLOT : MINE_SLOT} alt={myName} />
             ) : (
               <span className="scene-silhouette" />
             )}

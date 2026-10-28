@@ -11,21 +11,23 @@ import type { TerrainId } from './terrain.ts';
  * actually exists upstream. Declared here rather than imported because this
  * file is renderer-side and that one is not — a test keeps the two in step.
  */
-export type SkyId = 'beach' | 'beachshore' | 'city' | 'dampcave' | 'deepsea' | 'desert' | 'earthycave' | 'forest' | 'icecave' | 'meadow' | 'mountain' | 'river' | 'thunderplains' | 'volcanocave';
+export type SkyId = 'beach' | 'beachshore' | 'city' | 'dampcave' | 'deepsea' | 'desert' | 'earthycave' | 'forest' | 'icecave' | 'meadow' | 'mountain' | 'river' | 'route' | 'thunderplains' | 'volcanocave';
 
 /**
  * One place on the journey, and the two independent things it looks like.
  *
- * `terrain` is which of the ten sheets gets painted underfoot. It is NOT what
- * the place is — a town and a stone road walk on the same cobble, and the
- * sheets have to cover 728 places between them.
+ * `sky` is the Gen-5 backdrop the pet walks in front of, and every place has
+ * one. It is what the scene shows, and all it shows.
  *
- * `sky` is the Gen-5 backdrop hung at the horizon, or null for nowhere in
- * particular. It is classified separately because the two layers have different
- * limits: sheets are capped by what CC0 art exists, backdrops are not, so a
- * desert can have a sky without having a floor.
+ * `terrain` is which of the ten tile sheets gets painted underfoot when that
+ * backdrop is not on disk yet — a first launch offline, a failed download. It
+ * is NOT what the place is — a town and a stone road walk on the same cobble,
+ * and the sheets have to cover 728 places between them. The two are
+ * classified separately because they have different limits: sheets are capped
+ * by what CC0 art exists, backdrops are not, so a desert can have a sky without
+ * having a floor.
  */
-export type Stop = { ko: string; region: string; terrain: TerrainId; sky: SkyId | null };
+export type Stop = { ko: string; region: string; terrain: TerrainId; sky: SkyId };
 
 export const STOPS: Stop[] = [
  {
@@ -122,7 +124,7 @@ export const STOPS: Stop[] = [
   "ko": "사파리존",
   "region": "관동",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "홍련섬",
@@ -158,7 +160,7 @@ export const STOPS: Stop[] = [
   "ko": "챔피언로드",
   "region": "관동",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "이라님 석실",
@@ -170,7 +172,7 @@ export const STOPS: Stop[] = [
   "ko": "상트앙느호",
   "region": "관동",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "등불산",
@@ -200,13 +202,13 @@ export const STOPS: Stop[] = [
   "ko": "저녁노을길",
   "region": "관동",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "호화리조트",
   "region": "관동",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "추억의 탑",
@@ -266,19 +268,19 @@ export const STOPS: Stop[] = [
   "ko": "곶 언저리",
   "region": "관동",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "유대의 다리",
   "region": "관동",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "3섬 항구",
   "region": "관동",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "물의 미로",
@@ -302,7 +304,7 @@ export const STOPS: Stop[] = [
   "ko": "녹색 산책길",
   "region": "관동",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "물의 산책길",
@@ -356,7 +358,7 @@ export const STOPS: Stop[] = [
   "ko": "3섬 터널",
   "region": "관동",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "6섬",
@@ -374,7 +376,7 @@ export const STOPS: Stop[] = [
   "ko": "지하통로",
   "region": "관동",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "연두마을",
@@ -512,7 +514,7 @@ export const STOPS: Stop[] = [
   "ko": "야돈우물",
   "region": "성도",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "방울탑",
@@ -536,7 +538,7 @@ export const STOPS: Stop[] = [
   "ko": "로켓단아지트",
   "region": "성도",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "금빛지하통로",
@@ -554,13 +556,13 @@ export const STOPS: Stop[] = [
   "ko": "포켓슬론돔",
   "region": "성도",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "아쿠아호",
   "region": "성도",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "낭떠러지동굴",
@@ -572,13 +574,13 @@ export const STOPS: Stop[] = [
   "ko": "프런티어프런트",
   "region": "성도",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "방울소리좁은길",
   "region": "성도",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "신도유적",
@@ -602,13 +604,13 @@ export const STOPS: Stop[] = [
   "ko": "사파리존",
   "region": "성도",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "담청등대",
   "region": "성도",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "등화도시",
@@ -704,7 +706,7 @@ export const STOPS: Stop[] = [
   "ko": "챔피언로드",
   "region": "호연",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "여울의 동굴",
@@ -716,13 +718,13 @@ export const STOPS: Stop[] = [
   "ko": "뉴보라",
   "region": "호연",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "버려진 배",
   "region": "호연",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "하늘기둥",
@@ -734,7 +736,7 @@ export const STOPS: Stop[] = [
   "ko": "사파리존",
   "region": "호연",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "무로마을",
@@ -878,7 +880,7 @@ export const STOPS: Stop[] = [
   "ko": "비밀기지",
   "region": "호연",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "배틀타워",
@@ -890,13 +892,13 @@ export const STOPS: Stop[] = [
   "ko": "포켓몬리그",
   "region": "호연",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "아쿠아단아지트",
   "region": "호연",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "씨보라",
@@ -914,13 +916,13 @@ export const STOPS: Stop[] = [
   "ko": "배틀리조트",
   "region": "호연",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "타이드립호",
   "region": "호연",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "환상숲",
@@ -950,7 +952,7 @@ export const STOPS: Stop[] = [
   "ko": "이름없는 평원",
   "region": "호연",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "미지의 동굴",
@@ -986,7 +988,7 @@ export const STOPS: Stop[] = [
   "ko": "창공",
   "region": "호연",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "비밀의 바위해변",
@@ -1022,13 +1024,13 @@ export const STOPS: Stop[] = [
   "ko": "배틀프런티어",
   "region": "호연",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "이끼 우주센터",
   "region": "호연",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "떡잎마을",
@@ -1082,13 +1084,13 @@ export const STOPS: Stop[] = [
   "ko": "포켓몬 리그",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "무쇠탄갱",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "골짜기발전소",
@@ -1106,7 +1108,7 @@ export const STOPS: Stop[] = [
   "ko": "골풀무제철소",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "천관산",
@@ -1130,13 +1132,13 @@ export const STOPS: Stop[] = [
   "ko": "챔피언로드",
   "region": "신오",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "험한 샛길",
   "region": "신오",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "하드마운틴",
@@ -1238,7 +1240,7 @@ export const STOPS: Stop[] = [
   "ko": "리조트에리어",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "잔모래마을",
@@ -1286,7 +1288,7 @@ export const STOPS: Stop[] = [
   "ko": "상호교류광장",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "꽃향기의 꽃밭",
@@ -1316,7 +1318,7 @@ export const STOPS: Stop[] = [
   "ko": "갤럭시단아지트",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "진실호수근처",
@@ -1340,13 +1342,13 @@ export const STOPS: Stop[] = [
   "ko": "파이트에리어",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "서바이벌에리어",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "갈라진 바닷길",
@@ -1364,13 +1366,13 @@ export const STOPS: Stop[] = [
   "ko": "모두 두근두근",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "글로벌 트레이드 스테이션",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "무쇠시티 탄갱박물관",
@@ -1382,37 +1384,37 @@ export const STOPS: Stop[] = [
   "ko": "콘테스트회장",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "포핀하우스",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "포켓몬키우미집",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "게임코너",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "운하도서관",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "길잡이등대",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "물가시장",
@@ -1424,7 +1426,7 @@ export const STOPS: Stop[] = [
   "ko": "발도장박사",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "호텔 그랜드레이크",
@@ -1442,49 +1444,49 @@ export const STOPS: Stop[] = [
   "ko": "배틀프런티어",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "배틀팩토리",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "배틀캐슬",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "배틀룰렛",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "배틀스테이지",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "깨어진세계",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "별장",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "승부장소",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "로토무의 방",
@@ -1520,13 +1522,13 @@ export const STOPS: Stop[] = [
   "ko": "포켓치 컴퍼니",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "트레이너 스쿨",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "꽃집",
@@ -1538,25 +1540,25 @@ export const STOPS: Stop[] = [
   "ko": "자전거숍",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "장막백화점",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "카페",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "레스토랑",
   "region": "신오",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "마름꽃마을",
@@ -1622,7 +1624,7 @@ export const STOPS: Stop[] = [
   "ko": "꿈터",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "바람개비숲",
@@ -1640,13 +1642,13 @@ export const STOPS: Stop[] = [
   "ko": "고대의 성",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "냉동컨테이너",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "전기돌동굴",
@@ -1688,25 +1690,25 @@ export const STOPS: Stop[] = [
   "ko": "포켓몬 리그",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "로열하나호",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "배틀서브웨이",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "포켓몬 뮤지컬",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "블랙시티",
@@ -1748,7 +1750,7 @@ export const STOPS: Stop[] = [
   "ko": "설화의 습지초원",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "수행의 바위동굴",
@@ -1760,13 +1762,13 @@ export const STOPS: Stop[] = [
   "ko": "시프트팩토리",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "자이언트홀",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "리버티가든섬",
@@ -1778,37 +1780,37 @@ export const STOPS: Stop[] = [
   "ko": "스카이애로 브리지",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "물풍경도개교",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "실린더 브리지",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "빌리지 브리지",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "원더 브리지",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "하일링크",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "풍요의 사당",
@@ -1820,7 +1822,7 @@ export const STOPS: Stop[] = [
   "ko": "물결만",
   "region": "하나",
   "terrain": "seaside",
-  "sky": null
+  "sky": "beach"
  },
  {
   "ko": "미혹의 숲",
@@ -1862,13 +1864,13 @@ export const STOPS: Stop[] = [
   "ko": "포켓우드",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "조인애버뉴",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "산가지마을",
@@ -1886,19 +1888,19 @@ export const STOPS: Stop[] = [
   "ko": "구름하수도",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "산가지목장",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "모란만콤비나트",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "리버스마운틴",
@@ -1910,19 +1912,19 @@ export const STOPS: Stop[] = [
   "ko": "스트레인저하우스",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "플라스마프리깃",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "고대샛길",
   "region": "하나",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "야콘로드",
@@ -1934,7 +1936,7 @@ export const STOPS: Stop[] = [
   "ko": "백의 수동",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "흑의 마천루",
@@ -1964,13 +1966,13 @@ export const STOPS: Stop[] = [
   "ko": "마린튜브",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "자연보호구역",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "땅밑유적",
@@ -1988,25 +1990,25 @@ export const STOPS: Stop[] = [
   "ko": "N의 성",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "쇼핑몰 나인",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "P2연구소",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "메달사무국",
   "region": "하나",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "바위산의 방",
@@ -2036,7 +2038,7 @@ export const STOPS: Stop[] = [
   "ko": "조아의 작은 길",
   "region": "칼로스",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "수미마을",
@@ -2048,7 +2050,7 @@ export const STOPS: Stop[] = [
   "ko": "아방쎄 도로",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "백단숲",
@@ -2060,7 +2062,7 @@ export const STOPS: Stop[] = [
   "ko": "우베르 도로",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "백단시티",
@@ -2072,7 +2074,7 @@ export const STOPS: Stop[] = [
   "ko": "파르테르 가도",
   "region": "칼로스",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "미르시티",
@@ -2090,13 +2092,13 @@ export const STOPS: Stop[] = [
   "ko": "플라드리 래버러토리",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "베르성 도로",
   "region": "칼로스",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "고목내마을",
@@ -2108,25 +2110,25 @@ export const STOPS: Stop[] = [
   "ko": "침울한 성",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "팔레 가로수 길",
   "region": "칼로스",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "파르팽 궁전",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "리비에르 라인",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "삼채시티",
@@ -2156,13 +2158,13 @@ export const STOPS: Stop[] = [
   "ko": "배틀샤토",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "멘히르로드",
   "region": "칼로스",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "옥유마을",
@@ -2174,7 +2176,7 @@ export const STOPS: Stop[] = [
   "ko": "미르와르 도로",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "비춤의 동굴",
@@ -2198,7 +2200,7 @@ export const STOPS: Stop[] = [
   "ko": "프라주 도로",
   "region": "칼로스",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "비익시티",
@@ -2210,13 +2212,13 @@ export const STOPS: Stop[] = [
   "ko": "미르 황야",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "후늬 임도",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "후늬시티",
@@ -2234,7 +2236,7 @@ export const STOPS: Stop[] = [
   "ko": "브렁 도로",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "버들비마을",
@@ -2246,7 +2248,7 @@ export const STOPS: Stop[] = [
   "ko": "트리스트 도로",
   "region": "칼로스",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "프로스트케이브",
@@ -2258,7 +2260,7 @@ export const STOPS: Stop[] = [
   "ko": "맘모꾸리로드",
   "region": "칼로스",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "향전시티",
@@ -2270,7 +2272,7 @@ export const STOPS: Stop[] = [
   "ko": "에뜨르와 발레 도로",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "배롱마을",
@@ -2282,7 +2284,7 @@ export const STOPS: Stop[] = [
   "ko": "라주 발레 도로",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "이설시티",
@@ -2306,25 +2308,25 @@ export const STOPS: Stop[] = [
   "ko": "데르니에 도로",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "데뚜르네 도로",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "챔피언로드",
   "region": "칼로스",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "포켓몬리그",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "기남시티",
@@ -2336,13 +2338,13 @@ export const STOPS: Stop[] = [
   "ko": "배틀하우스",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "아쥐르만",
   "region": "칼로스",
   "terrain": "seaside",
-  "sky": null
+  "sky": "beach"
  },
  {
   "ko": "반짝임의 동굴",
@@ -2372,7 +2374,7 @@ export const STOPS: Stop[] = [
   "ko": "플레어단 비밀기지",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "끝의 동굴",
@@ -2384,7 +2386,7 @@ export const STOPS: Stop[] = [
   "ko": "황폐해진 호텔",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "공허의 방",
@@ -2402,7 +2404,7 @@ export const STOPS: Stop[] = [
   "ko": "프렌드사파리",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "화염의 방",
@@ -2438,19 +2440,19 @@ export const STOPS: Stop[] = [
   "ko": "미르 스테이션",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "기남 스테이션",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "가라 수족관",
   "region": "칼로스",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "나무열매밭",
@@ -2462,13 +2464,13 @@ export const STOPS: Stop[] = [
   "ko": "1번도로",
   "region": "알로라",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "칼라에만",
   "region": "알로라",
   "terrain": "seaside",
-  "sky": null
+  "sky": "beach"
  },
  {
   "ko": "멜레멜레해",
@@ -2504,7 +2506,7 @@ export const STOPS: Stop[] = [
   "ko": "텐캐럿힐",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "하우올리 묘원",
@@ -2540,7 +2542,7 @@ export const STOPS: Stop[] = [
   "ko": "하노하노리조트",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "하노하노비치",
@@ -2576,19 +2578,19 @@ export const STOPS: Stop[] = [
   "ko": "로열 애버뉴",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "메모리얼힐",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "오하나목장",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "벨라화산공원",
@@ -2618,7 +2620,7 @@ export const STOPS: Stop[] = [
   "ko": "아칼라외곽",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "디그다터널",
@@ -2630,7 +2632,7 @@ export const STOPS: Stop[] = [
   "ko": "로열돔",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "울라울라 뒤쪽 해안",
@@ -2720,19 +2722,19 @@ export const STOPS: Stop[] = [
   "ko": "슈퍼・메가싸네",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "호쿠라니천문대",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "포켓몬리그",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "포니 화원",
@@ -2744,13 +2746,13 @@ export const STOPS: Stop[] = [
   "ko": "포니들판",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "포니옛길",
   "region": "알로라",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "포니의 거친 해안",
@@ -2762,13 +2764,13 @@ export const STOPS: Stop[] = [
   "ko": "포니수림",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "포니광야",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "포니해안",
@@ -2780,7 +2782,7 @@ export const STOPS: Stop[] = [
   "ko": "포니험로",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "바다민족의 마을",
@@ -2828,19 +2830,19 @@ export const STOPS: Stop[] = [
   "ko": "배틀트리",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "에테르파라다이스",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "울트라스페이스",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "경계터널",
@@ -2870,31 +2872,31 @@ export const STOPS: Stop[] = [
   "ko": "울트라메가로폴리스",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "울트라스페이스제로",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "포켓리조트",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "로켓단의 성",
   "region": "알로라",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "터검니호의 눈동자",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "볼레이크 호반",
@@ -2924,7 +2926,7 @@ export const STOPS: Stop[] = [
   "ko": "다리아래 벌판",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "챌린지비치",
@@ -2936,7 +2938,7 @@ export const STOPS: Stop[] = [
   "ko": "챌린지로드",
   "region": "가라르",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "키르쿠스마을",
@@ -2984,7 +2986,7 @@ export const STOPS: Stop[] = [
   "ko": "인사의 들판",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "집중의 숲",
@@ -3026,19 +3028,19 @@ export const STOPS: Stop[] = [
   "ko": "거인의 침소",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "거인의 밑창",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "거인의 거울 연못",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "거인의 의자",
@@ -3062,7 +3064,7 @@ export const STOPS: Stop[] = [
   "ko": "너클 구릉",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "허니컴섬",
@@ -3116,13 +3118,13 @@ export const STOPS: Stop[] = [
   "ko": "원환의 만",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "마스터 도장",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "맥스다이맥스굴",
@@ -3194,13 +3196,13 @@ export const STOPS: Stop[] = [
   "ko": "화창한 초원",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "출발의 설원",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "꾸벅졸음숲",
@@ -3218,7 +3220,7 @@ export const STOPS: Stop[] = [
   "ko": "청량한 습지초원",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "밀로틱호 남쪽",
@@ -3248,7 +3250,7 @@ export const STOPS: Stop[] = [
   "ko": "스톤즈들판",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "래터럴마을",
@@ -3260,7 +3262,7 @@ export const STOPS: Stop[] = [
   "ko": "세갈래 들판",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "악의 탑",
@@ -3278,7 +3280,7 @@ export const STOPS: Stop[] = [
   "ko": "단련 평원",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "등정터널",
@@ -3332,25 +3334,25 @@ export const STOPS: Stop[] = [
   "ko": "거인의 모자",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "에너지플랜트",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "모임의 공터",
   "region": "가라르",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "모락모락 좁은 길",
   "region": "가라르",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "갑옷섬의 동굴들",
@@ -3374,61 +3376,61 @@ export const STOPS: Stop[] = [
   "ko": "고대의 채석장",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "전장으로 가는 길",
   "region": "히스이",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "포부의 언덕",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "눈사태 언덕",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "크레베이스 빙괴",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "미역감기 석호",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "데굴데굴 산지",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "데굴데굴 언덕",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "극한의 황무지",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "무대의 전장",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "미아의 바위해변",
@@ -3452,7 +3454,7 @@ export const STOPS: Stop[] = [
   "ko": "등반 절벽",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "삿갓구름 산길",
@@ -3470,13 +3472,13 @@ export const STOPS: Stop[] = [
   "ko": "황새풀 초원",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "건넘의 비탈",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "유령의 모래톱",
@@ -3488,7 +3490,7 @@ export const STOPS: Stop[] = [
   "ko": "큰뿔 고지",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "큰뿔 산길",
@@ -3506,7 +3508,7 @@ export const STOPS: Stop[] = [
   "ko": "금강부락",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "날갯소리 들판",
@@ -3554,13 +3556,13 @@ export const STOPS: Stop[] = [
   "ko": "금색 평야",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "거목의 전장",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "험한 숲",
@@ -3596,7 +3598,7 @@ export const STOPS: Stop[] = [
   "ko": "편자 들판",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "빙주의 방",
@@ -3662,7 +3664,7 @@ export const STOPS: Stop[] = [
   "ko": "큰물고기의 암초",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "용암의 전장",
@@ -3674,7 +3676,7 @@ export const STOPS: Stop[] = [
   "ko": "영월의 전장",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "숲속 부엌",
@@ -3698,7 +3700,7 @@ export const STOPS: Stop[] = [
   "ko": "진주부락",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "태고의 동굴",
@@ -3716,7 +3718,7 @@ export const STOPS: Stop[] = [
   "ko": "기도의 광장",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "모래손",
@@ -3758,7 +3760,7 @@ export const STOPS: Stop[] = [
   "ko": "진흙 대지",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "설경 온천",
@@ -3782,13 +3784,13 @@ export const STOPS: Stop[] = [
   "ko": "순례자의 길",
   "region": "히스이",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "시공의 뒤틀림",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "숨겨진 샘의 길",
@@ -3800,7 +3802,7 @@ export const STOPS: Stop[] = [
   "ko": "열석 고개",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "신오신전",
@@ -3824,13 +3826,13 @@ export const STOPS: Stop[] = [
   "ko": "톰볼로 길",
   "region": "히스이",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "고요한 내해",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "귀혼동굴",
@@ -3842,7 +3844,7 @@ export const STOPS: Stop[] = [
   "ko": "이탄 수련장",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "장막해안가",
@@ -3860,13 +3862,13 @@ export const STOPS: Stop[] = [
   "ko": "미혹의 산림",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "폭설 골짜기",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "바람막이 숲",
@@ -3878,13 +3880,13 @@ export const STOPS: Stop[] = [
   "ko": "바람 샛길",
   "region": "히스이",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "절삭다리",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "해안 베이스캠프",
@@ -3896,7 +3898,7 @@ export const STOPS: Stop[] = [
   "ko": "고지대 베이스캠프",
   "region": "히스이",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "티스푼마을",
@@ -3932,7 +3934,7 @@ export const STOPS: Stop[] = [
   "ko": "포켓몬 리그",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "보울마을",
@@ -3980,37 +3982,37 @@ export const STOPS: Stop[] = [
   "ko": "남부 에리어 1",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "남부 에리어 2",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "남부 에리어 3",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "남부 에리어 4",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "남부 에리어 5",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "남부 에리어 6",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "남팔데아해",
@@ -4022,7 +4024,7 @@ export const STOPS: Stop[] = [
   "ko": "티스푼 오솔길",
   "region": "팔데아",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "후미진 동굴",
@@ -4034,7 +4036,7 @@ export const STOPS: Stop[] = [
   "ko": "오렌지 아카데미",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "베이크 공동",
@@ -4052,19 +4054,19 @@ export const STOPS: Stop[] = [
   "ko": "동부 에리어 1",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "동부 에리어 2",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "동부 에리어 3",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "동팔데아해",
@@ -4082,31 +4084,31 @@ export const STOPS: Stop[] = [
   "ko": "팀 쉐다르 아지트",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "팀 시 아지트",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "서부 에리어 1",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "서부 에리어 2",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "서부 에리어 3",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "로스트 사막",
@@ -4124,7 +4126,7 @@ export const STOPS: Stop[] = [
   "ko": "팀 세긴 아지트",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "동파의 사당",
@@ -4136,19 +4138,19 @@ export const STOPS: Stop[] = [
   "ko": "북부 에리어 1",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "북부 에리어 2",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "북부 에리어 3",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "오야 호수",
@@ -4196,31 +4198,31 @@ export const STOPS: Stop[] = [
   "ko": "팀 카프 아지트",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "에리어제로",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "제로랩",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "그레이프 아카데미",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "애플 힐스",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "찬물 동굴",
@@ -4232,7 +4234,7 @@ export const STOPS: Stop[] = [
   "ko": "태라수호",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "공포의 굴",
@@ -4244,43 +4246,43 @@ export const STOPS: Stop[] = [
   "ko": "도깨비뿔 협곡",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "지옥골",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "북신센터",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "북신 가도",
   "region": "팔데아",
   "terrain": "stonepath",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "북신 원생지",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "세벗 플라자",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "북신 합류지",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "스이록마을",
@@ -4298,13 +4300,13 @@ export const STOPS: Stop[] = [
   "ko": "도깨비이빨 공동",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "낙원의 황무지",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "신명 산길",
@@ -4340,7 +4342,7 @@ export const STOPS: Stop[] = [
   "ko": "센터 스퀘어",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "전기돌의 암굴",
@@ -4352,13 +4354,13 @@ export const STOPS: Stop[] = [
   "ko": "코스트 에리어",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "코스트 스퀘어",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "리그부",
@@ -4370,31 +4372,31 @@ export const STOPS: Stop[] = [
   "ko": "폴라 에리어",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "폴라 스퀘어",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "사바나 에리어",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "사바나 스퀘어",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  },
  {
   "ko": "등불의 미로",
   "region": "팔데아",
   "terrain": "field",
-  "sky": null
+  "sky": "route"
  }
 ];
 

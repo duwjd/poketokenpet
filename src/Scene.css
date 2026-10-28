@@ -118,44 +118,46 @@
 }
 
 /*
- * The horizon: a Gen-5 battle backdrop standing in for the flat sky colour.
+ * Where the pet is: a Gen-5 battle backdrop, the whole scene.
  *
- * The other half of "where am I". The three scrolling bands below say the pet
- * is WALKING; this says what it is walking through, and it is the only layer
- * that can — the bands are 16px strips of CC0 tile art, and there is no CC0
- * desert or ice cave to cut a strip from (scripts/gen-grass.ts). These are
- * Game Freak's, fetched at runtime and never committed, exactly as the battle
- * backdrop is.
+ * These are Game Freak's, fetched at runtime and never committed, exactly as
+ * the battle backdrop is, and every stop on the journey names one
+ * (scripts/gen-journey.ts).
+ *
+ * The scene used to be this painting's top two thirds faded out over a tile
+ * floor and two scrolling grass bands. Each backdrop is a ground plane already
+ * — a dirt road, a beach, a cave floor — so that put a second, flatter ground
+ * in front of the first, cut across the middle. Now the painting is drawn
+ * whole and the pet stands on its own ground. The tiles are what shows only
+ * while there is no painting (see .scene-ground).
+ *
+ * `cover` anchored at the bottom, like .scene-battle::before: 753x500 against a
+ * scene this wide, so the crop comes off the sky and the ground stays.
  *
  * Deliberately does NOT scroll. A 753x500 painting has no seamless repeat, so
- * sliding it would show a hard edge every cycle; and a still horizon behind
- * moving ground is what distance looks like anyway.
+ * sliding it would show a hard edge every cycle.
  *
- * Sits above the sky colour and below everything else, and stops short of the
- * ground plane with a mask so the painting fades out rather than ending on a
- * line. `background-image` only — with no --skyline the element paints nothing
- * and the scene looks exactly as it did before this layer existed.
+ * `background-image` only — with no --skyline the element paints nothing and
+ * the sky colour behind it shows.
  */
 .scene-sky {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  /* Down to just past the horizon the ground plane draws at 38%. */
-  height: 66%;
+  inset: 0;
   z-index: 0;
   background-image: var(--skyline, none);
   background-size: cover;
-  background-position: center top;
+  background-position: center bottom;
   image-rendering: pixelated;
   /* Tinted with the art, not with the scene — see .scene-grass below. */
   filter: var(--tod-filter);
-  -webkit-mask-image: linear-gradient(to bottom, #000 74%, transparent);
-  mask-image: linear-gradient(to bottom, #000 74%, transparent);
   pointer-events: none;
 }
 
-/* Horizon: sky above, turf below, tall grass straddling the seam. */
+/*
+ * The stand-in for a backdrop that is not on disk: sky colour above, turf
+ * below, tall grass straddling the seam. Scene.tsx mounts this and both grass
+ * bands only when `skylineBg` is null — never on top of a painting.
+ */
 .scene-ground {
   position: absolute;
   left: 0;
@@ -225,7 +227,8 @@
 .scene-walker {
   position: absolute;
   left: 50%;
-  /* Ankle-deep in the foreground band rather than standing on top of it. */
+  /* On the backdrop's own ground — and, when the tiles stand in for it,
+     ankle-deep in the foreground band rather than standing on top of it. */
   bottom: 26px;
   z-index: 2;
   transform: translateX(-50%);
@@ -468,22 +471,38 @@
  * The combatants.
  *
  * Anchored by their BOTTOM edge, because sprite canvases vary by a factor of
- * two and only the feet have to land on the platform. A few px below the pad's
+ * four and only the feet have to land on the platform. A few px below the pad's
  * centre line, so they stand in it rather than on top of it.
+ *
+ * And by the pad's CENTRE across, not by an edge. Edge-anchored, a sprite was
+ * only centred at the one width the offset was worked out for; Lugia's 153px
+ * hung 40px off the left of its platform. Each box is zero-wide on the pad's
+ * centre line and the art is pulled back by half its own width.
+ *
+ * `translate`, not `transform`: `.still` breathes with a transform on the same
+ * image, and the entrance and the faint animate a transform on this box.
  */
 .scene-foe,
 .scene-mine {
   position: absolute;
   z-index: 7;
+  width: 0;
 }
 
+.scene-foe > *,
+.scene-mine > * {
+  translate: -50% 0;
+}
+
+/* The far pad is 116px wide, 30px in from the right. */
 .scene-foe {
-  right: 52px;
+  right: 88px;
   bottom: 118px;
 }
 
+/* The near pad is 152px wide, 14px in from the left. */
 .scene-mine {
-  left: 30px;
+  left: 90px;
   bottom: 68px;
 }
 
@@ -496,11 +515,10 @@
  * the Pokemon that replaces them will stand. Six pixels lower and they stood on
  * the front lip of the platform rather than in it.
  *
- * `right` is its own value rather than .scene-foe's: the foe box is shrink-to-
- * fit around canvases that run from 38px to 178px wide, so it is right-aligned
- * and lands differently per species. A trainer is always 80px, so it can simply
- * be centred on the pad. Drawn at 1x (see TRAINER_TARGET), which leaves it a
- * shade taller than the 72px foe — the proportion the games use.
+ * `right` is its own value rather than .scene-foe's: the foe box is a zero-wide
+ * centre line that its art is pulled back across, and a trainer is always 80px,
+ * so plain arithmetic centres it on the pad instead. Drawn at 1x (see
+ * TRAINER_TARGET), the same scale the foe's Pokemon stands at.
  */
 .scene-trainer {
   position: absolute;

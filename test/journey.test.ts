@@ -90,6 +90,18 @@ describe('journeyFor', () => {
     expect(by('디그다의 굴')?.sky).toBe('dampcave');
   });
 
+  it('gives every place a backdrop, so the scene never falls back to tiles', () => {
+    // The scene shows the backdrop and nothing else, so a stop without one
+    // would show the tile floor instead — a third of the journey did, until
+    // SKY_BY_TERRAIN in scripts/gen-journey.ts. A plain field or road is the
+    // `route` painting; a beach SKY has no rule for is still a beach.
+    for (const s of STOPS) expect(s.sky, s.ko).toBeTruthy();
+    const by = (ko: string) => STOPS.find((s) => s.ko === ko);
+    expect(by('사파리존')?.terrain).toBe('field');
+    expect(by('사파리존')?.sky).toBe('route');
+    expect(by('챔피언로드')?.sky).toBe('route');
+  });
+
   it('visits the regions in the order they were released', () => {
     const seen: string[] = [];
     for (const s of STOPS) if (seen.at(-1) !== s.region) seen.push(s.region);

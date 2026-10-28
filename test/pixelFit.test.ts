@@ -3,7 +3,9 @@ import { PET_SIZES } from '../electron/state.ts';
 import {
   MAX_PET_WINDOW,
   PET_GRASS_H,
+  SHOWDOWN_ART,
   ZOOM_LADDER,
+  battleScale,
   contentBox,
   fitScale,
   petWindow,
@@ -79,6 +81,69 @@ describe('fitScale', () => {
     expect(fitScale(-5, 128)).toBe(1);
     expect(fitScale(64, 0)).toBe(1);
     expect(fitScale(Number.NaN, 128)).toBe(1);
+  });
+});
+
+describe('battleScale', () => {
+  // The battle's two slots as Scene.tsx sets them.
+  const FOE = { k: 1, maxW: 168, maxH: 96 };
+  const MINE = { k: 1.25, maxW: 176, maxH: 104 };
+  /** Gen-5 canvases, measured: the cases the per-sprite fit got backwards. */
+  const caterpie = { w: 36, h: 37 };
+  const gengar = { w: 74, h: 63 };
+  const wailord = { w: 103, h: 88 };
+  const charizardBack = { w: 100, h: 85 };
+  /** Rounded to whole px, as SceneSprite sizes the <img>. */
+  const drawn = (c: { w: number; h: number }, slot: typeof FOE, showdown = false) =>
+    Math.round(Math.max(c.w, c.h) * battleScale(c, slot, showdown));
+
+  it('draws every Pokemon on a side at one scale, not one size', () => {
+    // Fitted one by one to 72px, Caterpie doubled to 72 and Wailord halved to
+    // 52 — the small one drew larger. One scale keeps the games' own ratio.
+    expect(battleScale(caterpie, FOE, false)).toBe(battleScale(wailord, FOE, false));
+    expect(drawn(wailord, FOE)).toBeGreaterThan(drawn(caterpie, FOE) * 2.5);
+  });
+
+  it('never draws a bigger canvas smaller', () => {
+    for (const slot of [FOE, MINE]) {
+      let prev = 0;
+      for (let n = 20; n <= 260; n += 1) {
+        const got = drawn({ w: n, h: n }, slot);
+        expect(got, `${n}px`).toBeGreaterThanOrEqual(prev);
+        prev = got;
+      }
+    }
+  });
+
+  it('puts the big companion above the medium foe, as it is', () => {
+    // The README's own battle shot: Charizard's back was halved to 50px while
+    // the Gengar it faced stood at 74.
+    expect(drawn(charizardBack, MINE)).toBeGreaterThan(drawn(gengar, FOE));
+  });
+
+  it('draws the near side larger than the far one', () => {
+    expect(battleScale(gengar, MINE, false)).toBeGreaterThan(battleScale(gengar, FOE, false));
+  });
+
+  it('brings Showdown art down to the Gen-5 scale', () => {
+    expect(battleScale(gengar, FOE, true)).toBeCloseTo(SHOWDOWN_ART);
+  });
+
+  it('only ever shrinks to stay inside the box', () => {
+    // Yveltal's Showdown canvas, the largest seen: 201x188.
+    const yveltal = { w: 201, h: 188 };
+    for (const slot of [FOE, MINE]) {
+      const k = battleScale(yveltal, slot, true);
+      expect(yveltal.w * k).toBeLessThanOrEqual(slot.maxW + 1e-9);
+      expect(yveltal.h * k).toBeLessThanOrEqual(slot.maxH + 1e-9);
+      // ...and a tiny one is never blown up past its side's scale.
+      expect(battleScale({ w: 20, h: 20 }, slot, false)).toBe(slot.k);
+    }
+  });
+
+  it('survives an unmeasured canvas', () => {
+    expect(battleScale({ w: 0, h: 0 }, FOE, false)).toBe(1);
+    expect(battleScale({ w: Number.NaN, h: 40 }, MINE, false)).toBe(1.25);
   });
 });
 

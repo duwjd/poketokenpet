@@ -454,10 +454,8 @@ describe('scene art', () => {
     const declared = [...union.slice(0, union.indexOf(';')).matchAll(/'([a-z0-9]+)'/g)].map((m) => m[1]);
     expect(declared.length).toBeGreaterThan(0);
     for (const id of declared) expect(BG_SLUGS as readonly string[], id).toContain(id);
-    // And every stop's sky must be one of the ones declared, or null.
-    for (const stop of STOPS) {
-      if (stop.sky !== null) expect(declared, stop.ko).toContain(stop.sky);
-    }
+    // And every stop's sky must be one of the ones declared.
+    for (const stop of STOPS) expect(declared, stop.ko).toContain(stop.sky);
   });
 
   it('never commits a battle backdrop, a move effect, a portrait or a badge', () => {

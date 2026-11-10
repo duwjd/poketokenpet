@@ -104,7 +104,8 @@ type Listing = {
    * Earned, not bought.
    *
    * The row STAYS in PRODUCTS — the bag resolves every item's name, description
-   * and icon out of this table (see `product()` and `itemIcon()` in App.tsx), so
+   * and icon out of this table (see `product()` in src/panel/tabs/ShopTab.tsx and
+   * `itemIcon()` in src/panel/tabs/BagTab.tsx), so
    * deleting the row would leave a nameless square in the bag of anyone who
    * already owns one. It is the shelf and `buy` that turn it away.
    *

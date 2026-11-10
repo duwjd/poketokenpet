@@ -116,7 +116,7 @@ async function assertVisible(win, sel, what) {
 /**
  * Everything on screen has finished arriving.
  *
- * The visibility check is the important half. DexSprite (src/App.tsx:467),
+ * The visibility check is the important half. DexSprite (src/panel/DexSprite.tsx),
  * SceneSprite (src/Scene.tsx:382) and PetApp's Sprite all render an <img> with
  * inline visibility:hidden until onLoad has measured it, so `complete` alone
  * would let a capture land on a grid of invisible cards.
@@ -182,7 +182,7 @@ async function capture(win, name, rect) {
   return file;
 }
 
-/** Tab ids are `tab-${id}` (src/App.tsx:1274) — far steadier than label text. */
+/** Tab ids are `tab-${id}` (src/App.tsx, the tab bar) — far steadier than label text. */
 async function openTab(win, id) {
   await win.webContents.executeJavaScript(`document.getElementById('tab-${id}').click()`);
   await until(win, SETTLED, `tab ${id} to settle`);
@@ -192,7 +192,7 @@ async function openTab(win, id) {
 async function loadPanel(win, hash = '') {
   await win.loadURL(urlFor(hash));
   // The tablist only exists once state has arrived; until then App renders
-  // '스캔 중…' (src/App.tsx:1006). So this doubles as proof the stub worked.
+  // '스캔 중…' (src/App.tsx, its early return). So this doubles as proof the stub worked.
   await until(win, `document.querySelector('[role="tablist"]')`, 'the panel to mount');
   await until(win, SETTLED, 'the panel to settle');
   await sleep(250);
@@ -239,7 +239,7 @@ async function run() {
   // newer seq arrives (src/Scene.tsx:498-506), which is why there are two
   // payloads rather than one with a battle already in it.
   await win.webContents.executeJavaScript(`window.__shot.state = 'B'`);
-  // The panel polls /api/state every 5s (src/App.tsx:914); no faking timers.
+  // The panel polls /api/state every 5s (src/App.tsx, the polling effect); no faking timers.
   await until(win, `document.querySelector('.scene-battle')`, 'the battle to start', 12_000);
   // Exactly one turn in the demo battle is super-effective, so this string
   // appears on exactly one 750ms beat — an unambiguous frame to shoot.

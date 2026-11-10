@@ -57,7 +57,7 @@ window.fetch = async (input, init) => {
 /**
  * Freeze the clock.
  *
- * src/App.tsx passes timeOfDayAt(new Date()) to the Scene and src/timeOfDay.ts
+ * src/panel/tabs/PetTab.tsx passes timeOfDayAt(new Date()) to the Scene and src/timeOfDay.ts
  * buckets on getHours(), so the scene's entire colour grade depends on what
  * time of day the generator happened to run. 13:24 KST lands in 'day'.
  * toLocaleDateString/toLocaleTimeString on the dex and settings tabs are

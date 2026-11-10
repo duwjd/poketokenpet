@@ -683,7 +683,7 @@ function SceneSprite({
    * until onLoad corrected it, and — once `failed` exists — a sprite that broke
    * once would stay a silhouette for ever. `key={sprite}` at the call site is
    * the codebase's other way of saying this (see DexSprite's caller in
-   * App.tsx), but there are four call sites here and resetting internally
+   * src/panel/tabs/DexTab.tsx), but there are four call sites here and resetting internally
    * cannot be forgotten at one of them.
    */
   const [m, setM] = useState<{ name: string; size: { w: number; h: number } | null; failed: boolean }>(

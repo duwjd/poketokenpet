@@ -343,6 +343,39 @@ function buildTrayMenu() {
 
 // ---------------------------------------------------------------- windows
 
+/**
+ * The same for both windows, and spelled out even where it is Electron's
+ * default: the preload is the only bridge (contextBridge + ipcRenderer, which
+ * is all a sandboxed preload may use), and a default that changed under an
+ * upgrade should not quietly change this.
+ */
+function webPreferences(): Electron.WebPreferences {
+  return {
+    preload: path.join(__dirname_, 'preload.cjs'),
+    contextIsolation: true,
+    nodeIntegration: false,
+    sandbox: true,
+  };
+}
+
+/**
+ * Keep every window on the page it was opened with.
+ *
+ * Nothing in the panel navigates — tabs and the pet are hash routes, which do
+ * not count — and nothing opens a window: release pages and the like go out
+ * through IPC to `shell.openExternal`. So any navigation or window.open is
+ * something that should not happen, and inside a frameless 420px panel with
+ * no back button it would also be a dead end. The dev server is the one
+ * exception, whose full reloads after an edit are navigations to itself.
+ */
+app.on('web-contents-created', (_e, contents) => {
+  contents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  contents.on('will-navigate', (event, url) => {
+    if (DEV_URL && new URL(url).origin === new URL(DEV_URL).origin) return;
+    event.preventDefault();
+  });
+});
+
 function rendererUrl(hash: string) {
   if (DEV_URL) return `${DEV_URL}#${hash}`;
   return `file://${path.join(__dirname_, '../dist/index.html')}#${hash}`;
@@ -371,7 +404,7 @@ function createPopover() {
     skipTaskbar: true,
     vibrancy: isMac ? 'popover' : undefined,
     backgroundColor: isMac ? undefined : '#f6f5f1',
-    webPreferences: { preload: path.join(__dirname_, 'preload.cjs') },
+    webPreferences: webPreferences(),
   });
   popover.loadURL(rendererUrl('popover'));
   popover.on('blur', () => popover?.hide());
@@ -440,7 +473,7 @@ function createPet() {
     hasShadow: false,
     backgroundColor: '#00000000',
     fullscreenable: false,
-    webPreferences: { preload: path.join(__dirname_, 'preload.cjs') },
+    webPreferences: webPreferences(),
   });
 
   pet.loadURL(rendererUrl('pet'));

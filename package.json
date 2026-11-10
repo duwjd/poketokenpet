@@ -26,6 +26,8 @@
     "gen:specimen": "node --experimental-strip-types --no-warnings scripts/gen-specimen.ts",
     "gen:readme": "node --experimental-strip-types --no-warnings scripts/gen-readme.ts",
     "test": "vitest run",
+    "release:keygen": "node --experimental-strip-types --no-warnings scripts/release-sign.ts keygen",
+    "release:sign": "node --experimental-strip-types --no-warnings scripts/release-sign.ts sign",
     "build:electron": "node scripts/build-electron.mjs",
     "electron:dev": "node scripts/dev-electron.mjs",
     "app:build": "npm run build && npm run build:electron",

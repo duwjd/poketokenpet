@@ -10,9 +10,16 @@
  * SmartScreen treats a zip far more kindly.
  *
  * So the app does it itself, with files every release already carries: the
- * per-arch `.zip` (electron-builder.yml `artifactName`) and `SHA256SUMS.txt`
- * (.github/workflows/release.yml). Renaming either breaks every installed
+ * per-arch `.zip` (electron-builder.yml `artifactName`), `SHA256SUMS.txt`
+ * (.github/workflows/release.yml) and its signature `SHA256SUMS.txt.sig`
+ * (scripts/release-sign.ts). Renaming any of them breaks every installed
  * copy's updater — docs/DEVELOPMENT.md says so where the release is cut.
+ *
+ * The checksum list alone only proves a download is intact: it sits on the
+ * same page as the zips, so anyone who could swap a zip could swap the list.
+ * The signature is what proves the list came from the maintainer's key. A
+ * release whose signature does not verify is still announced, but the button
+ * opens the release page instead of installing.
  *
  * A file the app downloads itself carries no quarantine attribute and no
  * Mark-of-the-Web, so the replaced app starts without the Gatekeeper or
@@ -21,6 +28,7 @@
  * Everything here is pure so test/update.test.ts can pin it; electron/update.ts
  * does the fetching, the unpacking and the spawning.
  */
+import { createPublicKey, verify } from 'node:crypto';
 import path from 'node:path';
 
 export const REPO = 'duwjd/poketokenpet';
@@ -73,6 +81,43 @@ export function assetFor(version: string, platform: string, arch: string): strin
   if (platform === 'darwin') return `PokeTokenPet-${v}-${arch}-mac.zip`;
   if (platform === 'win32') return `PokeTokenPet-${v}-${arch}-win.zip`;
   return null;
+}
+
+/** The detached Ed25519 signature over SHA256SUMS.txt, as base64 text. */
+export const SIG_NAME = `${SUMS_NAME}.sig`;
+
+/**
+ * The public half of the key that signs every release's checksum list.
+ *
+ * SPKI DER, base64. The private half never leaves the maintainer's machine —
+ * scripts/release-sign.ts explains why it is not a CI secret, and
+ * docs/DEVELOPMENT.md what to do if it is lost.
+ *
+ * Changing this string makes every copy built from here on reject releases
+ * signed with the old key. That is the point of it; do it only through the
+ * rotation steps in DEVELOPMENT.md.
+ */
+export const UPDATE_PUBLIC_KEY = 'MCowBQYDK2VwAyEAaALhki3KxQrkA/Rk+fPwOwj0ncNeDbAmWaBUdM0+Gqs=';
+
+/**
+ * Was this checksum list signed by the release key?
+ *
+ * `sums` must be the bytes exactly as downloaded — the signature covers bytes,
+ * not the parsed map, so a list re-serialised on the way in would fail.
+ *
+ * Never throws: a missing, malformed or wrong signature is simply "no", and
+ * the caller falls back to sending the person to the release page. The key is
+ * a parameter only so the tests can sign with a throwaway pair.
+ */
+export function verifySums(sums: Uint8Array, signature: string, publicKey: string = UPDATE_PUBLIC_KEY): boolean {
+  try {
+    const sig = Buffer.from(signature.trim(), 'base64');
+    if (sig.length !== 64) return false;
+    const key = createPublicKey({ key: Buffer.from(publicKey, 'base64'), format: 'der', type: 'spki' });
+    return verify(null, sums, key, sig);
+  } catch {
+    return false;
+  }
 }
 
 /** `shasum -a 256 *` output → file name → lowercase hex digest. */

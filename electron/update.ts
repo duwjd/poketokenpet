@@ -18,6 +18,7 @@ import path from 'node:path';
 import {
   LATEST_SUMS_URL,
   RELEASES_URL,
+  SIG_NAME,
   downloadUrl,
   fallbackTarget,
   installTarget,
@@ -27,6 +28,7 @@ import {
   parseSums,
   tagUrl,
   updatedFrom,
+  verifySums,
   winScript,
   type SwapPlan,
   type UpdateStatus,
@@ -116,6 +118,11 @@ export function stopUpdater() {
  *
  * Failure is silent on purpose: no network, GitHub down — none of that is the
  * person's problem, and the next check is six hours away.
+ *
+ * A list whose signature does not verify still announces the version — the
+ * release is real enough to be worth knowing about — but leaves nothing to
+ * install, so the button opens the release page. A signature uploaded late
+ * flips it to 업데이트 on the next check.
  */
 export async function checkNow(): Promise<void> {
   if (status.phase === 'downloading' || status.phase === 'installing') return;
@@ -123,10 +130,17 @@ export async function checkNow(): Promise<void> {
   try {
     const res = await net.fetch(LATEST_SUMS_URL, { headers: { 'User-Agent': 'PokeTokenPet' } });
     if (!res.ok) return;
-    const found = latestFromSums(parseSums(await res.text()), process.platform, process.arch);
+    // Bytes, not text: the signature covers exactly what was served.
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const found = latestFromSums(parseSums(new TextDecoder().decode(bytes)), process.platform, process.arch);
     if (!found || !isNewer(found.version, currentVersion())) return;
-    latest = found;
-    if (status.phase === 'available' && status.version === found.version) return;
+    const signed = found.asset !== null && (await signatureHolds(found.version, bytes));
+    if (found.asset !== null && !signed) {
+      console.warn(`[update] v${found.version}: ${SIG_NAME} missing or invalid — offering the page, not the install`);
+    }
+    latest = signed ? found : { ...found, asset: null, sha256: null };
+    const canInstall = latest.asset !== null;
+    if (status.phase === 'available' && status.version === found.version && status.canInstall === canInstall) return;
     set({
       phase: 'available',
       version: found.version,
@@ -134,7 +148,7 @@ export async function checkNow(): Promise<void> {
       received: 0,
       total: 0,
       message: null,
-      canInstall: found.asset !== null,
+      canInstall,
     });
     if (!announced.has(found.version)) {
       announced.add(found.version);
@@ -142,6 +156,23 @@ export async function checkNow(): Promise<void> {
     }
   } catch {
     // Offline. Try again next round.
+  }
+}
+
+/**
+ * Fetch the release's signature and check it against the list just read.
+ *
+ * From the version's own tag rather than `latest/download`, so a release
+ * published between the two requests cannot pair one release's list with
+ * another's signature.
+ */
+async function signatureHolds(version: string, sums: Uint8Array): Promise<boolean> {
+  try {
+    const res = await net.fetch(downloadUrl(version, SIG_NAME), { headers: { 'User-Agent': 'PokeTokenPet' } });
+    if (!res.ok) return false;
+    return verifySums(sums, await res.text());
+  } catch {
+    return false;
   }
 }
 

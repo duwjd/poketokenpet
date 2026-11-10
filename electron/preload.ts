@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('pet', {
   startUpdate: () => ipcRenderer.invoke('pet:startUpdate'),
   dismissUpdate: () => ipcRenderer.invoke('pet:dismissUpdate'),
   version: () => ipcRenderer.invoke('pet:version'),
+  exportSave: () => ipcRenderer.invoke('pet:exportSave'),
+  importSave: () => ipcRenderer.invoke('pet:importSave'),
 
   drag: (dx: number, dy: number) => ipcRenderer.send('pet:drag', dx, dy),
   dragEnd: () => ipcRenderer.send('pet:dragEnd'),

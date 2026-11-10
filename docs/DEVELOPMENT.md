@@ -165,7 +165,7 @@ npm run release:sign -- 0.2.2 --publish   # 서명 올리고 공개
 
 `v*` 태그가 푸시되면 `.github/workflows/release.yml`이:
 
-1. **mac**(macos-14)과 **Windows**(windows-latest) 러너에서 각각 lint · test · 빌드
+1. **mac**(macos-15)과 **Windows**(windows-latest) 러너에서 각각 lint · test · 빌드
 2. 산출물 6개를 artifact로 올림
 3. 합쳐서 `SHA256SUMS.txt`를 만들고 **초안(draft) Release**에 첨부
 

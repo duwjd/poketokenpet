@@ -29,7 +29,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          # macos-14 was retired: the v0.7.0 tag build was cancelled before
+          # its first step with "macos-14-arm64-us-default is not supported".
+          # Apple Silicon like before; electron-builder still cross-builds x64.
+          - os: macos-15
             name: mac
           - os: windows-latest
             name: win

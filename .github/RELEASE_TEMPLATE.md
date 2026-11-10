@@ -21,7 +21,7 @@ Mac에서 어느 쪽인지 모르겠으면  → 좌측 상단 애플 메뉴 → 
   → [docs/WINDOWS.md](../blob/main/docs/WINDOWS.md)
 
 찜찜하면 소스에서 직접 빌드하세요. `npm ci && npm run app:dist` 한 줄입니다.
-위 파일들의 SHA-256은 `SHA256SUMS.txt`에 있습니다.
+위 파일들의 SHA-256은 `SHA256SUMS.txt`에, 그 목록의 Ed25519 서명은 `SHA256SUMS.txt.sig`에 있습니다.
 
 ## 필요한 것
 

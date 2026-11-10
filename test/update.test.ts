@@ -1,5 +1,7 @@
+import { generateKeyPairSync, sign } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
+  UPDATE_PUBLIC_KEY,
   assetFor,
   fallbackTarget,
   installTarget,
@@ -10,6 +12,7 @@ import {
   psQuote,
   shQuote,
   updatedFrom,
+  verifySums,
   winScript,
 } from '../electron/updatecore.ts';
 
@@ -183,5 +186,46 @@ describe('updatedFrom', () => {
     expect(updatedFrom(['/x/PokeTokenPet', '--updated-from=0.4.0'])).toBe('0.4.0');
     expect(updatedFrom(['/x/PokeTokenPet', '--hidden'])).toBeNull();
     expect(updatedFrom(['--updated-from=garbage'])).toBeNull();
+  });
+});
+
+describe('verifySums', () => {
+  // A throwaway pair, so the test never needs the real private key.
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  const pub = publicKey.export({ format: 'der', type: 'spki' }).toString('base64');
+  const list = new TextEncoder().encode(
+    'a'.repeat(64) + '  PokeTokenPet-0.7.0-arm64-mac.zip\n' + 'b'.repeat(64) + '  PokeTokenPet-0.7.0-x64-win.zip\n',
+  );
+  const sig = sign(null, list, privateKey).toString('base64');
+
+  it('accepts the list its key signed, with or without a trailing newline', () => {
+    expect(verifySums(list, sig, pub)).toBe(true);
+    expect(verifySums(list, `${sig}\n`, pub)).toBe(true);
+  });
+
+  it('rejects a list with one byte changed — a swapped hash is exactly the attack', () => {
+    const tampered = list.slice();
+    tampered[0] = 'c'.charCodeAt(0);
+    expect(verifySums(tampered, sig, pub)).toBe(false);
+  });
+
+  it('rejects a signature from any other key, including the real one', () => {
+    expect(verifySums(list, sig, UPDATE_PUBLIC_KEY)).toBe(false);
+    const other = generateKeyPairSync('ed25519').privateKey;
+    expect(verifySums(list, sign(null, list, other).toString('base64'), pub)).toBe(false);
+  });
+
+  it('says no rather than throwing on an empty, garbled or HTML signature', () => {
+    // A 404 page served with 200 is what a misconfigured mirror looks like.
+    for (const bad of ['', 'not base64 at all', '<html>Not Found</html>', sig.slice(0, 40)]) {
+      expect(verifySums(list, bad, pub)).toBe(false);
+    }
+    expect(verifySums(list, sig, 'not a key')).toBe(false);
+  });
+
+  it('ships a well-formed Ed25519 public key', () => {
+    // 12-byte SPKI header + 32-byte key; a truncated paste would reject every release.
+    expect(Buffer.from(UPDATE_PUBLIC_KEY, 'base64').length).toBe(44);
+    expect(UPDATE_PUBLIC_KEY.startsWith('MCowBQYDK2VwAyEA')).toBe(true);
   });
 });

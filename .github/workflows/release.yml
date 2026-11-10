@@ -97,3 +97,10 @@ jobs:
           draft: true
           generate_release_notes: true
           body_path: .github/RELEASE_TEMPLATE.md
+
+      # The signature is the one step CI cannot do: the key never leaves the
+      # maintainer's machine (scripts/release-sign.ts says why). Until it is
+      # uploaded, installed copies announce this release but will not install
+      # it, so say so where the run is being watched.
+      - name: Remind to sign
+        run: echo "::notice title=서명이 남았습니다::로컬에서 npm run release:sign -- ${GITHUB_REF_NAME#v} --publish 로 서명하고 공개하세요. 서명 전에는 설치된 앱이 이 버전을 업데이트로 설치하지 않습니다."

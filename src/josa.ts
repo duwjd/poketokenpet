@@ -9,7 +9,7 @@
  *
  * ## Where this lives, and why
  *
- * `src/` rather than `server/`: src/App.tsx documents a one-way boundary — the
+ * `src/` rather than `server/`: src/panel/labels.ts documents a one-way boundary — the
  * renderer must not import from server/ — and this is needed on both sides. The
  * reverse direction is already the convention (electron/main.ts imports
  * MAX_PET_WINDOW from src/pixelFit.ts), and pixelFit.ts is exactly this shape:

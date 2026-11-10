@@ -36,7 +36,8 @@ electron/
   state.ts       창 설정(크기·위치·클릭통과) 영속화
 src/
   api.ts         한 데이터 계층 — Electron이면 IPC, 브라우저면 fetch
-  App.tsx        팝오버 UI (통계·상점·가방·도감·업적)
+  App.tsx        팝오버 UI — 상태·폴링·탭 바
+  panel/         팝오버 탭 화면(통계·상점·가방·도감·업적)과 공용 타입·라벨
   Scene.tsx      풀숲 여행 + 배틀 연출 (펫 탭 상단)
   battleui.ts    9-slice 창틀 CSS 변수 (밝은/어두운 두 벌) + 지역 표지판
   PetApp.tsx     떠 있는 펫 (#pet 해시로 같은 번들 재사용)

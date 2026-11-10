@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -37,7 +37,15 @@ describe('the item list', () => {
   it('never gives a row the pill buttons\' fill', () => {
     // The pills are `.px-btn` now. A row button must never be one, and no
     // rule may style every button in a row the way `.items button` once did.
-    const app = readFileSync('src/App.tsx', 'utf8');
+    // The panel is App.tsx and the files under src/panel/ it was split into.
+    const app = [
+      'src/App.tsx',
+      ...readdirSync('src/panel', { recursive: true, encoding: 'utf8' })
+        .filter((f) => f.endsWith('.tsx'))
+        .map((f) => `src/panel/${f}`),
+    ]
+      .map((f) => readFileSync(f, 'utf8'))
+      .join('\n');
     for (const m of app.matchAll(/className="([^"]*\browbtn\b[^"]*)"/g)) {
       expect(m[1]).not.toMatch(/\bpx-btn\b/);
     }

@@ -84,14 +84,11 @@ const REGION_ORDER = [
 ] as const;
 
 /**
- * Regions with no Korean place names anywhere yet.
- *
- * They are still fetched and still ordered above, so adding names below is all
- * it takes to bring one into the journey. Nothing else has to change.
- *
- * TODO: unova, galar, hisui, paldea — and the rest of sinnoh, which is only
- * partly filled in. Each needs its names checked against a source, one region
- * at a time, exactly as the three below were.
+ * Every region above now has Korean place names: HAND below covers the seven
+ * PokeAPI leaves unnamed, and EXTRA patches the stragglers in the three it
+ * does name. A region added to REGION_ORDER later starts with no names, and
+ * adding them to HAND — each checked against a source, as these were — is all
+ * it takes to bring it into the journey. Nothing else has to change.
  */
 
 /**

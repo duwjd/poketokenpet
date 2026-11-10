@@ -38,7 +38,7 @@ npm run dev              # 브라우저 버전, http://localhost:5173
 |---|---|
 | `npm run electron:dev` | 평소 개발 |
 | `npm run dev` | UI만 빠르게 볼 때 |
-| `npm test` | 커밋 전 (Vitest, 659개) |
+| `npm test` | 커밋 전 (Vitest) |
 | `npm run lint` | 커밋 전 (oxlint) |
 | `npm run validate` | **숫자가 이상할 때 제일 먼저** |
 

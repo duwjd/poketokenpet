@@ -26,6 +26,9 @@ dist-ssr
 # Build output
 dist-electron
 release
+# An esbuild run with the wrong outfile once dropped the bundled main process
+# here and it got committed; the real one is dist-electron/main.mjs.
+/main.mjs
 
 # Runtime state / sprite cache (never in the repo — see NOTICE.md)
 .poketokenpet

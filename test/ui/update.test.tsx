@@ -2,7 +2,7 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { UpdateBanner } from '../../src/App.tsx';
+import { UpdateBanner } from '../../src/panel/UpdateBanner.tsx';
 import type { UpdateStatus } from '../../src/api.ts';
 
 const base: UpdateStatus = {

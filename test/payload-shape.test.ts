@@ -8,6 +8,19 @@ import { STOPS } from '../src/journey.ts';
 import { stillPokemon } from '../src/spriteName.ts';
 
 /**
+ * The popover's source: App.tsx and the files under src/panel/ it was split into.
+ *
+ * A directory walk, but only of src/panel/ — src/josa.ts, which the particle
+ * check below deliberately leaves out, does not live there.
+ */
+const PANEL = [
+  'src/App.tsx',
+  ...readdirSync('src/panel', { recursive: true, encoding: 'utf8' })
+    .filter((f) => /\.tsx?$/.test(f))
+    .map((f) => `src/panel/${f}`),
+];
+
+/**
  * The dev server and the packaged Electron app serve the same /api/state shape.
  * They once held two hand-copied builders, and adding `dexTotal` to only one of
  * them shipped an app that rendered "12 / undefined종". These tests pin the
@@ -132,7 +145,7 @@ describe('transcript scanning', () => {
 describe('korean particles', () => {
   it('never ships a placeholder form', () => {
     const files = [
-      'src/App.tsx',
+      ...PANEL,
       'src/Scene.tsx',
       'src/PetApp.tsx',
       'server/shop.ts',
@@ -356,7 +369,7 @@ describe('dex entry', () => {
 describe('renderer bundle', () => {
   it('never reaches for the generated tables', () => {
     const sources = [
-      'src/App.tsx',
+      ...PANEL,
       'src/PetApp.tsx',
       'src/Scene.tsx',
       'src/scenes.ts',
@@ -480,12 +493,12 @@ describe('scene art', () => {
   });
 
   it('sends the nature in Korean, not as a slug', () => {
-    // App.tsx prints companion.nature straight out, so whatever the payload
+    // PetTab.tsx prints companion.nature straight out, so whatever the payload
     // says is what a Korean reader sees. It used to say "sassy".
     const src = readFileSync('server/state.ts', 'utf8');
     expect(src).toMatch(/nature: NATURE_KO\[active\.nature\]/);
     // And the renderer must not have grown its own copy of the table.
-    expect(readFileSync('src/App.tsx', 'utf8')).not.toMatch(/NATURE_KO/);
+    for (const f of PANEL) expect(readFileSync(f, 'utf8'), f).not.toMatch(/NATURE_KO/);
   });
 
   it('has impact art for every type, and keeps it off the purge list', () => {

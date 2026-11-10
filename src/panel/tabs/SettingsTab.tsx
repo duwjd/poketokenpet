@@ -1,5 +1,6 @@
 import { isElectron, type PetActionKind } from '../../api.ts';
 import { PetSettings } from '../PetSettings.tsx';
+import { SaveSettings } from '../SaveSettings.tsx';
 import { Toggle } from '../Toggle.tsx';
 import { compact } from '../labels.ts';
 import type { State } from '../types.ts';
@@ -89,7 +90,10 @@ export function SettingsTab({
     </ul>
 
     {isElectron() ? (
-      <PetSettings />
+      <>
+        <PetSettings />
+        <SaveSettings />
+      </>
     ) : (
       <p className="muted sub">데스크탑 앱에서 열면 펫 설정이 여기 표시됩니다.</p>
     )}

@@ -146,6 +146,13 @@ type Bridge = {
   dismissUpdate(): Promise<void>;
   onUpdate(cb: (u: UpdateStatus) => void): () => void;
   version(): Promise<string>;
+  /** Save dialog, then write the save there. null when the dialog is cancelled. */
+  exportSave(): Promise<ShopReply | null>;
+  /**
+   * Open dialog, check the file, confirm, back up, replace. null when cancelled
+   * at either step; `ok: false` when the file is not a save this app can read.
+   */
+  importSave(): Promise<ShopReply | null>;
 };
 
 declare global {

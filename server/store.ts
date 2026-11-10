@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -327,10 +328,21 @@ export function migrate(parsed: StoredState | null): GameState {
 
 export async function loadState(): Promise<GameState> {
   await ensureDataDir();
+  let raw: string;
+  try {
+    raw = await fsp.readFile(STATE_FILE(), 'utf8');
+  } catch {
+    return initialState();
+  }
   let parsed: StoredState;
   try {
-    parsed = JSON.parse(await fsp.readFile(STATE_FILE(), 'utf8')) as StoredState;
+    parsed = JSON.parse(raw) as StoredState;
   } catch {
+    // A save that exists but does not parse — a hand edit gone wrong, a bad
+    // disk. Starting fresh is the only way to keep running, and the next
+    // write will replace the file, so keep the original first. It may still
+    // be repairable by hand; once overwritten it is not.
+    await keepUnreadable(raw).catch(() => {});
     return initialState();
   }
   const migrated = migrate(parsed);
@@ -347,15 +359,115 @@ export async function saveState(state: GameState): Promise<void> {
   await writeJsonAtomic(STATE_FILE(), state);
 }
 
-/** Keep a few rolling backups so a bad migration is survivable. */
-export async function backupState(tag: string): Promise<void> {
+/** Where the automatic copies go: before a migration, an update, an import. */
+export const backupsDir = () => path.join(appDataDir(), 'backups');
+
+/** How many automatic copies to keep. A save is ~20KB, so this is about generosity, not disk. */
+export const BACKUPS_KEPT = 10;
+
+/**
+ * Copy the current save aside before something replaces it.
+ *
+ * Tags say why: `v3` (a schema migration), `before-v0.7.0` (an update),
+ * `before-import-…`. Returns the copy's path, or null when there was no save
+ * to copy.
+ */
+export async function backupState(tag: string): Promise<string | null> {
   const file = STATE_FILE();
-  if (!fs.existsSync(file)) return;
-  const dir = path.join(appDataDir(), 'backups');
+  if (!fs.existsSync(file)) return null;
+  const dir = backupsDir();
   await fsp.mkdir(dir, { recursive: true });
-  await fsp.copyFile(file, path.join(dir, `state.${tag}.json`));
-  const entries = (await fsp.readdir(dir)).filter((f) => f.startsWith('state.')).sort();
-  for (const old of entries.slice(0, Math.max(0, entries.length - 5))) {
-    await fsp.rm(path.join(dir, old), { force: true });
+  const dest = path.join(dir, `state.${tag}.json`);
+  await fsp.copyFile(file, dest);
+  // copyFile carries the source's mtime over on macOS, and pruning goes by
+  // mtime — so stamp the copy with when it was taken.
+  const now = new Date();
+  await fsp.utimes(dest, now, now);
+  await pruneBackups(dir);
+  return dest;
+}
+
+/**
+ * Drop all but the newest `keep` copies.
+ *
+ * Newest by mtime, not by name. This used to sort names, which was right
+ * while every tag was `v<schema>` and wrong the day a second kind of tag
+ * arrived: `before-v0.7.0` sorts ahead of `v3`, so the newest copy would have
+ * been the first one deleted.
+ */
+export async function pruneBackups(dir: string, keep = BACKUPS_KEPT): Promise<void> {
+  const names = (await fsp.readdir(dir)).filter((f) => f.startsWith('state.') && f.endsWith('.json'));
+  const dated = await Promise.all(
+    names.map(async (f) => ({ f, t: (await fsp.stat(path.join(dir, f))).mtimeMs })),
+  );
+  dated.sort((a, b) => b.t - a.t);
+  for (const { f } of dated.slice(keep)) {
+    await fsp.rm(path.join(dir, f), { force: true });
   }
+}
+
+/**
+ * Set an unparseable save aside, once.
+ *
+ * Named by its content's hash, so the 20-second poll re-reading the same
+ * broken file writes it once rather than flooding the folder and pruning
+ * every good copy out of it.
+ */
+async function keepUnreadable(raw: string): Promise<void> {
+  const dir = backupsDir();
+  await fsp.mkdir(dir, { recursive: true });
+  const hash = createHash('sha256').update(raw).digest('hex').slice(0, 12);
+  const dest = path.join(dir, `state.unreadable-${hash}.json`);
+  if (fs.existsSync(dest)) return;
+  await fsp.writeFile(dest, raw, 'utf8');
+  await pruneBackups(dir);
+}
+
+/** Bigger than any save could plausibly be (~20KB in practice); anything past it is the wrong file. */
+const IMPORT_MAX_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Check a file someone picked to import, and bring it to this version's shape.
+ *
+ * Deliberately strict about WHAT it is and lenient about its AGE: `migrate`
+ * already turns any older save into a current one, so the only things worth
+ * refusing are a file that is not a save at all and one written by a newer
+ * app, whose fields `migrate` would drop without a word.
+ *
+ * `lastTotal` is cleared, the same as on a schema upgrade. It anchors the
+ * token count to the corpus of the machine that wrote the save; carried to
+ * another machine it would pay out the gap between that machine's history and
+ * this one's as freshly earned tokens. Cleared, the next scan re-anchors here
+ * and only work done from now on counts. On the same machine that costs the
+ * tokens earned since the file was written — the honest side to err on.
+ */
+export function parseSave(
+  text: string,
+): { ok: true; state: GameState } | { ok: false; message: string } {
+  if (text.length > IMPORT_MAX_BYTES) return { ok: false, message: 'PokeTokenPet 저장 파일이 아닙니다.' };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { ok: false, message: 'JSON 파일이 아닙니다.' };
+  }
+  const p = parsed as StoredState | null;
+  if (
+    !p ||
+    typeof p !== 'object' ||
+    Array.isArray(p) ||
+    !Array.isArray(p.dex) ||
+    (p.schemaVersion !== undefined && typeof p.schemaVersion !== 'number')
+  ) {
+    return { ok: false, message: 'PokeTokenPet 저장 파일이 아닙니다.' };
+  }
+  if ((p.schemaVersion ?? 0) > initialState().schemaVersion) {
+    return { ok: false, message: '더 새 버전의 앱에서 만든 파일입니다. 앱을 먼저 업데이트하세요.' };
+  }
+  return { ok: true, state: { ...migrate(p), lastTotal: {} } };
+}
+
+/** The current save, as an export writes it. */
+export async function serializeSave(): Promise<string> {
+  return `${JSON.stringify(await loadState(), null, 2)}\n`;
 }

@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   Menu,
   nativeImage,
@@ -13,9 +14,10 @@ import {
   shell,
   Tray,
 } from 'electron';
+import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadState, saveState } from '../server/store.ts';
+import { backupState, backupsDir, loadState, parseSave, saveState, serializeSave } from '../server/store.ts';
 import { buy, consumeItem, type ItemId, type ProductId } from '../server/shop.ts';
 import { partyAction } from '../server/party.ts';
 import { forget, relearn, setHuntEnabled, setHuntUncapped, teach } from '../server/hunt.ts';
@@ -146,6 +148,101 @@ async function clearSprites() {
     ok: true,
     message: removed ? `${removed}개 · ${mb}MB를 지웠습니다.` : '지울 것이 없습니다.',
   };
+}
+
+// ---------------------------------------------------------------- save file
+
+/**
+ * True while a native file dialog is up. The popover hides itself on blur,
+ * and a dialog taking focus is a blur — without this the panel would vanish
+ * the moment its own button opened the dialog, and the answer would land in
+ * a window nobody can see.
+ */
+let inDialog = false;
+
+async function withDialog<T>(fn: () => Promise<T>): Promise<T> {
+  inDialog = true;
+  // An accessory app (no Dock icon) is not frontmost just because its panel
+  // is, and a dialog from a background app opens behind everything.
+  if (isMac) app.focus({ steal: true });
+  try {
+    return await fn();
+  } finally {
+    inDialog = false;
+    if (popover && !popover.isDestroyed() && !popover.isVisible()) popover.show();
+    popover?.focus();
+  }
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+/** Write the save to a file the person picks. null when they cancel. */
+async function exportSave(): Promise<{ ok: boolean; message: string } | null> {
+  return withDialog(async () => {
+    const r = await dialog.showSaveDialog({
+      title: '저장 파일 내보내기',
+      defaultPath: path.join(app.getPath('downloads'), `poketokenpet-${today()}.json`),
+      filters: [{ name: 'PokeTokenPet 저장 파일', extensions: ['json'] }],
+    });
+    if (r.canceled || !r.filePath) return null;
+    await fsp.writeFile(r.filePath, await serializeSave(), 'utf8');
+    // No particle after the name: josa reads Hangul endings, and a file name
+    // ends in Latin ('…json' wants 으로, which it cannot tell).
+    return { ok: true, message: `내보냈습니다: ${path.basename(r.filePath)}` };
+  });
+}
+
+/**
+ * Replace the save with a file the person picks. null when they cancel.
+ *
+ * Opens in the backups folder: an exported file is usually in Downloads, one
+ * click away in the sidebar, while the automatic copies live in a dot-folder
+ * Finder and Explorer hide — this is the only easy way into it.
+ *
+ * The refresh loop is paused for the swap. A tick that loaded the old save
+ * just before the write would save it back just after, and the import would
+ * silently not have happened.
+ */
+async function importSave(): Promise<{ ok: boolean; message: string } | null> {
+  return withDialog(async () => {
+    const r = await dialog.showOpenDialog({
+      title: '저장 파일 불러오기',
+      defaultPath: backupsDir(),
+      properties: ['openFile'],
+      filters: [{ name: 'PokeTokenPet 저장 파일', extensions: ['json'] }],
+    });
+    const file = r.filePaths[0];
+    if (r.canceled || !file) return null;
+    const parsed = parseSave(await fsp.readFile(file, 'utf8'));
+    if (!parsed.ok) return parsed;
+
+    const name = parsed.state.active?.nickname ?? null;
+    const confirm = await dialog.showMessageBox({
+      type: 'warning',
+      message: '지금 상태를 이 파일로 바꿀까요?',
+      detail:
+        `${path.basename(file)} — 도감 ${new Set(parsed.state.dex.map((d) => d.speciesId)).size}종, 배지 ${parsed.state.badges?.length ?? 0}개` +
+        `${name ? `, 파트너 ${name}` : ''}.\n\n` +
+        '지금 포켓몬과 기록은 백업 폴더에 남겨 둡니다. 불러온 뒤에는 지금부터 쓰는 토큰만 셉니다.',
+      buttons: ['불러오기', '취소'],
+      defaultId: 1,
+      cancelId: 1,
+    });
+    if (confirm.response !== 0) return null;
+
+    const ticking = refreshTimer !== null;
+    stopRefreshTimer();
+    try {
+      await inflight?.catch(() => {});
+      await backupState(`before-import-${Date.now()}`);
+      await saveState(parsed.state);
+      cache = null;
+      await refreshAll(true);
+    } finally {
+      if (ticking) startRefreshTimer();
+    }
+    return { ok: true, message: '불러왔습니다. 바꾸기 전 상태는 백업 폴더에 있습니다.' };
+  });
 }
 
 // ---------------------------------------------------------------- tray
@@ -407,7 +504,9 @@ function createPopover() {
     webPreferences: webPreferences(),
   });
   popover.loadURL(rendererUrl('popover'));
-  popover.on('blur', () => popover?.hide());
+  popover.on('blur', () => {
+    if (!inDialog) popover?.hide();
+  });
   popover.on('closed', () => (popover = null));
 }
 
@@ -826,6 +925,8 @@ ipcMain.handle('pet:dexEntry', (_e, id: number, shiny?: boolean) =>
   dexEntry(Number(id), shiny === true),
 );
 ipcMain.handle('pet:getPrefs', () => prefs);
+ipcMain.handle('pet:exportSave', () => exportSave());
+ipcMain.handle('pet:importSave', () => importSave());
 ipcMain.handle('pet:getUpdate', () => getUpdate());
 ipcMain.handle('pet:startUpdate', () => startUpdate());
 ipcMain.handle('pet:dismissUpdate', () => dismissUpdate());

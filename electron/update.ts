@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { backupState } from '../server/store.ts';
 import {
   LATEST_SUMS_URL,
   RELEASES_URL,
@@ -200,6 +201,12 @@ export async function startUpdate(): Promise<void> {
     await fsp.rm(zip, { force: true });
 
     const plan = await swapPlan(unpacked, work);
+    // The new version may migrate the save on its first load. loadState backs
+    // up before a schema change, but only one it recognises as a change — a
+    // bug in the new version's migrate is exactly what it would not see. A
+    // copy taken here, by the version that wrote the save, does not depend on
+    // the next one getting anything right. Best effort: no save, no copy.
+    await backupState(`before-v${version}`).catch(() => null);
     await handOver(plan);
   } catch (err) {
     await fsp.rm(work, { recursive: true, force: true }).catch(() => {});

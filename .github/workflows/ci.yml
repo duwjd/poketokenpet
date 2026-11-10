@@ -1,0 +1,45 @@
+# The gates release.yml runs, on every push to main and every pull request.
+#
+# Until this existed the only run was the tag build, so a broken test was
+# found at release time — after `npm version` had already cut the tag. These
+# are the same three checks the release build depends on (lint, test, and the
+# typecheck `npm run build` starts with), minus the packaging.
+#
+# Both operating systems because the release builds on both, and the Windows
+# runner is the one that has already caught something the Mac did not: the
+# Monte Carlo balance sweeps run several times slower there (ba1a53a).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch makes the older run's answer irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc -b
+      - run: npm test
